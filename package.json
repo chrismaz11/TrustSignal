@@ -1,0 +1,10 @@
+{
+  "name": "record-event-attestation-mvp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "start:verify": "node src/api/verify.js",
+    "ingest:csv": "node scripts/ingest-csv.js"
+  }
+}
