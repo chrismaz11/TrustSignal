@@ -13,7 +13,10 @@ import {
   computeInputsCommitment,
   deriveNotaryWallet,
   signDocHash,
-  verifyBundle
+  verifyBundle,
+  MockCountyVerifier,
+  MockStateNotaryVerifier,
+  MockPropertyVerifier
 } from '@deed-shield/core';
 
 import { anchorReceipt } from './anchor.js';
@@ -39,6 +42,17 @@ const bundleSchema = z.object({
   policy: z.object({
     profile: z.string().min(1)
   }),
+  property: z.object({
+    parcelId: z.string().min(1),
+    county: z.string().min(1),
+    state: z.string().length(2)
+  }),
+  ocrData: z.object({
+    notaryName: z.string().optional(),
+    notaryCommissionId: z.string().optional(),
+    propertyAddress: z.string().optional(),
+    grantorName: z.string().optional()
+  }).optional(),
   timestamp: z.string().datetime().optional()
 });
 
@@ -77,7 +91,12 @@ export async function buildServer() {
 
     const input = parsed.data as BundleInput;
     const registry = await loadRegistry();
-    const verification = verifyBundle(input, registry);
+    const verifiers = {
+      county: new MockCountyVerifier(),
+      notary: new MockStateNotaryVerifier(),
+      property: new MockPropertyVerifier()
+    };
+    const verification = await verifyBundle(input, registry, verifiers);
     const receipt = buildReceipt(input, verification);
 
     const record = await prisma.receipt.create({
@@ -130,6 +149,11 @@ export async function buildServer() {
         sealScheme: 'SIM-ECDSA-v1'
       },
       doc: { docHash },
+      property: {
+        parcelId: 'PARCEL-12345',
+        county: 'Demo County',
+        state: notary.commissionState
+      },
       policy: { profile: `STANDARD_${notary.commissionState}` },
       timestamp: new Date().toISOString()
     };

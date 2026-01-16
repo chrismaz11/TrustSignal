@@ -98,10 +98,41 @@ export async function generateSyntheticBundles(
         sealScheme: 'SIM-ECDSA-v1'
       },
       doc: { docHash },
+      property: {
+        parcelId: isFraud && Math.random() < 0.3 ? 'SCAM-101' : `PARCEL-${i}`,
+        county: 'Demo County',
+        state: notary.commissionState
+      },
       policy: { profile: policyProfile },
       timestamp: new Date().toISOString()
     });
   }
 
   return bundles;
+}
+
+export function generateTrustRegistry(): TrustRegistry {
+  return createSyntheticRegistry().registry;
+}
+
+export function generateBundle(registry: TrustRegistry): BundleInput {
+  const notary = registry.notaries[0];
+  return {
+    bundleId: `TEST-${Date.now()}`,
+    transactionType: 'warranty',
+    ron: {
+      provider: 'RON-1',
+      notaryId: notary.id,
+      commissionState: notary.commissionState,
+      sealPayload: 'v1:mock-signature'
+    },
+    doc: { docHash: '0x123' },
+    property: {
+      parcelId: 'PARCEL-12345',
+      county: 'Demo County',
+      state: notary.commissionState
+    },
+    policy: { profile: 'STANDARD' },
+    timestamp: new Date().toISOString()
+  };
 }

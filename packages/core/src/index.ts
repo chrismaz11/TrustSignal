@@ -5,3 +5,5 @@ export * from './registry.js';
 export * from './synthetic.js';
 export * from './types.js';
 export * from './verification.js';
+export * from './mocks.js';
+export * from './verifiers.js';

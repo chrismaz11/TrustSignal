@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FileDropzone } from '../components/FileDropzone';
 
 export default function HomePage() {
   return (
@@ -16,6 +17,11 @@ export default function HomePage() {
             Browse Receipts
           </Link>
         </div>
+
+        <div style={{ marginTop: '2rem' }}>
+          <h3 style={{ marginBottom: '1rem' }}>Instant Pre-Check</h3>
+          <FileDropzone />
+        </div>
       </div>
       <div className="card">
         <h3>What happens</h3>
@@ -26,6 +32,6 @@ export default function HomePage() {
           <li>Anchor receipt hashes on EVM.</li>
         </ol>
       </div>
-    </section>
+    </section >
   );
 }

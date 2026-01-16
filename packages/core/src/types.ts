@@ -14,14 +14,38 @@ export type PolicyInput = {
   profile: string;
 };
 
+export type PropertyInput = {
+  parcelId: string;
+  county: string;
+  state: string;
+};
+
+export type OCRData = {
+  notaryName?: string;
+  notaryCommissionId?: string;
+  propertyAddress?: string;
+  grantorName?: string;
+};
+
 export type BundleInput = {
   bundleId: string;
   transactionType: string;
   ron: RonInput;
   doc: DocInput;
+  property: PropertyInput;
+  ocrData?: OCRData;
   policy: PolicyInput;
   timestamp?: string;
 };
+
+export type CountyCheckResult = {
+  status: 'CLEAN' | 'FLAGGED' | 'LOCKED';
+  details?: string;
+};
+
+export interface CountyVerifier {
+  verifyParcel(parcelId: string, county: string, state: string): Promise<CountyCheckResult>;
+}
 
 export type CheckResult = {
   checkId: string;
