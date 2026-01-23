@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { randomUUID } from 'crypto';
 
 import Fastify from 'fastify';
@@ -16,7 +17,11 @@ import {
   verifyBundle,
   MockCountyVerifier,
   MockStateNotaryVerifier,
-  MockPropertyVerifier
+  MockPropertyVerifier,
+  RiskEngine,
+  generateComplianceProof,
+  DocumentRisk,
+  ZKPAttestation
 } from '@deed-shield/core';
 
 import { anchorReceipt } from './anchor.js';
@@ -37,7 +42,8 @@ const bundleSchema = z.object({
     sealScheme: z.literal('SIM-ECDSA-v1').optional()
   }),
   doc: z.object({
-    docHash: z.string().min(1)
+    docHash: z.string().min(1),
+    pdfBase64: z.string().optional()
   }),
   policy: z.object({
     profile: z.string().min(1)
@@ -73,7 +79,11 @@ function receiptFromDb(record: ReceiptRecord) {
     reasons: JSON.parse(record.reasons) as string[],
     riskScore: record.riskScore,
     verifierId: 'deed-shield',
-    receiptHash: record.receiptHash
+    receiptHash: record.receiptHash,
+    fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
+    zkpAttestation: record.zkpAttestation ? JSON.parse(record.zkpAttestation) as ZKPAttestation : undefined,
+    // Revocation is returned in the envelope, but not part of the core signed receipt structure so far
+    // unless v2 schema changes that. We'll return it in the API.
   };
 }
 
@@ -97,7 +107,30 @@ export async function buildServer() {
       property: new MockPropertyVerifier()
     };
     const verification = await verifyBundle(input, registry, verifiers);
-    const receipt = buildReceipt(input, verification);
+
+    // Risk Engine
+    let fraudRisk: DocumentRisk | undefined;
+    if (input.doc.pdfBase64) {
+      const riskEngine = new RiskEngine();
+      const pdfBuffer = Buffer.from(input.doc.pdfBase64, 'base64');
+      fraudRisk = await riskEngine.analyzeDocument(pdfBuffer, {
+        policyProfile: input.policy.profile,
+        notaryState: input.ron.commissionState
+      });
+    }
+
+    // ZKP Attestation
+    // We generate a ZKP that proves we ran the checks and they passed (or failed)
+    const zkpAttestation = await generateComplianceProof({
+      policyProfile: input.policy.profile,
+      checksResult: verification.decision === 'ALLOW',
+      inputsCommitment: computeInputsCommitment(input)
+    });
+
+    const receipt = buildReceipt(input, verification, 'deed-shield', {
+      fraudRisk,
+      zkpAttestation
+    });
 
     const record = await prisma.receipt.create({
       data: {
@@ -110,7 +143,10 @@ export async function buildServer() {
         riskScore: receipt.riskScore,
         checks: JSON.stringify(receipt.checks),
         rawInputs: JSON.stringify(input),
-        createdAt: new Date(receipt.createdAt)
+        createdAt: new Date(receipt.createdAt),
+        fraudRisk: receipt.fraudRisk ? JSON.stringify(receipt.fraudRisk) : undefined,
+        zkpAttestation: receipt.zkpAttestation ? JSON.stringify(receipt.zkpAttestation) : undefined,
+        revoked: false
       }
     });
 
@@ -125,7 +161,10 @@ export async function buildServer() {
         txHash: record.anchorTxHash || undefined,
         chainId: record.anchorChainId || undefined,
         anchorId: record.anchorId || undefined
-      }
+      },
+      fraudRisk: receipt.fraudRisk,
+      zkpAttestation: receipt.zkpAttestation,
+      revoked: record.revoked
     });
   });
 
@@ -182,7 +221,9 @@ export async function buildServer() {
       decision: receipt.decision,
       reasons: receipt.reasons,
       riskScore: receipt.riskScore,
-      verifierId: receipt.verifierId
+      verifierId: receipt.verifierId,
+      fraudRisk: receipt.fraudRisk,
+      zkpAttestation: receipt.zkpAttestation
     });
 
     return reply.send({
@@ -194,7 +235,8 @@ export async function buildServer() {
         txHash: record.anchorTxHash || undefined,
         chainId: record.anchorChainId || undefined,
         anchorId: record.anchorId || undefined
-      }
+      },
+      revoked: record.revoked
     });
   });
 
@@ -238,7 +280,9 @@ export async function buildServer() {
       decision: receipt.decision,
       reasons: receipt.reasons,
       riskScore: receipt.riskScore,
-      verifierId: receipt.verifierId
+      verifierId: receipt.verifierId,
+      fraudRisk: receipt.fraudRisk,
+      zkpAttestation: receipt.zkpAttestation
     });
 
     const ok = recomputedHash === receipt.receiptHash && inputsCommitment === record.inputsCommitment;
@@ -247,7 +291,8 @@ export async function buildServer() {
       verified: ok,
       recomputedHash,
       storedHash: receipt.receiptHash,
-      inputsCommitment
+      inputsCommitment,
+      revoked: record.revoked
     });
   });
 
@@ -286,6 +331,25 @@ export async function buildServer() {
     });
   });
 
+  app.post('/api/v1/receipt/:receiptId/revoke', async (request, reply) => {
+    const { receiptId } = request.params as { receiptId: string };
+    const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
+    if (!record) {
+      return reply.code(404).send({ error: 'Receipt not found' });
+    }
+
+    if (record.revoked) {
+      return reply.send({ status: 'ALREADY_REVOKED' });
+    }
+
+    await prisma.receipt.update({
+      where: { id: receiptId },
+      data: { revoked: true }
+    });
+
+    return reply.send({ status: 'REVOKED' });
+  });
+
   app.get('/api/v1/receipts', async () => {
     const records: ReceiptListRecord[] = await prisma.receipt.findMany({
       orderBy: { createdAt: 'desc' },
@@ -296,7 +360,8 @@ export async function buildServer() {
       decision: record.decision,
       riskScore: record.riskScore,
       createdAt: record.createdAt,
-      anchorStatus: record.anchorStatus
+      anchorStatus: record.anchorStatus,
+      revoked: record.revoked
     }));
   });
 
