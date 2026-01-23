@@ -1,3 +1,4 @@
+export * from './types.js';
 import { ZKPAttestation, ComplianceInput } from './types.js';
 import { keccak256, toUtf8Bytes } from 'ethers';
 

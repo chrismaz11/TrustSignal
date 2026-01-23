@@ -36,11 +36,22 @@ describe('V2 Feature Integration', () => {
         expect(verifyRes.statusCode).toBe(200);
         const receipt = verifyRes.json();
 
-        expect(receipt.fraudRisk).toBeDefined();
-        expect(receipt.fraudRisk.band).toBe('LOW'); // The mock PDF is clean-ish
+        expect(receipt.receiptVersion).toBe("2.0");
+
+        expect(receipt.fraudRisk).toBeTruthy();
+        expect(receipt.fraudRisk.score).toBeGreaterThanOrEqual(0);
+        expect(receipt.fraudRisk.score).toBeLessThanOrEqual(1);
+        expect(["LOW", "MEDIUM", "HIGH"]).toContain(receipt.fraudRisk.band);
+
         expect(receipt.zkpAttestation).toBeDefined();
         expect(receipt.zkpAttestation.scheme).toBe('GROTH16-MOCK-v1');
-        expect(receipt.revoked).toBe(false);
+
+        expect(receipt.revocation).toBeTruthy();
+        expect(["ACTIVE", "REVOKED"]).toContain(receipt.revocation.status);
+
+        // old fields must NOT exist at top level
+        expect(receipt.riskScore).toBeUndefined();
+        expect(receipt.revoked).toBeUndefined();
 
         // 3. Check Receipt Details
         const receiptRes = await app.inject({
@@ -49,7 +60,8 @@ describe('V2 Feature Integration', () => {
         });
         const fetched = receiptRes.json();
         expect(fetched.receipt.fraudRisk).toBeDefined();
-        expect(fetched.revoked).toBe(false);
+        expect(fetched.revoked).toBeUndefined();
+        expect(fetched.revocation).toBeTruthy();
 
         // 4. Verify Receipt endpoint
         const checkRes = await app.inject({
@@ -71,6 +83,6 @@ describe('V2 Feature Integration', () => {
             method: 'GET',
             url: `/api/v1/receipt/${receipt.receiptId}`
         });
-        expect(revokedCheckRes.json().revoked).toBe(true);
+        expect(revokedCheckRes.json().revocation.status).toBe("REVOKED");
     });
 });

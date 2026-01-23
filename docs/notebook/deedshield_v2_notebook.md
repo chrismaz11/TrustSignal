@@ -1,3 +1,4 @@
+
 # Deed Shield v2.0 - Notebook Log
 
 ## 1) Purpose of v2.0
@@ -6,14 +7,14 @@ The purpose of Deed Shield v2.0 is to enhance the pre-recording verification pro
 ## 2) What Changed (High Level)
 - **Fraud Risk Analysis**: Added an automated engine to score document risk based on file forensics and layout consistency.
 - **Privacy Proofs**: Introduced Zero-Knowledge Proof (ZKP) attestations to prove policy compliance without revealing internal business rules or PII.
-- **Receipt Schema**: Updated the output receipt format to version 2.0, including new fields for risk scores, revokability, and attributes.
+- **Receipt Schema**: Updated the output receipt format to version 2.0, standardization of nested fields (`fraudRisk`, `zkpAttestation`, `revocation`).
 - **Lifecycle Management**: Added the ability to revoke issued receipts if validitity is later challenged.
-- **Architecture**: Modularized verification logic and prepared stub interfaces for future blockchain anchor migration.
+- **Architecture**: Modularized verification logic and created a dedicated v2 receipt mapper for consistent API responses.
 
 ## 3) What Did NOT Change (Guardrails)
 - **Data Privacy**: No Personal Identifiable Information (PII) is persisted. Document content is processed in memory and discarded.
 - **Core Verification**: The underlying cryptographic signature verification and notary authority checks remain the foundation of trust.
-- **Backward Compatibility**: Existing API endpoints continue to function, with v2 features enabling enhanced responses when data is available.
+- **Backward Compatibility**: Existing API endpoints continue to function, but now return the v2 structure which encapsulates all previous data.
 
 ## 4) New Modules
 
@@ -37,7 +38,7 @@ Located in `packages/core/src/zkp`.
 - **Mechanism**: A new `revoked` boolean field in the database `Receipt` model.
 - **API**: `POST /api/v1/receipt/:id/revoke` allows authorized systems to mark a receipt as invalid.
 - **Privacy**: Revocation is a status flag; it does not link to a new identity or reasoning that exposes the user.
-- **Verification**: The `verify` endpoints now check and return this status.
+- **Verification**: The `verify` endpoints now check and return this status as `revocation: { status: "REVOKED" }`.
 
 ### Anchor Portability Stub
 Located in `packages/core/src/anchor/portable.ts`.
@@ -62,30 +63,32 @@ The new receipt contains standard verification results plus:
 ```json
 {
   "receiptVersion": "2.0",
-  "receiptId": "550e8400-e29b-41d4-a716-446655440000",
-  "createdAt": "2023-10-27T10:00:00Z",
   "decision": "ALLOW",
-  "riskScore": 10,
+  "reasons": [],
+  "receiptId": "e1d38e98-bce4-47c4-b97c-13bdf9b55e50",
+  "receiptHash": "0xb34db1e288f84e2aa5d2b3996a8da8d270e43c87f087c3b50f68e0dfa6b9f6b8",
+  "anchor": {
+    "status": "PENDING",
+    "backend": "EVM_LOCAL"
+  },
   "fraudRisk": {
-    "score": 0.1,
+    "score": 0,
     "band": "LOW",
     "signals": []
   },
   "zkpAttestation": {
-    "proofId": "ZKP-169840...",
+    "proofId": "ZKP-1769197687360-938",
     "scheme": "GROTH16-MOCK-v1",
     "publicInputs": {
-      "policyHash": "0xabc...",
-      "timestamp": "2023-10-27T10:00:00Z",
+      "policyHash": "0xd9feb001ffd18fc36af16bd178edb4bd539032b1e334e37c5622f969579429f9",
+      "timestamp": "2026-01-23T19:48:07.360Z",
+      "inputsCommitment": "0x0fa863e1cb167263d67dfc642291bba99dc299ce520d9f4ff3f5dbde16b17077",
       "conformance": true
     },
-    "proof": "0x123..."
+    "proof": "0xa0b2260f36023add6d0ebdf32454d985877d7ca8db21d31c79a2e15d73f3a68e"
   },
-  "revoked": false,
-  "anchor": {
-    "status": "ANCHORED",
-    "txHash": "0x...",
-    "chainId": "31337"
+  "revocation": {
+    "status": "ACTIVE"
   }
 }
 ```
@@ -93,7 +96,7 @@ The new receipt contains standard verification results plus:
 ## 7) How to Verify a Receipt
 1.  **Fetch**: Retrieve receipt JSON from storage or API (`GET /api/v1/receipt/:id`).
 2.  **Check Hash**: Re-compute `keccak256(canonicalize(receipt))` and match against `receiptHash`.
-3.  **Check Revocation**: Ensure `revoked` is false.
+3.  **Check Revocation**: Ensure `revocation.status` is "ACTIVE".
 4.  **Verify ZKP**: Pass `zkpAttestation` to `verifyComplianceProof()` to ensure the proof is valid and `conformance` is true.
 5.  **Check Risk**: Review `fraudRisk.band`. If 'HIGH', manual review is recommended.
 
@@ -103,7 +106,7 @@ We test to ensure trust and reliability.
     - **Risk Engine**: Verify that bad PDFs trigger specific signals (Forensics/Layout) and affect the score.
     - **ZKP**: Verify that valid inputs generate verified proofs, and tampered inputs fail verification.
 - **Integration Tests**:
-    - **API Flow**: Verify the full lifecycle: Submit Bundle -> Get v2 Receipt -> Verify Fields present -> Revoke -> Verify Revocation.
+    - **API Flow**: Verify the full lifecycle: Submit Bundle -> Get v2 Receipt -> Verify Fields are present -> Revoke -> Verify Revocation status.
     - **Mocks**: Ensure mock verifiers behave deterministically for consistent testing.
 
 ## 9) Test Evidence Log
@@ -120,8 +123,12 @@ We test to ensure trust and reliability.
 - **Scope**: ZKP generation and verification logic (Mock scheme).
 
 **Command**: `npm test --workspace apps/api`
-- **Result**: PASSED (1 integration test suite)
-- **Scope**: End-to-End API verification. Submitting a PDF, receiving a v2 receipt, verifying risk/ZKP fields, and testing revocation.
+- **Result**: PASSED
+- **Scope**: End-to-End API integration.
+    - Confirmed `receiptVersion` is "2.0".
+    - Confirmed `fraudRisk` object structure (score 0-1, band enum).
+    - Confirmed `revocation` object structure (status enum).
+    - Confirmed `riskScore` and `revoked` are ABSENT from root.
 
 ## 10) Known Gaps / TODOs
 - [ ] **Real ZKP**: The current ZKP implementation is a cryptographic hash commitment (Mock). It must be replaced with a real Circuit (Circom) and SnarkJS prover for production privacy.
@@ -140,7 +147,7 @@ We test to ensure trust and reliability.
 - **feat(risk)**: Created modular Risk Engine (Forensics, Layout, Patterns).
 - **feat(zkp)**: Implemented Mock ZKP generation and verification logic.
 - **test(core)**: Added unit tests for Risk and ZKP modules.
-- **feat(api)**: Updated `Receipt` schema and server logic to include v2 fields.
+- **feat(api)**: Implemented `v2ReceiptMapper` and updated `server.ts` to enforce v2 API contract.
 - **feat(db)**: Added `revoked`, `fraudRisk`, `zkpAttestation` to Prisma schema.
-- **test(api)**: Added comprehensive v2 integration test.
-- **doc(v2)**: Created this notebook log.
+- **test(api)**: Updated integration tests to strictly enforce v2 schema (no deprecated fields).
+- **doc(v2)**: Updated notebook log with real v2 receipt example.

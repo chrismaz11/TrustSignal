@@ -24,6 +24,7 @@ import {
   ZKPAttestation
 } from '@deed-shield/core';
 
+import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
 import { anchorReceipt } from './anchor.js';
 import { ensureDatabase } from './db.js';
 import { loadRegistry } from './registryLoader.js';
@@ -150,10 +151,9 @@ export async function buildServer() {
       }
     });
 
-    return reply.send({
+    const body = toV2VerifyResponse({
       decision: receipt.decision,
       reasons: receipt.reasons,
-      riskScore: receipt.riskScore,
       receiptId: record.id,
       receiptHash: receipt.receiptHash,
       anchor: {
@@ -164,8 +164,11 @@ export async function buildServer() {
       },
       fraudRisk: receipt.fraudRisk,
       zkpAttestation: receipt.zkpAttestation,
-      revoked: record.revoked
+      revoked: record.revoked,
+      riskScore: receipt.riskScore
     });
+
+    return reply.send(body);
   });
 
   app.get('/api/v1/synthetic', async () => {
@@ -226,17 +229,29 @@ export async function buildServer() {
       zkpAttestation: receipt.zkpAttestation
     });
 
-    return reply.send({
-      receipt,
-      canonicalReceipt,
-      pdfUrl: `/api/v1/receipt/${receiptId}/pdf`,
+    // We use the mapper for consistency in basic fields, though GET usually adds PDF links
+    const v2Body = toV2VerifyResponse({
+      decision: receipt.decision,
+      reasons: receipt.reasons,
+      receiptId: receipt.receiptId,
+      receiptHash: receipt.receiptHash,
       anchor: {
         status: record.anchorStatus,
         txHash: record.anchorTxHash || undefined,
         chainId: record.anchorChainId || undefined,
         anchorId: record.anchorId || undefined
       },
-      revoked: record.revoked
+      fraudRisk: receipt.fraudRisk,
+      zkpAttestation: receipt.zkpAttestation,
+      revoked: record.revoked,
+      riskScore: receipt.riskScore
+    });
+
+    return reply.send({
+      ...v2Body,
+      receipt, // Original raw receipt object often requested by frontend
+      canonicalReceipt,
+      pdfUrl: `/api/v1/receipt/${receiptId}/pdf`,
     });
   });
 
