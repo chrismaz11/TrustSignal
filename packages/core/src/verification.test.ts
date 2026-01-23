@@ -42,7 +42,7 @@ describe('verifyBundle', () => {
     };
 
     const verifier = new MockCountyVerifier();
-    const result = await verifyBundle(bundle, registry, verifier);
+    const result = await verifyBundle(bundle, registry, { county: verifier });
 
     expect(result.reasons).toContain('PROPERTY_FLAGGED');
     expect(result.checks.find(c => c.checkId === 'county-status')?.status).toBe('WARN');

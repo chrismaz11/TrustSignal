@@ -21,3 +21,28 @@ export class MockCountyVerifier implements CountyVerifier {
         return { status: 'CLEAN' };
     }
 }
+
+export class MockStateNotaryVerifier {
+    async verifyNotary(state: string, commissionId: string, name: string): Promise<{ status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | 'UNKNOWN'; details?: string }> {
+        if (commissionId === '999999') {
+            return { status: 'REVOKED' };
+        }
+        return { status: 'ACTIVE' };
+    }
+}
+
+export class MockPropertyVerifier {
+    async verifyOwner(parcelId: string, grantorName: string): Promise<{ match: boolean; score: number; recordOwner?: string }> {
+        let recordOwner = 'Unknown';
+        if (parcelId === 'PARCEL-12345') {
+            recordOwner = 'John Doe';
+        }
+
+        if (recordOwner === 'John Doe' && grantorName !== 'John Doe') {
+            return { match: false, score: 0, recordOwner };
+        }
+
+        // Default pass for other cases to keep it simple
+        return { match: true, score: 95, recordOwner: grantorName };
+    }
+}
