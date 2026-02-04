@@ -39,11 +39,11 @@ export default function VerifyPage() {
     ron: {
       provider: 'RON-1',
       notaryId: 'NOTARY-1',
-      commissionState: 'CA',
+      commissionState: 'IL',
       sealPayload: ''
     },
     doc: { docHash: '' },
-    policy: { profile: 'STANDARD_CA' }
+    policy: { profile: 'STANDARD_IL' }
   });
   const [result, setResult] = useState<VerifyResponse | null>(null);
   const [loading, setLoading] = useState(false);
