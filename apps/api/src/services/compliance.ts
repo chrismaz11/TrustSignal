@@ -1,7 +1,6 @@
 import { Buffer } from 'node:buffer';
 import OpenAI from 'openai';
-// @ts-ignore
-import pdf from 'pdf-parse';
+import PDFParser from 'pdf2json';
 
 export interface ComplianceCheckResult {
     status: 'PASS' | 'FAIL' | 'FLAGGED';
@@ -69,9 +68,7 @@ export class CookCountyComplianceValidator {
 
         let textCcontent = '';
         try {
-            // @ts-ignore
-            const data = await pdf(fileBuffer);
-            textCcontent = data.text;
+            textCcontent = await this.extractTextFromPdf(fileBuffer);
         } catch (err) {
             console.error('[CookCountyComplianceValidator] PDF extraction failed:', err);
             return {
@@ -174,5 +171,17 @@ export class CookCountyComplianceValidator {
             preparedBy: false,
             formatting: false
         };
+    }
+
+    private extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const pdfParser = new PDFParser(null, true);
+            pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
+            pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+                const text = pdfParser.getRawTextContent();
+                resolve(text);
+            });
+            pdfParser.parseBuffer(pdfBuffer);
+        });
     }
 }
