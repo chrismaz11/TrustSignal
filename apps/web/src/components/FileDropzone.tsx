@@ -5,11 +5,35 @@ import { useDropzone } from 'react-dropzone';
 import { createWorker } from 'tesseract.js';
 import { computeFileHash } from '../utils/hashing';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
+
+type VerificationReport = {
+    summary: 'PASS' | 'WARN' | 'FAIL' | 'SKIP';
+    checks: Array<{ id: string; status: string; message: string }>;
+    evidence: { matchConfidence: number; endpointUsed?: string; reason?: string };
+} | null;
+
+// Polyfill Promise.withResolvers
+if (typeof Promise.withResolvers === 'undefined') {
+    // @ts-expect-error - Polyfill
+    Promise.withResolvers = function <T>() {
+        let resolve!: (value: T | PromiseLike<T>) => void;
+        let reject!: (reason?: any) => void;
+        const promise = new Promise<T>((res, rej) => {
+            resolve = res;
+            reject = rej;
+        });
+        return { promise, resolve, reject };
+    };
+}
+
 export function FileDropzone() {
     const [file, setFile] = useState<File | null>(null);
     const [hash, setHash] = useState<string | null>(null);
     const [status, setStatus] = useState<'idle' | 'processing' | 'ready'>('idle');
     const [metadata, setMetadata] = useState<{ parcelId?: string; grantor?: string } | null>(null);
+    const [report, setReport] = useState<VerificationReport>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
         const selected = acceptedFiles[0];
@@ -17,34 +41,162 @@ export function FileDropzone() {
 
         setFile(selected);
         setStatus('processing');
+        setError(null);
+        setReport(null);
 
         // 1. Compute Security Hash
         const computedHash = await computeFileHash(selected);
         setHash(computedHash);
 
-        // 2. Perform Client-Side OCR
-        try {
-            const worker = await createWorker('eng');
-            const ret = await worker.recognize(selected);
-            const text = ret.data.text;
+        // 2. Perform Client-Side Extraction (with resilient worker paths)
+        let text = '';
+
+        // Prefer the non-SIMD core to avoid COOP/COEP requirements in Next.js
+        const workerOptions = {
+            workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@v7.0.0/dist/worker.min.js',
+            corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v7.0.0/tesseract-core.wasm.js',
+            langPath: 'https://tessdata.projectnaptha.com/4.0.0'
+        } as const;
+
+        const runOcr = async (input: ImageBitmapSource | string | HTMLCanvasElement) => {
+            const worker = await createWorker('eng', undefined, workerOptions);
+            const ret = await worker.recognize(input);
             await worker.terminate();
+            return ret.data.text;
+        };
 
-            // Simple Regex Extraction (Demo)
-            const parcelMatch = text.match(/(?:Parcel|APN|Tax)?\s*ID\s*[:#]\s*([A-Z0-9-]+)/i);
-            const grantorMatch = text.match(/Grantor[:\s]+([A-Z\s,]+)/i);
+        if (selected.type.startsWith('image/')) {
+            try {
+                text = await runOcr(selected);
+            } catch (err) {
+                console.error('OCR Failed', err);
+            }
+        } else if (selected.type === 'application/pdf') {
+            try {
+                const arrayBuffer = await selected.arrayBuffer();
 
-            setMetadata({
-                parcelId: parcelMatch ? parcelMatch[1] : 'NOT FOUND',
-                grantor: grantorMatch ? grantorMatch[1].trim() : 'NOT FOUND'
+                // Dynamically import pdfjs-dist and disable the worker to avoid cross-origin issues
+                const { getDocument, GlobalWorkerOptions, version } = await import('pdfjs-dist/build/pdf');
+                GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+
+                const pdf = await getDocument({
+                    data: arrayBuffer,
+                    disableWorker: true, // keep everything in-page to avoid cross-origin worker errors
+                    useWorkerFetch: false,
+                    isEvalSupported: false
+                }).promise;
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const strings = content.items.map((item: any) => item.str);
+                    text += strings.join(' ') + ' ';
+                }
+
+                // 2. Fallback to OCR if text is empty (Scanned PDF)
+                if (text.trim().length < 50) {
+                    console.log('PDF text empty or sparse, switching to OCR for Scanned PDF...');
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 2.0 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        
+                        if (context) {
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                            
+                            await page.render({ canvasContext: context, viewport }).promise;
+                            text += await runOcr(canvas) + ' ';
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('PDF Extraction Failed', err);
+            }
+        }
+
+        // Debugging: Log extracted text to console
+        console.log('Extracted Text:', text);
+
+        // Extraction helpers
+        const pinRegexCook = /\b\d{2}-\d{2}-\d{3}-\d{3}-\d{4}\b/; // 14-digit with dashes
+        const pinCompact = /\b\d{14}\b/; // 14-digit no dashes
+        const genericParcel = /(?:Assessor'?s\s*)?(?:Parcel|APN|Tax|PIN|Folio|Map)(?:\s*(?:ID|Identification|Number|No\.?|Key|#))?\s*[:#]?\s*([A-Z0-9]+(?:[-.\s](?!Grantor|Property|Date|Signed)[A-Z0-9]+)*)/i;
+        const addressRegex = /(\d{3,6}\s+[A-Za-z0-9'.,\s]+?),\s*([A-Za-z\s]+?),\s*(IL|Illinois)\s+(\d{5})(?:-\d{4})?/i;
+
+        const grantorMatch = text.match(/Grantor(?:\(s\))?[:\s\W]+([^\n\r]+)/i);
+        const parcelMatch =
+            text.match(pinRegexCook)?.[0] ||
+            text.match(pinCompact)?.[0] ||
+            text.match(genericParcel)?.[1] ||
+            null;
+
+        const addressMatch = text.match(addressRegex);
+        const address =
+            addressMatch && addressMatch.length >= 5
+                ? {
+                      line1: addressMatch[1].replace(/\s+/g, ' ').trim(),
+                      city: addressMatch[2].replace(/\s+/g, ' ').trim(),
+                      state: 'IL',
+                      zip: addressMatch[4]
+                  }
+                : null;
+
+        const grantor = grantorMatch ? grantorMatch[1].trim() : null;
+
+        setMetadata({
+            parcelId: parcelMatch || 'NOT FOUND',
+            grantor: grantor || 'NOT FOUND'
+        });
+
+        // 3. Send to ATTOM cross-check API for verification (Cook County only for now)
+        try {
+            const payload = {
+                jurisdiction: { state: 'IL', county: 'Cook' },
+                pin: parcelMatch,
+                address,
+                legalDescriptionText: text || null,
+                grantors: grantor ? [grantor] : [],
+                grantees: [],
+                executionDate: null,
+                recording: { docNumber: null, recordingDate: null },
+                notary: null
+            };
+
+            const res = await fetch(`${API_BASE}/api/v1/verify/attom`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
+
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.error || `Verification failed (${res.status})`);
+            }
+
+            const data = await res.json();
+            setReport(data);
         } catch (err) {
-            console.error('OCR Failed', err);
+            setError(err instanceof Error ? err.message : 'Verification failed');
         }
 
         setStatus('ready');
     }, []);
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: false });
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        multiple: false,
+        accept: {
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/png': ['.png'],
+            'image/webp': ['.webp'],
+            'image/bmp': ['.bmp'],
+            'image/tiff': ['.tif', '.tiff'],
+            'application/pdf': ['.pdf']
+        }
+    });
 
     return (
         <div className="p-6 border-2 border-dashed border-gray-600 rounded-xl bg-gray-900/50 text-center">
@@ -81,6 +233,25 @@ export function FileDropzone() {
                     <p className="text-sm text-gray-400">
                         Hash: <span className="font-mono text-xs text-green-400 break-all">{hash}</span>
                     </p>
+                    {error && (
+                        <p className="text-sm text-red-400 mt-2">Verification error: {error}</p>
+                    )}
+                    {report && (
+                        <div className="mt-3 text-sm text-gray-200">
+                            <div className="font-semibold">ATTOM Cross-Check: {report.summary}</div>
+                            <div className="text-xs text-gray-400">Confidence: {Math.round((report.evidence.matchConfidence || 0) * 100)}%</div>
+                            <ul className="mt-2 space-y-1">
+                                {report.checks.slice(0, 6).map((c) => (
+                                    <li key={c.id} className="flex items-start gap-2">
+                                        <span className={`text-xs px-2 py-0.5 rounded ${c.status === 'PASS' ? 'bg-green-800/60' : c.status === 'WARN' ? 'bg-yellow-800/60' : c.status === 'FAIL' ? 'bg-red-800/60' : 'bg-gray-700/60'}`}>
+                                            {c.status}
+                                        </span>
+                                        <span className="text-gray-300">{c.message}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                     <div className="mt-4 p-2 bg-blue-900/20 text-blue-200 text-xs rounded border border-blue-800">
                         🔒 Privacy Active: Only this hash is sent to the server. The file remains on your device.
                     </div>
