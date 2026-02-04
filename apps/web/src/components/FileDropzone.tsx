@@ -2,8 +2,10 @@
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useRouter } from 'next/navigation';
 import { createWorker } from 'tesseract.js';
 import { computeFileHash } from '../utils/hashing';
+import { extractMetadataFromText, cleanPdfText } from '../utils/extraction';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
@@ -28,6 +30,7 @@ if (typeof Promise.withResolvers === 'undefined') {
 }
 
 export function FileDropzone() {
+    const router = useRouter();
     const [file, setFile] = useState<File | null>(null);
     const [hash, setHash] = useState<string | null>(null);
     const [status, setStatus] = useState<'idle' | 'processing' | 'review' | 'ready'>('idle');
@@ -93,9 +96,7 @@ export function FileDropzone() {
                     const strings = content.items.map((item: any) => item.str);
 
                     // Filter out common watermark/noise phrases to avoid pollution
-                    const pageText = strings.join(' ')
-                        .replace(/(DO NOT COPY|UNOFFICIAL COPY|SAMPLE|VOID)/gi, '')
-                        .replace(/\s+/g, ' ');
+                    const pageText = cleanPdfText(strings.join(' '));
 
                     text += pageText + ' ';
                 }
@@ -124,39 +125,12 @@ export function FileDropzone() {
             }
         }
 
+
         // Extraction helpers
-        // Cook County PIN: 12-34-567-000-0000 or 12-34-567-000
-        const pinRegexCook = /\b\d{2}-\d{2}-\d{3}-\d{3}(?:-\d{4})?\b/;
-        const pinLabelRegex = /(?:P\.I\.N\.|PIN|Property Index Number)[\s:.-]*(\d{2}-\d{2}-\d{3}-\d{3}-\d{4}|\d{14})/i;
-        const pinCompact = /\b\d{14}\b/;
-
-        // Grantor strategies
-        const grantorStrategies = [
-            /Grantor(?:\(s\))?[\s:.-]+([A-Z\s,]+?)(?:\s+of|\s*,|\s+whose\b)/i, // "Grantor John Doe of..."
-            /Grantor(?:\(s\))?[:\s]+([^\n\r]{3,50})/i, // "Grantor: John Doe"
-            /(?:THIS INDENTURE|WITNESSETH|WARRANTY DEED).*?made.*?by\s+(?:and between\s+)?([A-Z\s,]+?)(?:\s+of|\s*,|\s+part(?:y|ies) of the first part)/i // Standard deed lead-in
-        ];
-
-        const parcelMatch =
-            text.match(pinLabelRegex)?.[1] ||
-            text.match(pinRegexCook)?.[0] ||
-            text.match(pinCompact)?.[0] ||
-            '';
-
-        let grantor = '';
-        for (const strategy of grantorStrategies) {
-            const m = text.match(strategy);
-            if (m && m[1]) {
-                grantor = m[1].trim().replace(/,$/, '').replace(/\s+/g, ' ');
-                // Filter out common false positives if the regex caught generic text
-                if (grantor.length > 3 && !grantor.toLowerCase().includes('grantor')) {
-                    break;
-                }
-            }
-        }
+        const { parcelId, grantor } = extractMetadataFromText(text);
 
         setMetadata({
-            parcelId: parcelMatch,
+            parcelId: parcelId,
             grantor: grantor,
             text
         });
@@ -211,6 +185,17 @@ export function FileDropzone() {
             setError(err instanceof Error ? err.message : 'Verification failed');
         }
         setStatus('ready');
+    };
+
+
+    const proceedToVerification = () => {
+        if (!metadata || !hash) return;
+        const params = new URLSearchParams();
+        if (metadata.parcelId) params.set('pin', metadata.parcelId);
+        if (metadata.grantor) params.set('grantor', metadata.grantor);
+        params.set('hash', hash);
+
+        router.push(`/verify?${params.toString()}`);
     };
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -302,12 +287,20 @@ export function FileDropzone() {
                                     </ul>
                                 </div>
                             )}
-                            <button
-                                onClick={runVerification}
-                                className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-2 px-4 rounded text-xs"
-                            >
-                                Re-verify
-                            </button>
+                            <div className="flex gap-2 mt-4">
+                                <button
+                                    onClick={runVerification}
+                                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-2 px-4 rounded text-xs"
+                                >
+                                    Re-verify
+                                </button>
+                                <button
+                                    onClick={proceedToVerification}
+                                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded text-xs"
+                                >
+                                    Proceed to Recording
+                                </button>
+                            </div>
                         </>
                     )}
 
