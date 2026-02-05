@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { verifyBundle } from './verification.js';
-import { MockStateNotaryVerifier, MockPropertyVerifier } from './verifiers.js';
+import { MockStateNotaryVerifier, MockPropertyVerifier } from './mocks.js';
 import { BundleInput, TrustRegistry, OCRData } from './types.js';
 import { generateTrustRegistry, generateBundle } from './synthetic.js';
 

@@ -12,6 +12,7 @@ model Receipt {
   receiptHash      String
   inputsCommitment String
   policyProfile    String
+  parcelId         String?
   decision         String
   reasons          String
   riskScore        Int
@@ -22,4 +23,28 @@ model Receipt {
   anchorTxHash     String?
   anchorChainId    String?
   anchorId         String?
+  fraudRisk        String?  // JSON
+  zkpAttestation   String?  // JSON
+  revoked          Boolean  @default(false)
+}
+
+model Property {
+  parcelId     String   @id
+  currentOwner String
+  lastSaleDate DateTime?
+  updatedAt    DateTime @updatedAt
+}
+
+model CountyRecord {
+  parcelId String @id
+  county   String
+  state    String
+  active   Boolean @default(true)
+}
+
+model Notary {
+  id              String   @id
+  name            String
+  status          String
+  commissionState String
 }

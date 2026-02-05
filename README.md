@@ -75,3 +75,32 @@ OpenAPI spec: `apps/api/openapi.json`.
 - `packages/core`: canonicalization, hashing, registry, verification engine
 - `packages/contracts`: Solidity AnchorRegistry + deploy scripts
 - `scripts/demo.ts`: end-to-end demo run
+
+## Deed Shield v2 Risk & Proof Model
+
+Deed Shield v2 introduces advanced risk detection and privacy-preserving proofs.
+
+### 1. Document Fraud Risk Engine
+An AI-driven module that analyzes deed PDFs for anomalies before recording.
+- **Forensics**: Dectects suspicious metadata/timestamps.
+- **Layout**: Validates structure against known templates.
+- **Result**: Generates a `fraudRisk` object in the verification receipt (Low/Medium/High risk bands).
+
+### 2. Zero-Knowledge Compliance (ZKP)
+Proves policy compliance without revealing private transaction details (Notary ID, County codes).
+- **Output**: `zkpAttestation` embedded in receipts.
+- **Privacy**: Does not expose PII or internal rule logic.
+
+### 3. Receipt Revocation
+Allows lifecycle management of issued receipts.
+- **Endpoint**: `POST /api/v1/receipt/:receiptId/revoke`
+- **Mechanism**: Updates status in registry; reflected in verification responses.
+
+### 4. Anchor Portability
+Designed for multi-chain anchoring.
+- **Stub**: `PortableAnchorManager` in core prepares for swapping anchor providers without invalidating historical proofs.
+
+## Documentation
+
+Full user documentation is available in the [User Manual](./USER_MANUAL.md).
+

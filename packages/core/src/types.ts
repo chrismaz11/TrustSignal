@@ -1,3 +1,6 @@
+import { DocumentRisk } from './risk/types.js';
+import { ZKPAttestation } from './zkp/types.js';
+
 export type RonInput = {
   provider: string;
   notaryId: string;
@@ -8,6 +11,7 @@ export type RonInput = {
 
 export type DocInput = {
   docHash: string;
+  pdfBase64?: string;
 };
 
 export type PolicyInput = {
@@ -72,6 +76,8 @@ export type Receipt = {
   riskScore: number;
   verifierId: string;
   receiptHash: string;
+  fraudRisk?: DocumentRisk;
+  zkpAttestation?: ZKPAttestation;
 };
 
 export type TrustRegistry = {

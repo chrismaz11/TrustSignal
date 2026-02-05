@@ -15,7 +15,11 @@ export function computeReceiptHash(receipt: Omit<Receipt, 'receiptHash'>): strin
 export function buildReceipt(
   input: BundleInput,
   verification: VerificationResult,
-  verifierId = 'deed-shield'
+  verifierId = 'deed-shield',
+  extensions: {
+    fraudRisk?: Receipt['fraudRisk'];
+    zkpAttestation?: Receipt['zkpAttestation'];
+  } = {}
 ): Receipt {
   const receiptId = randomUUID();
   const createdAt = new Date().toISOString();
@@ -30,7 +34,9 @@ export function buildReceipt(
     decision: verification.decision,
     reasons: verification.reasons,
     riskScore: verification.riskScore,
-    verifierId
+    verifierId,
+    fraudRisk: extensions.fraudRisk,
+    zkpAttestation: extensions.zkpAttestation
   };
   const receiptHash = computeReceiptHash(baseReceipt);
   return { ...baseReceipt, receiptHash };
