@@ -16,8 +16,18 @@ type VerificationReport = {
 } | null;
 
 // Polyfill Promise.withResolvers
+declare global {
+    interface PromiseConstructor {
+        withResolvers<T>(): {
+            promise: Promise<T>;
+            resolve: (value: T | PromiseLike<T>) => void;
+            reject: (reason?: any) => void;
+        };
+    }
+}
+
 if (typeof Promise.withResolvers === 'undefined') {
-    // @ts-expect-error - Polyfill
+    // @ts-ignore - Polyfill for missing type definition
     Promise.withResolvers = function <T>() {
         let resolve!: (value: T | PromiseLike<T>) => void;
         let reject!: (reason?: any) => void;
@@ -62,9 +72,10 @@ export function FileDropzone() {
             langPath: 'https://tessdata.projectnaptha.com/4.0.0'
         } as const;
 
-        const runOcr = async (input: ImageBitmapSource | string | HTMLCanvasElement) => {
+
+        const runOcr = async (input: ImageBitmapSource | string | HTMLCanvasElement | Blob) => {
             const worker = await createWorker('eng', undefined, workerOptions);
-            const ret = await worker.recognize(input);
+            const ret = await worker.recognize(input as any);
             await worker.terminate();
             return ret.data.text;
         };
@@ -80,6 +91,7 @@ export function FileDropzone() {
                 const arrayBuffer = await selected.arrayBuffer();
 
                 // Dynamically import pdfjs-dist and disable the worker to avoid cross-origin issues
+                // @ts-ignore - dynamic import types are tricky
                 const { getDocument, GlobalWorkerOptions, version } = await import('pdfjs-dist/build/pdf');
                 GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
