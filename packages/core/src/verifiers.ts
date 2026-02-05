@@ -9,6 +9,10 @@ export interface NotaryVerifier {
     }>;
 }
 
+export interface PropertyVerifier {
+    verifyOwner(parcelId: string, grantorName: string): Promise<{ match: boolean; score: number; recordOwner?: string }>;
+}
+
 // --- HELPER: Fuzzy Matching ---
 function levenshteinDistance(a: string, b: string): number {
     const matrix = [];

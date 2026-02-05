@@ -13,6 +13,9 @@
     "chokidar": "^4.0.3",
     "dotenv": "^17.2.3",
     "ethers": "^6.13.4",
+    "fastify": "5.7.4",
+    "hardhat": "3.1.6",
+    "next": "^15.5.11",
     "node-notifier": "^10.0.1",
     "pdf-parse": "^1.1.1"
   },
@@ -26,7 +29,8 @@
     "start:verify": "node src/api/verify.js",
     "init:db": "rm -f ${DB_PATH:-attestations.sqlite} && sqlite3 ${DB_PATH:-attestations.sqlite} < schema.sqlite.sql",
     "gen:keys": "node scripts/gen-issuer-keys.js",
-    "seed:issuer": "node scripts/seed-issuer-public.js"
+    "seed:issuer": "node scripts/seed-issuer-public.js",
+    "seed:parcel": "cd apps/api && tsx scripts/seed-parcel.ts"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
@@ -37,6 +41,6 @@
     "eslint-plugin-import": "^2.29.1",
     "tsx": "^4.15.7",
     "typescript": "5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "^3.2.4"
   }
 }

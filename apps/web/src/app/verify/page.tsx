@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
@@ -28,23 +29,62 @@ type BundleInput = {
     sealPayload: string;
   };
   doc: { docHash: string };
+  property: {
+    parcelId: string;
+    county: string;
+    state: string;
+  };
+  ocrData?: {
+    grantorName?: string;
+  };
   policy: { profile: string };
   timestamp?: string;
 };
 
 export default function VerifyPage() {
+  const searchParams = useSearchParams();
   const [payload, setPayload] = useState<BundleInput>({
-    bundleId: '',
+    bundleId: 'BUNDLE-' + Date.now(),
     transactionType: 'warranty',
     ron: {
       provider: 'RON-1',
       notaryId: 'NOTARY-1',
-      commissionState: 'CA',
-      sealPayload: ''
+      commissionState: 'IL',
+      sealPayload: 'example-seal-payload'
     },
     doc: { docHash: '' },
-    policy: { profile: 'STANDARD_CA' }
+    property: {
+      parcelId: '',
+      county: 'Cook',
+      state: 'IL'
+    },
+    ocrData: {
+      grantorName: ''
+    },
+    policy: { profile: 'STANDARD_IL' }
   });
+
+  useEffect(() => {
+    const hash = searchParams?.get('hash');
+    const pin = searchParams?.get('pin');
+    const grantor = searchParams?.get('grantor');
+
+    if (hash || pin || grantor) {
+      setPayload(prev => ({
+        ...prev,
+        doc: { docHash: hash || prev.doc.docHash },
+        property: {
+          ...prev.property,
+          parcelId: pin || prev.property.parcelId
+        },
+        ocrData: {
+          ...prev.ocrData,
+          grantorName: grantor || prev.ocrData?.grantorName
+        }
+      }));
+    }
+  }, [searchParams]);
+
   const [result, setResult] = useState<VerifyResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,6 +206,22 @@ export default function VerifyPage() {
               className="input mono"
               value={payload.doc.docHash}
               onChange={(e) => setPayload({ ...payload, doc: { docHash: e.target.value } })}
+            />
+          </label>
+          <label>
+            Parcel ID (PIN)
+            <input
+              className="input mono"
+              value={payload.property?.parcelId || ''}
+              onChange={(e) => setPayload({ ...payload, property: { ...payload.property, parcelId: e.target.value } })}
+            />
+          </label>
+          <label>
+            Grantor Name
+            <input
+              className="input"
+              value={payload.ocrData?.grantorName || ''}
+              onChange={(e) => setPayload({ ...payload, ocrData: { ...payload.ocrData, grantorName: e.target.value } })}
             />
           </label>
           <label>
