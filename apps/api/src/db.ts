@@ -1,22 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
-export async function ensureDatabase(prisma: PrismaClient) {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS Receipt (
-      id TEXT PRIMARY KEY,
-      receiptHash TEXT NOT NULL,
-      inputsCommitment TEXT NOT NULL,
-      policyProfile TEXT NOT NULL,
-      decision TEXT NOT NULL,
-      reasons TEXT NOT NULL,
-      riskScore INTEGER NOT NULL,
-      checks TEXT NOT NULL,
-      rawInputs TEXT NOT NULL,
-      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      anchorStatus TEXT NOT NULL DEFAULT 'PENDING',
-      anchorTxHash TEXT,
-      anchorChainId TEXT,
-      anchorId TEXT
-    );
-  `);
+export async function ensureDatabase(_prisma: PrismaClient) {
+  // Database schema management is handled by Prisma Migrate / db push
+  // This function is kept for backward compatibility with existing server.ts calls
+  // console.log('Database schema assumed up-to-date via Prisma.');
 }

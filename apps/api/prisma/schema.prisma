@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model Receipt {
@@ -23,28 +23,47 @@ model Receipt {
   anchorTxHash     String?
   anchorChainId    String?
   anchorId         String?
-  fraudRisk        String?  // JSON
-  zkpAttestation   String?  // JSON
+  fraudRisk        String? // JSON
+  zkpAttestation   String? // JSON
   revoked          Boolean  @default(false)
 }
 
 model Property {
-  parcelId     String   @id
+  parcelId     String    @id
   currentOwner String
   lastSaleDate DateTime?
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime  @updatedAt
 }
 
 model CountyRecord {
-  parcelId String @id
+  parcelId String  @id
   county   String
   state    String
   active   Boolean @default(true)
 }
 
 model Notary {
-  id              String   @id
+  id              String @id
   name            String
   status          String
   commissionState String
+}
+
+model RequestLog {
+  id        String   @id @default(uuid())
+  endpoint  String
+  method    String
+  timestamp DateTime @default(now())
+  ip        String?
+  userAgent String?
+  receiptId String?
+  status    Int
+}
+
+model Organization {
+  id         String   @id @default(uuid())
+  name       String
+  adminEmail String
+  apiKey     String   @unique
+  createdAt  DateTime @default(now())
 }

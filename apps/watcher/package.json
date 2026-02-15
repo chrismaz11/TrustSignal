@@ -1,12 +1,23 @@
 {
   "name": "watcher",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
+  "type": "module",
   "scripts": {
+    "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "dependencies": {
+    "@deed-shield/core": "file:../../packages/core",
+    "axios": "^1.6.8",
+    "chokidar": "^3.6.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.12.0",
+    "form-data": "^4.0.0",
+    "node-notifier": "^10.0.1",
+    "pdf-lib": "^1.17.1"
+  }
 }

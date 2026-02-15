@@ -26,7 +26,8 @@ import {
   ZKPAttestation,
   NotaryVerifier,
   PropertyVerifier,
-  CountyVerifier
+  CountyVerifier,
+  keccak256Buffer
 } from '@deed-shield/core';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
@@ -340,6 +341,37 @@ export async function buildServer() {
       property: new AttomPropertyVerifier(process.env.ATTOM_API_KEY || ''),
       blockchain: new BlockchainVerifier(process.env.RPC_URL || '', process.env.REGISTRY_ADDRESS || '')
     };
+    // Authenticate Organization (Optional for now, but used for escalation)
+    const apiKey = request.headers['x-api-key'] as string;
+    let organization;
+    if (apiKey) {
+      organization = await prisma.organization.findUnique({ where: { apiKey } });
+    }
+
+    // Metered Billing: Log Request
+    await prisma.requestLog.create({
+      data: {
+        endpoint: '/api/v1/verify',
+        method: 'POST',
+        status: 200, // Provisional, will update if we error out
+        ip: request.ip,
+        userAgent: request.headers['user-agent'] || '',
+        // We could link organizationId here in future
+      }
+    });
+
+    // Integrity Check: Input_File_Hash == Attested_Hash
+    if (input.doc.pdfBase64) {
+      const pdfBuffer = Buffer.from(input.doc.pdfBase64, 'base64');
+      const calculatedHash = keccak256Buffer(pdfBuffer);
+      if (calculatedHash !== input.doc.docHash) {
+        return reply.code(400).send({
+          error: 'Integrity Check Failed',
+          details: `Document hash mismatch. Calculated: ${calculatedHash}, Provided: ${input.doc.docHash}`
+        });
+      }
+    }
+
     const verification = await verifyBundle(input, registry, verifiers);
 
     // Cook County Compliance Check
@@ -419,6 +451,20 @@ export async function buildServer() {
       revoked: record.revoked,
       riskScore: receipt.riskScore
     });
+
+    // Email Escalation Logic
+    if (receipt.decision === 'FLAG' || receipt.decision === 'BLOCK') {
+      const subject = `Deed Shield Alert: ${receipt.decision} (Score: ${receipt.riskScore})`;
+      const reasonsList = receipt.reasons.join(', ');
+      
+      if (organization) {
+        console.log(`\n📧 [MOCK EMAIL] To: ${organization.adminEmail}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Body: Property ${input.property.parcelId} flagged due to: ${reasonsList}\n`);
+      } else {
+        console.log(`\n⚠️ [ALERT] No Organization linked. Escalation logged to stdout only: ${subject} - ${reasonsList}`);
+      }
+    }
 
     return reply.send(body);
   });
@@ -528,6 +574,10 @@ export async function buildServer() {
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
+    }
+
+    if (record.revoked) {
+      return reply.code(409).send({ error: 'Receipt has been revoked' });
     }
 
     const rawInputs = JSON.parse(record.rawInputs) as BundleInput;

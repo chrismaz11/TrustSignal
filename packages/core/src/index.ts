@@ -13,3 +13,4 @@ export * from './anchor/portable.js';
 export * from './attom/types.js';
 export * from './attom/normalize.js';
 export * from './attom/crossCheck.js';
+export * from './pdf-manipulation.js';
