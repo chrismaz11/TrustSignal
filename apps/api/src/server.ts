@@ -337,15 +337,20 @@ export async function buildServer() {
     const registry = await loadRegistry();
     const verifiers = {
       county: new DatabaseCountyVerifier(),
-      notary: new DatabaseNotaryVerifier(),
+      notary: new DatabaseNotaryVerifier(), // Note: If switching to RealNotaryVerifier, inject key here
       property: new AttomPropertyVerifier(process.env.ATTOM_API_KEY || ''),
       blockchain: new BlockchainVerifier(process.env.RPC_URL || '', process.env.REGISTRY_ADDRESS || '')
     };
-    // Authenticate Organization (Optional for now, but used for escalation)
+    
+    // Authenticate Organization (MANDATORY)
     const apiKey = request.headers['x-api-key'] as string;
-    let organization;
-    if (apiKey) {
-      organization = await prisma.organization.findUnique({ where: { apiKey } });
+    if (!apiKey) {
+      return reply.code(401).send({ error: 'Unauthorized: Missing x-api-key header' });
+    }
+    
+    const organization = await prisma.organization.findUnique({ where: { apiKey } });
+    if (!organization) {
+      return reply.code(403).send({ error: 'Forbidden: Invalid API Key' });
     }
 
     // Metered Billing: Log Request
@@ -356,7 +361,8 @@ export async function buildServer() {
         status: 200, // Provisional, will update if we error out
         ip: request.ip,
         userAgent: request.headers['user-agent'] || '',
-        // We could link organizationId here in future
+        // Linked organization for audit trail
+        // organizationId: organization.id 
       }
     });
 
@@ -377,7 +383,10 @@ export async function buildServer() {
     // Cook County Compliance Check
     if (input.doc.pdfBase64) {
       const pdfBuffer = Buffer.from(input.doc.pdfBase64, 'base64');
-      const complianceValidator = new CookCountyComplianceValidator();
+      // Inject OpenAI Key via config
+      const complianceValidator = new CookCountyComplianceValidator({ 
+        openaiApiKey: process.env.OPENAI_API_KEY 
+      });
       const complianceResult = await complianceValidator.validateDocument(pdfBuffer);
 
       verification.checks.push({
