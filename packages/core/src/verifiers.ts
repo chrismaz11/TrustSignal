@@ -48,9 +48,9 @@ export class RealNotaryVerifier implements NotaryVerifier {
     private readonly apiKey: string;
     private readonly baseUrl: string = 'https://api.notary-check.com/v1'; // Example Aggregator
 
-    constructor() {
-        this.apiKey = process.env.NOTARY_API_KEY || '';
-        if (!this.apiKey) console.warn('[RealNotaryVerifier] No API Key found. Validation will fail.');
+    constructor(config: { notaryApiKey?: string }) {
+        this.apiKey = config.notaryApiKey || '';
+        if (!this.apiKey) console.warn('[RealNotaryVerifier] No API Key provided in config. Validation will fail.');
     }
 
     async verifyNotary(state: string, commissionId: string, name: string): Promise<{ status: NotaryStatus; details?: string }> {
@@ -88,9 +88,9 @@ export class RealPropertyVerifier implements PropertyVerifier {
     private readonly apiKey: string;
     private readonly baseUrl: string = 'https://apis.estated.com/v4/property';
 
-    constructor() {
-        this.apiKey = process.env.PROPERTY_API_KEY || '';
-        if (!this.apiKey) console.warn('[RealPropertyVerifier] No API Key found.');
+    constructor(config: { propertyApiKey?: string }) {
+        this.apiKey = config.propertyApiKey || '';
+        if (!this.apiKey) console.warn('[RealPropertyVerifier] No API Key provided in config.');
     }
 
     async verifyOwner(parcelId: string, grantorName: string): Promise<{ match: boolean; score: number; recordOwner?: string }> {

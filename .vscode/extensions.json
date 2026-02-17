@@ -3,6 +3,7 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "prisma.prisma",
-        "vitest.explorer"
+        "vitest.explorer",
+        "mermaidchart.vscode-mermaid-chart"
     ]
 }

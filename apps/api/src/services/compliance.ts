@@ -244,14 +244,16 @@ This is required for the automated system to flag the document correctly.
 
 export class CookCountyComplianceValidator {
     private openai: OpenAI | null = null;
+    private config: { openaiApiKey?: string };
 
-    constructor() {
-        if (process.env.OPENAI_API_KEY) {
+    constructor(config: { openaiApiKey?: string }) {
+        this.config = config;
+        if (this.config.openaiApiKey) {
             this.openai = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY,
+                apiKey: this.config.openaiApiKey,
             });
         } else {
-            console.warn('[CookCountyComplianceValidator] OPENAI_API_KEY not found. Validation checks will differ.');
+            console.warn('[CookCountyComplianceValidator] OPENAI_API_KEY not provided in config. Validation checks will differ.');
         }
     }
 
