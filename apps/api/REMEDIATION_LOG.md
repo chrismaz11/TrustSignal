@@ -42,3 +42,12 @@
   - Removed legacy `src/api/verify.js`.
   - Updated `Authorization` checks to strictly forbid cross-organization actions.
 - **Verification**: `npm test` passes with authenticated flows.
+
+## 6. Dependencies & Infrastructure (Compliance)
+
+- **Issue**: Missing license, stale lockfile, potential vulnerabilities.
+- **Fix**:
+  - Added `license: "UNLICENSED"` to `package.json` to signal proprietary status.
+  - Ran `npm audit` and fixed high-severity vulnerabilities (e.g., Axios).
+  - Verified `src/config/secrets.ts` correctly falls back to AWS Secrets Manager.
+  - Re-generated `package-lock.json` for deterministic builds.
