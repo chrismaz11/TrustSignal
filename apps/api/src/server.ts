@@ -8,6 +8,7 @@ import rateLimit from '@fastify/rate-limit';
 import { keccak256, toUtf8Bytes, JsonRpcProvider, Contract } from 'ethers';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
+import { requireOrg } from './utils/auth.js';
 import {
   BundleInput,
   CheckResult,
@@ -383,6 +384,18 @@ export async function buildServer(config?: {
   app.get('/api/v1/health', async () => ({ status: 'ok' }));
 
   app.post('/api/v1/verify/attom', async (request, reply) => {
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return;
+
+    // Log metered usage for ATTOM
+    await logVerificationEvent(prisma, {
+        endpoint: '/api/v1/verify/attom',
+        result: 'CALL_ATTOM',
+        ip: request.ip,
+        userAgent: request.headers['user-agent'] || '',
+        organizationId: organization.id
+    });
+
     const parsed = deedParsedSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
@@ -435,7 +448,7 @@ export async function buildServer(config?: {
         ip: request.ip,
         userAgent: request.headers['user-agent'] || '',
         // Linked organization for audit trail
-        // organizationId: organization.id 
+        organizationId: organization.id 
       }
     });
 
@@ -593,11 +606,51 @@ export async function buildServer(config?: {
     return bundle;
   });
 
+  // ----------------------------------------------------------------
+  // GET /api/v1/receipts - PROTECTED & SCOPED
+  // ----------------------------------------------------------------
+  app.get('/api/v1/receipts', async (request, reply) => {
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return; // Response sent by helper
+
+    const take = 100;
+    const receipts = await prisma.receipt.findMany({
+      take,
+      orderBy: { createdAt: 'desc' },
+      where: { organizationId: organization.id },
+      select: {
+        id: true,
+        decision: true,
+        riskScore: true,
+        createdAt: true,
+        anchorStatus: true,
+        revoked: true
+      }
+    });
+
+    return { 
+      data: receipts,
+      meta: { count: receipts.length, take }
+    };
+  });
+
+  // ----------------------------------------------------------------
+  // GET /api/v1/receipt/:receiptId - PROTECTED & OWNED
+  // ----------------------------------------------------------------
   app.get('/api/v1/receipt/:receiptId', async (request, reply) => {
     const { receiptId } = request.params as { receiptId: string };
+    
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return; // Response sent by helper
+
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
+    }
+
+    // Ownership Check
+    if (record.organizationId && record.organizationId !== organization.id) {
+       return reply.code(403).send({ error: 'Forbidden: You do not own this receipt' });
     }
 
     const receipt = receiptFromDb(record);
@@ -646,12 +699,24 @@ export async function buildServer(config?: {
     });
   });
 
+  // ----------------------------------------------------------------
+  // GET /api/v1/receipt/:receiptId/pdf - PROTECTED & OWNED
+  // ----------------------------------------------------------------
   app.get('/api/v1/receipt/:receiptId/pdf', async (request, reply) => {
     const { receiptId } = request.params as { receiptId: string };
+    
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return; // Response sent by helper
+
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
+
+    if (record.organizationId && record.organizationId !== organization.id) {
+       return reply.code(403).send({ error: 'Forbidden: You do not own this receipt' });
+    }
+
     const receipt = receiptFromDb(record);
     if (!receipt) {
       return reply.code(500).send({ error: 'Receipt reconstruction failed' });
@@ -664,15 +729,23 @@ export async function buildServer(config?: {
 
   app.post('/api/v1/receipt/:receiptId/verify', async (request, reply) => {
     const { receiptId } = request.params as { receiptId: string };
+    
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return;
+
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
 
+    if (record.organizationId && record.organizationId !== organization.id) {
+       return reply.code(403).send({ error: 'Forbidden: You do not own this receipt' });
+    }
+
     if (record.revoked) {
       return reply.code(409).send({ error: 'Receipt has been revoked' });
     }
-
+    
     const rawInputs = JSON.parse(record.rawInputs) as BundleInput;
     const inputsCommitment = computeInputsCommitment(rawInputs);
     const receipt = receiptFromDb(record);
@@ -837,20 +910,7 @@ export async function buildServer(config?: {
     return reply.send({ status: 'REVOKED', revokedAt: revocation.revokedAt });
   });
 
-  app.get('/api/v1/receipts', async () => {
-    const records: ReceiptListRecord[] = await prisma.receipt.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 100
-    });
-    return records.map((record) => ({
-      receiptId: record.id,
-      decision: record.decision,
-      riskScore: record.riskScore,
-      createdAt: record.createdAt,
-      anchorStatus: record.anchorStatus,
-      revoked: record.revoked
-    }));
-  });
+
 
   return app;
 }

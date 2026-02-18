@@ -73,7 +73,8 @@ describe('V2 Feature Integration', () => {
         // 3. Check Receipt Details
         const receiptRes = await app.inject({
             method: 'GET',
-            url: `/api/v1/receipt/${receipt.receiptId}`
+            url: `/api/v1/receipt/${receipt.receiptId}`,
+            headers: { 'x-api-key': 'test-api-key' }
         });
         const fetched = receiptRes.json();
         expect(fetched.receipt.fraudRisk).toBeDefined();
@@ -100,8 +101,26 @@ describe('V2 Feature Integration', () => {
         // 6. Check Revoked Status
         const revokedCheckRes = await app.inject({
             method: 'GET',
-            url: `/api/v1/receipt/${receipt.receiptId}`
+            url: `/api/v1/receipt/${receipt.receiptId}`,
+            headers: { 'x-api-key': 'test-api-key' }
         });
         expect(revokedCheckRes.json().revocation.status).toBe("REVOKED");
+        expect(revokedCheckRes.json().revocation.status).toBe("REVOKED");
+
+        // 7. Test List endpoint (protected)
+        const listRes = await app.inject({
+            method: 'GET',
+            url: '/api/v1/receipts',
+            headers: { 'x-api-key': 'test-api-key' }
+        });
+        expect(listRes.statusCode).toBe(200);
+        expect(listRes.json().data.length).toBeGreaterThan(0);
+        
+        // 8. Test Unauthorized List endpoint
+        const listRes401 = await app.inject({
+            method: 'GET',
+            url: '/api/v1/receipts'
+        });
+        expect(listRes401.statusCode).toBe(401);
     });
 });

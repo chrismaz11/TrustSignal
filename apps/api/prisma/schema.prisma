@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "sqlite" // "postgresql" for prod
   url      = env("DATABASE_URL")
 }
 
@@ -76,14 +76,16 @@ model Notary {
 }
 
 model RequestLog {
-  id        String   @id @default(uuid())
-  endpoint  String
-  method    String
-  timestamp DateTime @default(now())
-  ip        String?
-  userAgent String?
-  receiptId String?
-  status    Int
+  id             String        @id @default(uuid())
+  endpoint       String
+  method         String
+  timestamp      DateTime      @default(now())
+  ip             String?
+  userAgent      String?
+  receiptId      String?
+  status         Int
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 }
 
 model Organization {
@@ -95,4 +97,5 @@ model Organization {
   Receipt           Receipt[]
   Revocation        Revocation[]
   VerificationEvent VerificationEvent[]
+  RequestLogs       RequestLog[]
 }

@@ -13,3 +13,5 @@ apps/api/prisma/dev.db-journal
 keys/
 keys/*.jwk.json
 .env.local
+**/.env
+attestations.sqlite
