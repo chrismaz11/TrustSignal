@@ -894,6 +894,22 @@ export async function buildServer(config?: {
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   const port = Number(process.env.PORT || 3001);
+  const nodeEnv = process.env.NODE_ENV || 'development';
+
+  // ── Production DB TLS Guard ────────────────────────────────
+  // Refuse to start in production without an encrypted DB connection.
+  if (nodeEnv === 'production') {
+    const dbUrl = process.env.DATABASE_URL || '';
+    if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
+      console.error('FATAL: DATABASE_URL must use postgresql:// in production');
+      process.exit(1);
+    }
+    if (!dbUrl.includes('sslmode=require') && !dbUrl.includes('sslmode=verify-full') && !dbUrl.includes('sslmode=verify-ca')) {
+      console.error('FATAL: DATABASE_URL must include sslmode=require (or verify-full) in production. Unencrypted DB connections are not allowed.');
+      process.exit(1);
+    }
+  }
+
   const config = {
     attomApiKey: process.env.ATTOM_API_KEY || '',
     attomBaseUrl: process.env.ATTOM_BASE_URL || 'https://api.gateway.attomdata.com',
