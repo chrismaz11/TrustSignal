@@ -7,14 +7,14 @@
 
 ## 1. Secrets & Repository Hygiene
 
-| #   | Requirement                                                       | Status | Evidence                                                                                                                                                        |
-| --- | ----------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1.1 | No `.env`, `.env.local`, or secret files in git history           | ✅     | `git filter-branch` rewrite on 2026-02-18. Verified via `git rev-list --all \| xargs git ls-tree -r --name-only \| grep .env` returns empty.                    |
-| 1.2 | `.gitignore` blocks `.env*`, `*.sqlite`, secret files             | ✅     | See `.gitignore` — covers `**/.env`, `.env.local`, `attestations.sqlite`.                                                                                       |
-| 1.3 | `.env.example` provided with placeholder values (no real secrets) | ✅     | `apps/api/.env.example` — contains only empty strings and `localhost` URLs.                                                                                     |
-| 1.4 | Developer setup guide documents how to obtain secrets             | ✅     | `apps/api/SETUP.md` — references team leads / secrets manager.                                                                                                  |
-| 1.5 | GitHub secret scanning enabled                                    | 📋     | Verify at repo Settings → Code security → Secret scanning.                                                                                                      |
-| 1.6 | Rotate any secrets that were ever committed                       | 📋     | All API keys, DB passwords, and private keys that existed in `.env.local` or `apps/api/.env` prior to the scrub **must be rotated**. Treat them as compromised. |
+| #   | Requirement                                                       | Status | Evidence                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.1 | No `.env`, `.env.local`, or secret files in git history           | ✅     | `git filter-branch` rewrite on 2026-02-18. Verified via `git rev-list --all \| xargs git ls-tree -r --name-only \| grep .env` returns empty.                                                                 |
+| 1.2 | `.gitignore` blocks `.env*`, `*.sqlite`, secret files             | ✅     | See `.gitignore` — covers `**/.env`, `.env.local`, `attestations.sqlite`.                                                                                                                                    |
+| 1.3 | `.env.example` provided with placeholder values (no real secrets) | ✅     | `apps/api/.env.example` — contains only empty strings and `localhost` URLs.                                                                                                                                  |
+| 1.4 | Developer setup guide documents how to obtain secrets             | ✅     | `apps/api/SETUP.md` — references team leads / secrets manager.                                                                                                                                               |
+| 1.5 | GitHub secret scanning enabled                                    | ⚠️     | Requires **GitHub Advanced Security** (public repos or Enterprise plan). Dependabot alerts are enabled. For private repos on free/team plan, use `git-secrets` or `trufflehog` as a pre-commit hook instead. |
+| 1.6 | Rotate any secrets that were ever committed                       | 📋     | All API keys, DB passwords, and private keys that existed in `.env.local` or `apps/api/.env` prior to the scrub **must be rotated**. Treat them as compromised.                                              |
 
 ## 2. Database Security
 
@@ -50,7 +50,16 @@
 | 4.3 | JWT receipts have expiration               | ✅     | Enforced in core receipt builder.                        |
 | 4.4 | Private keys never in code or config files | ✅     | Only via `PRIVATE_KEY` env var, never imported directly. |
 
-## 5. Pre-Deployment Verification Commands
+## 5. Dependency Security
+
+| #   | Requirement                | Status | Evidence                                                                                                                 |
+| --- | -------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| 5.1 | `npm audit` clean          | ✅     | 0 vulnerabilities in production and dev dependencies.                                                                    |
+| 5.2 | Dependabot alerts enabled  | ✅     | Enabled via GitHub API.                                                                                                  |
+| 5.3 | Known alerts triaged       | ✅     | Alert #45 (`ajv` ReDoS) dismissed — dev-only transitive dep of ESLint, production uses patched `ajv@8.18.0` via Fastify. |
+| 5.4 | No lint errors in codebase | ✅     | All ESLint errors resolved. Only remaining notice is Prisma v7 migration advisory (informational).                       |
+
+## 6. Pre-Deployment Verification Commands
 
 ```bash
 # 1. Verify no secrets in git history
@@ -67,17 +76,21 @@ echo $DATABASE_URL | grep -q 'sslmode=' && echo "TLS configured" || echo "WARNIN
 npm audit --production
 ```
 
-## 6. Items Requiring Out-of-Repo Action
+## 7. Items Requiring Out-of-Repo Action
 
 These cannot be verified in code and require manual confirmation:
 
-- [ ] **Secret rotation**: Rotate all API keys, DB passwords, and wallet private keys that were ever in `.env.local`.
-- [ ] **DB encryption at rest**: Confirm with hosting provider.
-- [ ] **DB TLS certificate**: Ensure the CA cert is valid and not self-signed for production.
-- [ ] **GitHub secret scanning**: Enable in repo settings.
-- [ ] **Separate staging/prod credentials**: Create distinct DB users and API keys per environment.
-- [ ] **Dependabot vulnerability**: Address the moderate vulnerability at `github.com/chrismaz11/Deed_Shield/security/dependabot/45`.
+| #   | Action                                | Who   | Notes                                                                                                       |
+| --- | ------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- |
+| 7.1 | **Rotate ATTOM_API_KEY**              | Ops   | Was in `.env.local` — generate new key in ATTOM dashboard                                                   |
+| 7.2 | **Rotate OPENAI_API_KEY**             | Ops   | Was in `.env.local` — revoke old key in OpenAI dashboard                                                    |
+| 7.3 | **Rotate PRIVATE_KEY**                | Ops   | Ethereum wallet key — generate new wallet, transfer any assets, update `PRIVATE_KEY` env var                |
+| 7.4 | **Rotate DATABASE_URL**               | Ops   | Change DB password if it was in any committed file                                                          |
+| 7.5 | **DB encryption at rest**             | Infra | Confirm with hosting provider (Render/Supabase/RDS all support this)                                        |
+| 7.6 | **DB TLS certificate**                | Infra | Ensure CA cert is valid, not self-signed, for production                                                    |
+| 7.7 | **Separate staging/prod credentials** | Ops   | Create distinct DB users and API keys per environment                                                       |
+| 7.8 | **Pre-commit secret scanning**        | Dev   | Install `git-secrets` or `trufflehog` as pre-commit hook (since GitHub secret scanning requires Enterprise) |
 
 ---
 
-_Last updated: 2026-02-18 by security remediation session._
+_Last updated: 2026-02-18T17:25 CST by security remediation session._
