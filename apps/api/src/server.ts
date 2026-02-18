@@ -429,15 +429,8 @@ export async function buildServer(config?: {
     };
     
     // Authenticate Organization (MANDATORY)
-    const apiKey = request.headers['x-api-key'] as string;
-    if (!apiKey) {
-      return reply.code(401).send({ error: 'Unauthorized: Missing x-api-key header' });
-    }
-    
-    const organization = await prisma.organization.findUnique({ where: { apiKey } });
-    if (!organization) {
-      return reply.code(403).send({ error: 'Forbidden: Invalid API Key' });
-    }
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return;
 
     // Metered Billing: Log Request
     await prisma.requestLog.create({
@@ -781,16 +774,8 @@ export async function buildServer(config?: {
 
   app.post('/api/v1/anchor/:receiptId', async (request, reply) => {
     const { receiptId } = request.params as { receiptId: string };
-    const apiKey = request.headers['x-api-key'] as string;
-    
-    if (!apiKey) {
-      return reply.code(401).send({ error: 'Unauthorized: Missing x-api-key' });
-    }
-
-    const organization = await prisma.organization.findUnique({ where: { apiKey } });
-    if (!organization) {
-      return reply.code(403).send({ error: 'Forbidden: Invalid API Key' });
-    }
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return;
 
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
@@ -851,16 +836,8 @@ export async function buildServer(config?: {
 
   app.post('/api/v1/receipt/:receiptId/revoke', async (request, reply) => {
     const { receiptId } = request.params as { receiptId: string };
-    const apiKey = request.headers['x-api-key'] as string;
-    
-    if (!apiKey) {
-      return reply.code(401).send({ error: 'Unauthorized: Missing x-api-key' });
-    }
-
-    const organization = await prisma.organization.findUnique({ where: { apiKey } });
-    if (!organization) {
-      return reply.code(403).send({ error: 'Forbidden: Invalid API Key' });
-    }
+    const organization = await requireOrg(request, reply, prisma);
+    if (!organization) return;
 
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
