@@ -1,0 +1,20 @@
+
+ RUN  v3.2.4 /Users/christopher/Projects/deedshield-app-clean/Deed_Shield/apps/api
+
+{"level":30,"time":1771453247892,"pid":39017,"hostname":"Christophers-Mac-mini.local","reqId":"req-1","req":{"method":"GET","url":"/api/v1/synthetic","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1771453247922,"pid":39017,"hostname":"Christophers-Mac-mini.local","reqId":"req-1","res":{"statusCode":200},"responseTime":30.205959022045135,"msg":"request completed"}
+{"level":30,"time":1771453247923,"pid":39017,"hostname":"Christophers-Mac-mini.local","reqId":"req-2","req":{"method":"POST","url":"/api/v1/verify","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1771453247929,"pid":39017,"hostname":"Christophers-Mac-mini.local","reqId":"req-2","res":{"statusCode":400},"responseTime":6.082624971866608,"msg":"request completed"}
+stdout | src/v2-integration.test.ts > V2 Feature Integration > verifies bundle with Risk analysis and ZKP
+Verify Status: [33m400[39m
+Verify Body: {"error":"Integrity Check Failed","details":"Document hash mismatch. Calculated: 0x72be470fc03f8c093d6bc61cc91b428db88396b65030dd7d9305a3f297152f7c, Provided: 0x5a8f51425caf6613778bca9f635da04876799182dd28be4b130c1a8406b9b877"}
+
+ ❯ src/v2-integration.test.ts (1 test | 1 failed) 184ms
+   × V2 Feature Integration > verifies bundle with Risk analysis and ZKP 70ms
+     → expected 400 to be 200 // Object.is equality
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  16:20:46
+   Duration  1.11s (transform 179ms, setup 0ms, collect 658ms, tests 184ms, environment 0ms, prepare 47ms)
+

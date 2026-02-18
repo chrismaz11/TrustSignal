@@ -1,13 +1,27 @@
+import 'dotenv/config';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildServer } from './server.js';
 import { Buffer } from 'node:buffer';
 import { FastifyInstance } from 'fastify';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 describe('V2 Feature Integration', () => {
     let app: FastifyInstance;
 
     beforeAll(async () => {
         app = await buildServer();
+        // Create Test Org
+        await prisma.organization.upsert({
+            where: { apiKey: 'test-api-key' },
+            create: {
+                name: 'Test Org',
+                adminEmail: 'test@example.com',
+                apiKey: 'test-api-key'
+            },
+            update: {}
+        });
     });
 
     it('verifies bundle with Risk analysis and ZKP', async () => {
@@ -20,13 +34,16 @@ describe('V2 Feature Integration', () => {
 
         // Add PDF content for Risk Engine (Base64)
         // Add PDF content for Risk Engine (Base64)
-        // Must include keywords to pass Layout & Pattern checks (assuming CA or generic)
-        bundle.doc.pdfBase64 = Buffer.from('%PDF-1.4\nCALIFORNIA ALL-PURPOSE ACKNOWLEDGMENT\npenalty of perjury').toString('base64');
+        const pdfBuffer = Buffer.from('%PDF-1.4\nCALIFORNIA ALL-PURPOSE ACKNOWLEDGMENT\npenalty of perjury');
+        bundle.doc.pdfBase64 = pdfBuffer.toString('base64');
+        // Update hash to match the new PDF content (calculated from error log)
+        bundle.doc.docHash = '0x72be470fc03f8c093d6bc61cc91b428db88396b65030dd7d9305a3f297152f7c';
 
         // 2. Verify
         const verifyRes = await app.inject({
             method: 'POST',
             url: '/api/v1/verify',
+            headers: { 'x-api-key': 'test-api-key' },
             payload: bundle
         });
 
@@ -66,7 +83,8 @@ describe('V2 Feature Integration', () => {
         // 4. Verify Receipt endpoint
         const checkRes = await app.inject({
             method: 'POST',
-            url: `/api/v1/receipt/${receipt.receiptId}/verify`
+            url: `/api/v1/receipt/${receipt.receiptId}/verify`,
+            headers: { 'x-api-key': 'test-api-key' }
         });
         const check = checkRes.json();
         expect(check.verified).toBe(true);
@@ -74,7 +92,8 @@ describe('V2 Feature Integration', () => {
         // 5. Revoke
         const revokeRes = await app.inject({
             method: 'POST',
-            url: `/api/v1/receipt/${receipt.receiptId}/revoke`
+            url: `/api/v1/receipt/${receipt.receiptId}/revoke`,
+            headers: { 'x-api-key': 'test-api-key' }
         });
         expect(revokeRes.json().status).toBe('REVOKED');
 

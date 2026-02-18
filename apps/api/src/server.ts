@@ -155,9 +155,38 @@ function receiptFromDb(record: ReceiptRecord) {
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
     zkpAttestation: record.zkpAttestation ? JSON.parse(record.zkpAttestation) as ZKPAttestation : undefined,
-    // Revocation is returned in the envelope, but not part of the core signed receipt structure so far
-    // unless v2 schema changes that. We'll return it in the API.
+    // Revocation from V2 or new model
+    revoked: record.revoked, 
+    revocationTimestamp: undefined, // populated if joined with Revocation table
   };
+}
+
+// Minimal type for Verification Event Log
+interface VerificationEventLog {
+  endpoint: string;
+  result: string;
+  ip: string;
+  userAgent: string;
+  receiptId?: string;
+  organizationId?: string;
+}
+
+// Log immutable event
+async function logVerificationEvent(prisma: PrismaClient, evt: VerificationEventLog) {
+  try {
+    await prisma.verificationEvent.create({
+      data: {
+        endpoint: evt.endpoint,
+        result: evt.result,
+        ip: evt.ip,
+        userAgent: evt.userAgent,
+        receiptId: evt.receiptId,
+        organizationId: evt.organizationId
+      }
+    });
+  } catch (err) {
+    console.error('Failed to log verification event:', err);
+  }
 }
 
 class DatabaseCountyVerifier implements CountyVerifier {
@@ -484,8 +513,19 @@ export async function buildServer(config?: {
         createdAt: new Date(receipt.createdAt),
         fraudRisk: receipt.fraudRisk ? JSON.stringify(receipt.fraudRisk) : undefined,
         zkpAttestation: receipt.zkpAttestation ? JSON.stringify(receipt.zkpAttestation) : undefined,
-        revoked: false
+        revoked: false,
+        organizationId: organization.id
       }
+    });
+
+    // Immutable Log
+    await logVerificationEvent(prisma, {
+      endpoint: '/api/v1/verify',
+      result: receipt.decision === 'ALLOW' ? 'PASS' : (receipt.decision === 'FLAG' ? 'WARN' : 'FAIL'),
+      ip: request.ip,
+      userAgent: request.headers['user-agent'] || '',
+      receiptId: record.id,
+      organizationId: organization.id
     });
 
     const body = toV2VerifyResponse({
@@ -668,9 +708,34 @@ export async function buildServer(config?: {
 
   app.post('/api/v1/anchor/:receiptId', async (request, reply) => {
     const { receiptId } = request.params as { receiptId: string };
+    const apiKey = request.headers['x-api-key'] as string;
+    
+    if (!apiKey) {
+      return reply.code(401).send({ error: 'Unauthorized: Missing x-api-key' });
+    }
+
+    const organization = await prisma.organization.findUnique({ where: { apiKey } });
+    if (!organization) {
+      return reply.code(403).send({ error: 'Forbidden: Invalid API Key' });
+    }
+
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
+    }
+
+    // Ownership check
+    if (record.organizationId && record.organizationId !== organization.id) {
+       // Log illegal access attempt
+       await logVerificationEvent(prisma, {
+        endpoint: '/api/v1/anchor',
+        result: 'FORBIDDEN_ACCESS',
+        ip: request.ip,
+        userAgent: request.headers['user-agent'] || '',
+        receiptId: receiptId,
+        organizationId: organization.id
+      });
+      return reply.code(403).send({ error: 'Forbidden: You do not own this receipt' });
     }
 
     if (record.anchorStatus === 'ANCHORED') {
@@ -693,6 +758,16 @@ export async function buildServer(config?: {
       }
     });
 
+    // Log Anchor Event
+    await logVerificationEvent(prisma, {
+      endpoint: '/api/v1/anchor',
+      result: 'ANCHORED',
+      ip: request.ip,
+      userAgent: request.headers['user-agent'] || '',
+      receiptId: receiptId,
+      organizationId: organization.id
+    });
+
     return reply.send({
       status: updated.anchorStatus,
       txHash: updated.anchorTxHash,
@@ -703,21 +778,63 @@ export async function buildServer(config?: {
 
   app.post('/api/v1/receipt/:receiptId/revoke', async (request, reply) => {
     const { receiptId } = request.params as { receiptId: string };
+    const apiKey = request.headers['x-api-key'] as string;
+    
+    if (!apiKey) {
+      return reply.code(401).send({ error: 'Unauthorized: Missing x-api-key' });
+    }
+
+    const organization = await prisma.organization.findUnique({ where: { apiKey } });
+    if (!organization) {
+      return reply.code(403).send({ error: 'Forbidden: Invalid API Key' });
+    }
+
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
 
-    if (record.revoked) {
-      return reply.send({ status: 'ALREADY_REVOKED' });
+    // Ownership check
+    if (record.organizationId && record.organizationId !== organization.id) {
+      return reply.code(403).send({ error: 'Forbidden: You do not own this receipt' });
     }
 
+    // Check if already revoked via immutable table
+    const existing = await prisma.revocation.findFirst({
+      where: { receiptId }
+    });
+
+    if (existing || record.revoked) {
+      return reply.send({ status: 'ALREADY_REVOKED', revokedAt: existing?.revokedAt });
+    }
+
+    // 1. Create Immutable Revocation Record
+    const revocation = await prisma.revocation.create({
+      data: {
+        receiptId: receiptId,
+        organizationId: organization.id, // Revoker
+        reason: 'User requested via API',
+        revokedBy: organization.name
+      }
+    });
+
+    // 2. Update denormalized flag
     await prisma.receipt.update({
       where: { id: receiptId },
       data: { revoked: true }
     });
 
-    return reply.send({ status: 'REVOKED' });
+    // 3. Log Event
+    await logVerificationEvent(prisma, {
+      endpoint: '/api/v1/receipt/revoke',
+      result: 'REVOKED',
+      ip: request.ip,
+      userAgent: request.headers['user-agent'] || '',
+      receiptId: receiptId,
+      organizationId: organization.id
+    });
+
+    return reply.send({ status: 'REVOKED', revokedAt: revocation.revokedAt });
   });
 
   app.get('/api/v1/receipts', async () => {

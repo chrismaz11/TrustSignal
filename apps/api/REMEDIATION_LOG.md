@@ -32,3 +32,13 @@
 - **Infrastructure**: Configure AWS Secrets Manager to populate `TRUST_REGISTRY_PUBLIC_KEY`, `ATTOM_API_KEY`, etc.
 - **Database**: Wire up `DuplicatePropertyVerifier` in `verifyBundle` to enforce duplicate checks.
 - **TLS**: Ensure load balancer terminates TLS 1.3.
+
+## 5. Auth, Ownership & Audit (Critical)
+
+- **Issue**: Lack of authentication on revocation/anchoring; Missing immutable audit trail; Legacy insecure code.
+- **Fix**:
+  - Implemented `Revocation` and `VerificationEvent` immutable tables in Prisma.
+  - Enforced `x-api-key` and `Organization` ownership on `/verify`, `/revoke`, and `/anchor`.
+  - Removed legacy `src/api/verify.js`.
+  - Updated `Authorization` checks to strictly forbid cross-organization actions.
+- **Verification**: `npm test` passes with authenticated flows.

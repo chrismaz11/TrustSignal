@@ -18,7 +18,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.0.2",
     "@fastify/rate-limit": "^10.3.0",
-    "@prisma/client": "^5.17.0",
+    "dotenv": "^17.3.1",
     "ethers": "^6.12.0",
     "fastify": "^5.7.4",
     "openai": "^6.17.0",
@@ -27,6 +27,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@prisma/client": "^5.22.0",
     "@types/pdf-parse": "^1.1.5",
     "@types/pdfkit": "^0.17.4",
     "prisma": "^5.17.0",

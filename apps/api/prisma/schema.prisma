@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Receipt {
-  id               String   @id @default(uuid())
+  id               String        @id @default(uuid())
   receiptHash      String
   inputsCommitment String
   policyProfile    String
@@ -18,14 +18,40 @@ model Receipt {
   riskScore        Int
   checks           String
   rawInputs        String
-  createdAt        DateTime @default(now())
-  anchorStatus     String   @default("PENDING")
+  createdAt        DateTime      @default(now())
+  anchorStatus     String        @default("PENDING")
   anchorTxHash     String?
   anchorChainId    String?
   anchorId         String?
   fraudRisk        String? // JSON
   zkpAttestation   String? // JSON
-  revoked          Boolean  @default(false)
+  revoked          Boolean       @default(false)
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  Revocation       Revocation[]
+}
+
+model Revocation {
+  id             String       @id @default(uuid())
+  receiptId      String
+  receipt        Receipt      @relation(fields: [receiptId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  reason         String
+  revokedAt      DateTime     @default(now())
+  revokedBy      String
+}
+
+model VerificationEvent {
+  id             String        @id @default(uuid())
+  timestamp      DateTime      @default(now())
+  endpoint       String
+  result         String
+  ip             String?
+  userAgent      String?
+  receiptId      String?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 }
 
 model Property {
@@ -61,9 +87,12 @@ model RequestLog {
 }
 
 model Organization {
-  id         String   @id @default(uuid())
-  name       String
-  adminEmail String
-  apiKey     String   @unique
-  createdAt  DateTime @default(now())
+  id                String              @id @default(uuid())
+  name              String
+  adminEmail        String
+  apiKey            String              @unique
+  createdAt         DateTime            @default(now())
+  Receipt           Receipt[]
+  Revocation        Revocation[]
+  VerificationEvent VerificationEvent[]
 }
