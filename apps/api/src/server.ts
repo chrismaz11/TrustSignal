@@ -5,10 +5,9 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
-import { keccak256, toUtf8Bytes, JsonRpcProvider, Contract } from 'ethers';
+import { keccak256, toUtf8Bytes } from 'ethers';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { requireOrg } from './utils/auth.js';
 import {
   BundleInput,
   CheckResult,
@@ -27,15 +26,17 @@ import {
   NotaryVerifier,
   PropertyVerifier,
   CountyVerifier,
-  keccak256Buffer
+  keccak256Buffer,
+  attomCrossCheck,
+  DeedParsed
 } from '@deed-shield/core';
 
+import { requireOrg } from './utils/auth.js';
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
 import { anchorReceipt } from './anchor.js';
 import { ensureDatabase } from './db.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
-import { attomCrossCheck, DeedParsed } from '@deed-shield/core';
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 
@@ -139,7 +140,7 @@ const deedParsedSchema = z.object({
 });
 
 type ReceiptRecord = NonNullable<Awaited<ReturnType<typeof prisma.receipt.findUnique>>>;
-type ReceiptListRecord = Awaited<ReturnType<typeof prisma.receipt.findMany>>[number];
+
 
 function receiptFromDb(record: ReceiptRecord) {
   return {
@@ -191,7 +192,7 @@ async function logVerificationEvent(prisma: PrismaClient, evt: VerificationEvent
 }
 
 class DatabaseCountyVerifier implements CountyVerifier {
-  async verifyParcel(parcelId: string, county: string, state: string): Promise<CountyCheckResult> {
+  async verifyParcel(parcelId: string, _county: string, _state: string): Promise<CountyCheckResult> {
     // 1. Log the check
     console.log(`[DatabaseCountyVerifier] Checking parcel: ${parcelId}`);
 
@@ -219,52 +220,13 @@ class DatabaseNotaryVerifier implements NotaryVerifier {
     console.log(`[DatabaseNotaryVerifier] Checking notary: ${commissionId}`);
     const notary = await prisma.notary.findUnique({ where: { id: commissionId } });
     if (!notary) return { status: 'UNKNOWN', details: 'Notary not found' };
-    if (notary.status !== 'ACTIVE') return { status: notary.status as any, details: 'Notary not active' };
+    if (notary.status !== 'ACTIVE') return { status: notary.status as 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | 'UNKNOWN', details: 'Notary not active' };
     if (notary.commissionState !== state) return { status: 'ACTIVE', details: 'State mismatch (recorded)', };
     return { status: 'ACTIVE', details: `Found ${name}` };
   }
 }
 
-class DatabasePropertyVerifier {
-  async verify(bundle: BundleInput): Promise<CheckResult> {
-    console.log(`[DatabasePropertyVerifier] Checking property: ${bundle.property.parcelId}`);
 
-    const existing = await prisma.receipt.findFirst({
-      where: {
-        parcelId: bundle.property.parcelId,
-        decision: 'ALLOW',
-        revoked: false
-      }
-    });
-
-    if (existing) {
-      return { checkId: 'property-database', status: 'FLAG', details: `Duplicate Title: Active receipt exists (${existing.id})` } as unknown as CheckResult;
-    }
-
-    // 2. Chain of Title Check (Grantor Verification)
-    if (bundle.ocrData?.grantorName) {
-      const property = await prisma.property.findUnique({
-        where: { parcelId: bundle.property.parcelId }
-      });
-
-      if (property) {
-        const inputGrantor = bundle.ocrData.grantorName.toLowerCase().trim();
-        const currentOwner = property.currentOwner.toLowerCase().trim();
-
-        // Fuzzy match: Check if names roughly match (e.g. "John Doe" vs "Doe, John" or inclusion)
-        if (!currentOwner.includes(inputGrantor) && !inputGrantor.includes(currentOwner)) {
-          return {
-            checkId: 'chain-of-title',
-            status: 'FLAG',
-            details: `Chain of Title Break: Grantor '${bundle.ocrData.grantorName}' does not match current owner '${property.currentOwner}'`
-          } as unknown as CheckResult;
-        }
-      }
-    }
-
-    return { checkId: 'property-database', status: 'PASS', details: 'No duplicate titles found' } as unknown as CheckResult;
-  }
-}
 
 class AttomPropertyVerifier implements PropertyVerifier {
   constructor(private apiKey: string) { }
@@ -332,11 +294,10 @@ class BlockchainVerifier {
     }
 
     try {
-      // 2. Connect to Blockchain
-      const provider = new JsonRpcProvider(this.rpcUrl);
-      // Assuming a simple registry contract that maps ParcelID string to Owner Name string
-      const abi = ['function getOwner(string memory parcelId) public view returns (string memory)'];
-      const contract = new Contract(this.contractAddress, abi, provider);
+      // 2. Connect to Blockchain (mocked — no live contract deployed yet)
+      // const provider = new JsonRpcProvider(this.rpcUrl);
+      // const abi = ['function getOwner(string memory parcelId) public view returns (string memory)'];
+      // const contract = new Contract(this.contractAddress, abi, provider);
 
       // 3. Query Registry (Read-Only)
       // const onChainOwner = await contract.getOwner(bundle.property.parcelId);

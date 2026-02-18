@@ -1,9 +1,11 @@
 import 'dotenv/config';
-import { describe, it, expect, beforeAll } from 'vitest';
-import { buildServer } from './server.js';
 import { Buffer } from 'node:buffer';
+
+import { describe, it, expect, beforeAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { PrismaClient } from '@prisma/client';
+
+import { buildServer } from './server.js';
 
 const prisma = new PrismaClient();
 
