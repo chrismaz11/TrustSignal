@@ -16,12 +16,16 @@ const DEFAULT_PATHS = {
   address: '/propertyapi/v1.0.0/property/basicprofile'
 };
 
+import CircuitBreaker from 'opossum';
+import { randomUUID } from 'crypto';
+
 export class HttpAttomClient implements AttomClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly paths: Options['paths'];
   private readonly fetchImpl: typeof fetch;
+  private readonly breaker: CircuitBreaker<[string, RequestInit, string], any>;
 
   constructor(opts: Options) {
     this.apiKey = opts.apiKey;
@@ -29,6 +33,31 @@ export class HttpAttomClient implements AttomClient {
     this.timeoutMs = opts.timeoutMs ?? 7000;
     this.paths = opts.paths ?? DEFAULT_PATHS;
     this.fetchImpl = opts.fetchImpl ?? fetch;
+
+    const requestFunction = async (urlStr: string, init: RequestInit, correlationId: string) => {
+      const res = await this.fetchImpl(urlStr, init);
+      if (res.status >= 500 || res.status === 429) {
+        throw new Error(`ATTOM ${res.status}`);
+      }
+      if (!res.ok) {
+        throw new Error(`ATTOM error ${res.status}`);
+      }
+      return res.json().catch(() => ({}));
+    };
+
+    this.breaker = new CircuitBreaker(requestFunction, {
+      timeout: this.timeoutMs,
+      errorThresholdPercentage: 50,
+      resetTimeout: 30000,
+      capacity: 10,
+    });
+
+    this.breaker.fallback(() => ({ fallback: true }));
+
+    // Optional: Log breaker events for observability
+    this.breaker.on('open', () => console.warn('[AttomClient] Circuit Breaker OPEN'));
+    this.breaker.on('halfOpen', () => console.log('[AttomClient] Circuit Breaker HALF-OPEN'));
+    this.breaker.on('close', () => console.log('[AttomClient] Circuit Breaker CLOSED'));
   }
 
   async getByParcel(pin: string): Promise<AttomLookupResult[]> {
@@ -36,7 +65,6 @@ export class HttpAttomClient implements AttomClient {
   }
 
   async getByAddress(address: { line1: string; city: string; state: string; zip?: string | null }): Promise<AttomLookupResult[]> {
-    // Per ATTOM docs, split into address1 + address2 (city, state, zip)
     const params: Record<string, string> = {
       address1: address.line1,
       address2: `${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}`
@@ -54,57 +82,40 @@ export class HttpAttomClient implements AttomClient {
     const url = new URL(path, this.baseUrl);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
+    const correlationId = randomUUID();
     const results: AttomLookupResult[] = [];
-    let lastError: unknown;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-      try {
-        const res = await this.fetchImpl(url.toString(), {
-          headers: {
-            apikey: this.apiKey,
-            accept: 'application/json'
-          },
-          signal: controller.signal
-        });
 
-        const json = await res.json().catch(() => ({}));
+    try {
+      const json = await this.breaker.fire(url.toString(), {
+        headers: {
+          apikey: this.apiKey,
+          accept: 'application/json'
+        }
+      }, correlationId);
 
-        if (res.status >= 500 || res.status === 429) {
-          lastError = new Error(`ATTOM ${res.status}`);
-          await new Promise((r) => setTimeout(r, 200 * Math.pow(2, attempt)));
-          continue;
-        }
-        if (!res.ok) {
-          lastError = new Error(`ATTOM error ${res.status}`);
-          break;
-        }
-
-        const properties: any[] = json.property || json.properties || [];
-        for (const p of properties) {
-          const property = mapProperty(p);
-          results.push({
-            property,
-            endpoint,
-            requestId: json.requestId || json.transactionId,
-            raw: undefined
-          });
-        }
-        break;
-      } catch (err) {
-        lastError = err;
-        await new Promise((r) => setTimeout(r, 200 * Math.pow(2, attempt)));
-      } finally {
-        clearTimeout(timer);
+      if (json && json.fallback) {
+         console.warn(`[AttomClient] [${correlationId}] Fallback triggered for endpoint: ${endpoint}`);
+         return [];
       }
+
+      const properties: any[] = json.property || json.properties || [];
+      for (const p of properties) {
+        const property = mapProperty(p);
+        results.push({
+          property,
+          endpoint,
+          requestId: json.requestId || json.transactionId || correlationId,
+          raw: undefined
+        });
+      }
+    } catch (err) {
+       console.error(`[AttomClient] [${correlationId}] Request failed: ${endpoint}`, String((err as Error).message || err));
     }
 
-    if (!results.length && lastError) {
-      console.warn('[AttomClient] No ATTOM result', endpoint, String((lastError as Error).message || lastError));
-    }
     return results;
   }
 }
+
 
 function mapProperty(p: any): AttomProperty {
   const address = p.address || {};

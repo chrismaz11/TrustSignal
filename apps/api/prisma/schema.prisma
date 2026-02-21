@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite" // "postgresql" for prod
   url      = env("DATABASE_URL")
 }
 
@@ -26,6 +26,8 @@ model Receipt {
   fraudRisk        String? // JSON
   zkpAttestation   String? // JSON
   revoked          Boolean       @default(false)
+  deleted          Boolean       @default(false)
+  deletedAt        DateTime?
   organizationId   String?
   organization     Organization? @relation(fields: [organizationId], references: [id])
   Revocation       Revocation[]
@@ -93,7 +95,10 @@ model Organization {
   name              String
   adminEmail        String
   apiKey            String              @unique
+  apiKeySecondary   String?             @unique
+  rateLimit         Int?
   createdAt         DateTime            @default(now())
+  retentionDays     Int? // Nullable means use default 90 days.
   Receipt           Receipt[]
   Revocation        Revocation[]
   VerificationEvent VerificationEvent[]

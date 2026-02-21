@@ -25,7 +25,6 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "demo": "tsx scripts/demo.ts",
-    "init:db": "rm -f ${DB_PATH:-attestations.sqlite} && sqlite3 ${DB_PATH:-attestations.sqlite} < schema.sqlite.sql",
     "gen:keys": "node scripts/gen-issuer-keys.js",
     "seed:issuer": "node scripts/seed-issuer-public.js",
     "seed:parcel": "cd apps/api && tsx scripts/seed-parcel.ts"

@@ -9,9 +9,17 @@ The following environment variables are required for the Deed Shield API and Cor
 - `ISSUER_DID`: The decentralized identifier for the Deed Shield instance (e.g., `did:web:deedshield.io`).
 - `SIGNING_PRIVATE_KEY`: Private key (PKCS8 PEM or Hex) used to sign receipts.
 
-### Database
+### Database (PostgreSQL required)
 
-- `DATABASE_URL`: Connection string for the Prisma database (e.g., `file:./dev.db` for SQLite).
+- `DATABASE_URL`: Connection string for the Prisma database.
+  - **Local Development**: `postgresql://user:password@localhost:5432/deed_shield` (Deploy local DB using `docker-compose up -d` at root).
+  - **Production Environment**: Must use a managed cloud PostgreSQL instance with **storage encryption-at-rest enabled**.
+  - **Production TLS Enforcement**: Connections must enforce TLS 1.3. Your production connection string must append `?sslmode=require`. Example: `postgresql://[user]:[password]@[host]:[port]/[db]?sslmode=require`.
+
+#### Backup and Restore Procedures
+
+- **Backups**: Use `pg_dump -U [user] -h [host] -p [port] -F c -f backup.dump [db]` to create a compressed backup archive.
+- **Restore**: Use `pg_restore -U [user] -h [host] -p [port] -d [db] -1 backup.dump` to restore inside a single transaction.
 
 ### External Integrations
 

@@ -337,8 +337,44 @@ export async function buildServer(config?: {
   });
   await app.register(helmet);
   await app.register(rateLimit, {
-    max: config?.rateLimitMax || 100,
-    timeWindow: config?.rateLimitWindow || '1 minute'
+    timeWindow: config?.rateLimitWindow || '1 minute',
+    keyGenerator: (request) => {
+      return (request.headers['x-api-key'] as string) || request.ip;
+    },
+    max: async (request) => {
+      const apiKey = request.headers['x-api-key'] as string;
+      if (apiKey) {
+        const organization = await prisma.organization.findUnique({ where: { apiKey } });
+        if (organization) {
+          (request as any).organization = organization;
+          const envMax = process.env.RATE_LIMIT_MAX_PER_MINUTE ? parseInt(process.env.RATE_LIMIT_MAX_PER_MINUTE, 10) : 100;
+          return organization.rateLimit ?? config?.rateLimitMax ?? envMax;
+        }
+      }
+      const defaultMax = process.env.RATE_LIMIT_MAX_PER_MINUTE ? parseInt(process.env.RATE_LIMIT_MAX_PER_MINUTE, 10) : 100;
+      return config?.rateLimitMax ?? defaultMax;
+    },
+    errorResponseBuilder: (request, context) => {
+      const organizationId = (request as any).organization?.id || null;
+      
+      // Asynchronously log to RequestLog without blocking the response
+      prisma.requestLog.create({
+        data: {
+          endpoint: request.url,
+          method: request.method,
+          status: 429,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] || '',
+          organizationId
+        }
+      }).catch(err => app.log.error('Failed to log 429 rate limit:', err));
+
+      return {
+        error: 'Too Many Requests',
+        message: `Rate limit exceeded, retry in ${context.after}`,
+        correlationId: request.id
+      };
+    }
   });
   await ensureDatabase(prisma);
 
