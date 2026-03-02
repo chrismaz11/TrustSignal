@@ -15,5 +15,11 @@ model VerificationRecord {
   zkmlOk       Boolean
   fraudScore   Float
   proofGenMs   Float
+  timestamp    String
+  revoked      Boolean  @default(false)
+  revocationReason String?
+  revocationTxHash String?
+  revokedAt    DateTime?
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
