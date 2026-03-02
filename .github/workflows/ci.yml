@@ -13,22 +13,36 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --dir apps/api install --no-frozen-lockfile
+          pnpm --dir apps/web install --no-frozen-lockfile
+          pnpm --dir packages/core install --no-frozen-lockfile
+          pnpm --dir packages/contracts install --no-frozen-lockfile
 
       - name: Run lint
         run: |
-          npx eslint --no-ignore \
+          pnpm exec eslint --no-ignore \
             src/middleware/auth.ts \
             src/middleware/logger.ts \
             src/middleware/rateLimit.ts \
@@ -48,42 +62,78 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --dir apps/api install --no-frozen-lockfile
+          pnpm --dir apps/web install --no-frozen-lockfile
+          pnpm --dir packages/core install --no-frozen-lockfile
+          pnpm --dir packages/contracts install --no-frozen-lockfile
 
       - name: Type check
-        run: npx tsc --strict --noEmit
+        run: pnpm exec tsc --strict --noEmit
 
   test:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --dir apps/api install --no-frozen-lockfile
+          pnpm --dir apps/web install --no-frozen-lockfile
+          pnpm --dir packages/core install --no-frozen-lockfile
+          pnpm --dir packages/contracts install --no-frozen-lockfile
 
       - name: Run unit/integration tests with coverage
-        run: npx vitest run --coverage
+        run: pnpm exec vitest run --coverage
 
   rust-build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+    defaults:
+      run:
+        working-directory: circuits/non_mem_gadget
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,9 +142,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build Halo2 verifier
-        working-directory: circuits/non_mem_gadget
-        run: cargo build --release --bin verify_bundle
+        run: cargo build --release
 
       - name: Run Halo2 tests
-        working-directory: circuits/non_mem_gadget
         run: cargo test
