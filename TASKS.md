@@ -51,6 +51,13 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Add GitHub Actions CI workflow (`.github/workflows/ci.yml`) for lint, strict typecheck, coverage tests, and Rust build/tests.
 - [x] Publish OWASP audit and threat model deliverables (`security/audit_report.md`, `security/threat_model.md`).
 
+### P1-S6 Session 7 Final Packaging (Docs + Release Ops)
+- [x] Publish canonical developer README for TrustSignal root workflows (`README.md`).
+- [x] Publish NSF/grant-ready technical whitepaper (`docs/final/11_NSF_GRANT_WHITEPAPER.md`).
+- [x] Publish canonical R&D log for sessions 1-7 (`docs/final/12_R_AND_D_LOG.md`).
+- [x] Add root Vercel deployment policy config (`vercel.json`).
+- [x] Add root changelog for release traceability (`CHANGELOG.md`).
+
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.
 - [ ] Define idempotency, retry, and error semantics.
@@ -61,4 +68,3 @@ Plan reference: `PROJECT_PLAN.md`
 - [ ] Key management uplift plan (KMS/HSM).
 - [ ] Dependency and supply-chain hardening controls.
 - [ ] Deferred advanced feature hardening (real ZKP, portability).
-# CI test
