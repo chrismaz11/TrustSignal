@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model VerificationRecord {
+  id           String   @id @default(cuid())
+  bundleHash   String   @unique
+  nonMemOk     Boolean
+  revocationOk Boolean
+  zkmlOk       Boolean
+  fraudScore   Float
+  proofGenMs   Float
+  createdAt    DateTime @default(now())
+}
