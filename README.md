@@ -24,11 +24,20 @@ This repository is the main TrustSignal project. It contains:
 
 ## Quickstart
 
-### 1) Install
+- All `/api/v1/*` endpoints except `/api/v1/health` require `x-api-key`.
+- Configure API keys with `API_KEYS` and optional `API_KEY_SCOPES`.
+- CORS is deny-by-default in production unless `CORS_ALLOWLIST` is set.
+- In production, startup fails if `NOTARY_API_KEY`, `PROPERTY_API_KEY`, or `TRUST_REGISTRY_SOURCE` are missing.
+- Revocation requires issuer signature headers:
+  - `x-issuer-id`
+  - `x-signature-timestamp`
+  - `x-issuer-signature` (signature over `revoke:<receiptId>:<timestamp>`)
 
-```bash
-npm install
-```
+## Data Minimization Defaults
+
+- Receipts persist `inputsCommitment` and `rawInputsHash` (commitment hash), not full raw input payloads.
+
+## Local Demo
 
 ### 2) Configure environment
 

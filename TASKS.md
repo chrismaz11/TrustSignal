@@ -12,7 +12,7 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Add repository hygiene check script (`scripts/check-repo-hygiene.sh`).
 - [x] Add root `.env.example` placeholders.
 - [ ] Rotate all historically exposed credentials and document evidence.
-- [ ] Perform git history rewrite for historical secret exposure and force-push sanitized refs.
+- [x] Perform git history rewrite for historical secret exposure and force-push sanitized refs.
 - [x] Validate rewrite workflow in mirror clone (`scripts/rewrite-history-remove-sensitive-paths.sh`).
 - [x] Add full-history blocked-path scan (`scripts/history-secret-scan.sh`).
 - [x] Publish rotation/history remediation runbook (`docs/final/07_SECRET_ROTATION_AND_HISTORY_REMEDIATION.md`).
@@ -21,7 +21,7 @@ Plan reference: `PROJECT_PLAN.md`
 
 ### P1-S2 Staging Security Evidence
 - [x] Deploy Vercel preview with Supabase-backed PostgreSQL (`sslmode=require`) and capture API/TLS probe evidence (`docs/evidence/staging/vercel-staging-2026-02-27.md`).
-- [ ] Collect staging evidence for PostgreSQL TLS and encrypted-at-rest controls.
+- [x] Collect staging evidence for PostgreSQL TLS and encrypted-at-rest controls (`docs/evidence/staging/supabase-db-security-2026-02-27.md`).
 - [ ] Collect staging evidence for HTTPS ingress forwarding and TLS policy.
 - [x] Attach evidence references to `docs/PRODUCTION_GOVERNANCE_TRACKER.md`.
 - [x] Publish staging evidence checklist (`docs/final/08_STAGING_SECURITY_EVIDENCE_CHECKLIST.md`).
@@ -43,20 +43,11 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Improve grantor/owner matching with normalized overlap scoring.
 - [x] Remove SQLite CLI shelling from legacy `src/api` paths in favor of in-process DB access.
 
-### P1-S5 Session 6 Hardening (TrustSignal Runtime)
-- [x] Add structured JSON API logging middleware with request metadata and sensitive-data redaction.
-- [x] Harden JWT authentication with rotating key support (`TRUSTSIGNAL_JWT_SECRETS`).
-- [x] Add adversarial ZKML test suite (`tests/adversarial/zkml_adversarial.test.ts`).
-- [x] Raise scoped API runtime coverage above 90% with enforced Vitest thresholds.
-- [x] Add GitHub Actions CI workflow (`.github/workflows/ci.yml`) for lint, strict typecheck, coverage tests, and Rust build/tests.
-- [x] Publish OWASP audit and threat model deliverables (`security/audit_report.md`, `security/threat_model.md`).
-
-### P1-S6 Session 7 Final Packaging (Docs + Release Ops)
-- [x] Publish canonical developer README for TrustSignal root workflows (`README.md`).
-- [x] Publish NSF/grant-ready technical whitepaper (`docs/final/11_NSF_GRANT_WHITEPAPER.md`).
-- [x] Publish canonical R&D log for sessions 1-7 (`docs/final/12_R_AND_D_LOG.md`).
-- [x] Add root Vercel deployment policy config (`vercel.json`).
-- [x] Add root changelog for release traceability (`CHANGELOG.md`).
+### P1-S5 Trust and Data-Minimization Quick Wins
+- [x] Add production startup guard for `NOTARY_API_KEY`, `PROPERTY_API_KEY`, and `TRUST_REGISTRY_SOURCE`.
+- [x] Replace `Receipt.rawInputs` persistence with `Receipt.rawInputsHash` (inputs commitment only).
+- [x] Add Prisma migration to rename `rawInputs` to `rawInputsHash`.
+- [x] Update `.env.example` files with placeholder-only verifier and trust source configuration.
 
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.

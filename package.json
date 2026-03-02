@@ -8,10 +8,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "@ezkljs/engine": "^22.0.1",
-    "@fastify/rate-limit": "^10.3.0",
-    "@prisma/client": "^5.22.0",
-    "axios": "^1.13.2",
+    "axios": "^1.13.6",
     "better-sqlite3": "^12.4.1",
     "busboy": "^1.6.0",
     "chokidar": "^4.0.3",

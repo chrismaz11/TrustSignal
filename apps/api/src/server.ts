@@ -134,6 +134,22 @@ function databaseUrlHasRequiredSslMode(databaseUrl: string | undefined): boolean
   }
 }
 
+function requireProductionVerifierConfig(env: NodeJS.ProcessEnv = process.env): void {
+  if ((env.NODE_ENV || 'development') !== 'production') {
+    return;
+  }
+
+  const required = ['NOTARY_API_KEY', 'PROPERTY_API_KEY', 'TRUST_REGISTRY_SOURCE'];
+  const missing = required.filter((name) => !(env[name] || '').trim());
+  if (missing.length > 0) {
+    throw new Error(`Missing required production env vars: ${missing.join(', ')}`);
+  }
+}
+
+function resolvePropertyApiKey(env: NodeJS.ProcessEnv = process.env): string {
+  return (env.PROPERTY_API_KEY || env.ATTOM_API_KEY || '').trim();
+}
+
 function receiptFromDb(record: ReceiptRecord) {
   return {
     receiptVersion: '1.0',
@@ -330,8 +346,10 @@ class BlockchainVerifier {
 }
 
 export async function buildServer() {
+  requireProductionVerifierConfig();
   const app = Fastify({ logger: true });
   const securityConfig = buildSecurityConfig();
+  const propertyApiKey = resolvePropertyApiKey();
   const metricsRegistry = new Registry();
   collectDefaultMetrics({ register: metricsRegistry, prefix: 'deedshield_api_' });
   const httpRequestsTotal = new Counter({
@@ -401,6 +419,9 @@ export async function buildServer() {
       },
       database: {
         sslModeRequired: databaseUrlHasRequiredSslMode(process.env.DATABASE_URL)
+      },
+      trustRegistry: {
+        source: process.env.TRUST_REGISTRY_SOURCE || 'local-signed-registry'
       }
     };
   });
@@ -423,7 +444,7 @@ export async function buildServer() {
     }
 
     const client = new HttpAttomClient({
-      apiKey: process.env.ATTOM_API_KEY || '',
+      apiKey: propertyApiKey,
       baseUrl: process.env.ATTOM_BASE_URL || 'https://api.gateway.attomdata.com'
     });
 
@@ -445,7 +466,7 @@ export async function buildServer() {
     const verifiers = {
       county: new DatabaseCountyVerifier(),
       notary: new DatabaseNotaryVerifier(),
-      property: new AttomPropertyVerifier(process.env.ATTOM_API_KEY || ''),
+      property: new AttomPropertyVerifier(propertyApiKey),
       blockchain: new BlockchainVerifier(process.env.RPC_URL || '', process.env.REGISTRY_ADDRESS || '')
     };
     const verification = await verifyBundle(input, registry, verifiers);
@@ -503,7 +524,7 @@ export async function buildServer() {
         reasons: JSON.stringify(receipt.reasons),
         riskScore: receipt.riskScore,
         checks: JSON.stringify(receipt.checks),
-        rawInputs: JSON.stringify(input),
+        rawInputsHash: receipt.inputsCommitment,
         createdAt: new Date(receipt.createdAt),
         fraudRisk: receipt.fraudRisk ? JSON.stringify(receipt.fraudRisk) : undefined,
         zkpAttestation: receipt.zkpAttestation ? JSON.stringify(receipt.zkpAttestation) : undefined,
@@ -650,8 +671,7 @@ export async function buildServer() {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
 
-    const rawInputs = JSON.parse(record.rawInputs) as BundleInput;
-    const inputsCommitment = computeInputsCommitment(rawInputs);
+    const inputsCommitment = record.inputsCommitment;
     const receipt = receiptFromDb(record);
     if (!receipt) {
       return reply.code(500).send({ error: 'Receipt reconstruction failed' });

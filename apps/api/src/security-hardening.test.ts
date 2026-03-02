@@ -229,3 +229,24 @@ describe.sequential('Security hardening: global rate limiting', () => {
     expect(third.statusCode).toBe(429);
   });
 });
+
+describe.sequential('Security hardening: production verifier configuration', () => {
+  let envSnapshot: EnvSnapshot;
+
+  beforeAll(() => {
+    const keysToSnapshot = ['NODE_ENV', 'NOTARY_API_KEY', 'PROPERTY_API_KEY', 'TRUST_REGISTRY_SOURCE'];
+    envSnapshot = snapshotEnv(keysToSnapshot);
+    process.env.NODE_ENV = 'production';
+    delete process.env.NOTARY_API_KEY;
+    delete process.env.PROPERTY_API_KEY;
+    delete process.env.TRUST_REGISTRY_SOURCE;
+  });
+
+  afterAll(() => {
+    restoreEnv(envSnapshot);
+  });
+
+  it('fails fast if required verifier env vars are missing', async () => {
+    await expect(buildServer()).rejects.toThrow('Missing required production env vars');
+  });
+});

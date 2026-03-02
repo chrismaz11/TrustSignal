@@ -27,6 +27,12 @@ Produce staging evidence for production gate items currently marked as "verified
 - test run IDs and timestamps
 - links to dashboard panels and alert definitions
 
+## Current Artifacts (2026-02-27 UTC)
+- `docs/evidence/staging/vercel-staging-2026-02-27.md` (API health/status/metrics + TLS certificate probe)
+- `docs/evidence/staging/supabase-db-security-2026-02-27.md` (Supabase SSL enforcement, root-key presence redaction, TLSv1.3 session proof)
+- `scripts/capture-vercel-staging-evidence.sh` (Vercel deployment probe automation)
+- `scripts/capture-supabase-db-security-evidence.sh` (Supabase DB control evidence automation)
+
 ## Signoff
 - engineering owner
 - security owner

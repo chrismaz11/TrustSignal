@@ -12,7 +12,7 @@ export async function ensureDatabase(prisma: PrismaClient) {
       "reasons" TEXT NOT NULL,
       "riskScore" INTEGER NOT NULL,
       "checks" TEXT NOT NULL,
-      "rawInputs" TEXT NOT NULL,
+      "rawInputsHash" TEXT NOT NULL,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "anchorStatus" TEXT NOT NULL DEFAULT 'PENDING',
       "anchorTxHash" TEXT,
