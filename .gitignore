@@ -25,3 +25,5 @@ packages/core/registry/registry.private.jwk
 .vercel
 .env*.local
 circuits/non_mem_gadget/target/
+ml/.venv/
+ml/zkml/deed_cnn.pk
