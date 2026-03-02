@@ -1,5 +1,5 @@
 {
-  "k": 9,
-  "gate_count": 512,
-  "proof_gen_ms": 0
+  "k": 10,
+  "gate_count": 1024,
+  "proof_gen_ms": 1
 }
