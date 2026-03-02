@@ -1,6 +1,7 @@
 pub mod merkle;
 
 use halo2_proofs::{
+    arithmetic::Field,
     circuit::{Layouter, SimpleFloorPlanner, Value},
     dev::MockProver,
     pasta::Fp,
