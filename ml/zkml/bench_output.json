@@ -1,0 +1,7 @@
+{
+  "ezkl_version": "23.0.5",
+  "proof_gen_ms": 1506.46,
+  "model_size_mb": 0.0041,
+  "samples_proven": 10,
+  "auc": 0.998
+}
