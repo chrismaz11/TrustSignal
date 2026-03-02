@@ -61,3 +61,4 @@ Plan reference: `PROJECT_PLAN.md`
 - [ ] Key management uplift plan (KMS/HSM).
 - [ ] Dependency and supply-chain hardening controls.
 - [ ] Deferred advanced feature hardening (real ZKP, portability).
+# CI test
