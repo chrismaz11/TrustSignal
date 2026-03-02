@@ -17,7 +17,7 @@ model Receipt {
   reasons          String
   riskScore        Int
   checks           String
-  rawInputs        String
+  rawInputsHash    String
   createdAt        DateTime @default(now())
   anchorStatus     String   @default("PENDING")
   anchorTxHash     String?
