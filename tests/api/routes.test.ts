@@ -93,6 +93,7 @@ describe('Fastify verification routes', () => {
 
   beforeEach(async () => {
     process.env.TRUSTSIGNAL_JWT_SECRET = JWT_SECRET;
+    process.env.LOG_LEVEL = 'silent';
 
     store = new InMemoryVerificationRecordStore();
     verifyBundleMock = vi.fn(async (input: VerifyBundleInput) => {
@@ -128,6 +129,7 @@ describe('Fastify verification routes', () => {
   afterEach(async () => {
     await app.close();
     delete process.env.TRUSTSIGNAL_JWT_SECRET;
+    delete process.env.LOG_LEVEL;
   });
 
   it('returns 401 when auth header is missing', async () => {
@@ -191,6 +193,65 @@ describe('Fastify verification routes', () => {
     expect(response.json().fraud_score).toBe(0.97);
   });
 
+  it('handles non-hex deed_hash by mapping hash signal to 0', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({
+        deed_hash: '!!!!@@@@'
+      })
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(vi.mocked(verifyBundleMock)).toHaveBeenCalled();
+    const firstCall = vi.mocked(verifyBundleMock).mock.calls.at(0);
+    expect(firstCall?.[0].deed_features[5]).toBe(0);
+  });
+
+  it('handles parseInt failure in hash signal path safely', async () => {
+    const parseIntSpy = vi.spyOn(Number, 'parseInt').mockReturnValueOnce(Number.NaN);
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/verify-bundle',
+        headers: {
+          authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+        },
+        payload: buildVerifyBody({
+          deed_hash: 'abcdef12'
+        })
+      });
+
+      expect(response.statusCode).toBe(200);
+      const firstCall = vi.mocked(verifyBundleMock).mock.calls.at(0);
+      expect(firstCall?.[0].deed_features[5]).toBe(0);
+    } finally {
+      parseIntSpy.mockRestore();
+    }
+  });
+
+  it('returns 500 when verify dependency throws', async () => {
+    vi.mocked(verifyBundleMock).mockRejectedValueOnce(new Error('verifier offline'));
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody()
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({
+      error: 'Verification failed',
+      message: 'Unable to complete bundle verification'
+    });
+  });
+
   it('revokes a record with admin claim and returns tx hash', async () => {
     await app.inject({
       method: 'POST',
@@ -221,6 +282,58 @@ describe('Fastify verification routes', () => {
     });
   });
 
+  it('accepts revoke when JWT has admin=true claim', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({ deed_hash: 'bundle-revoke-admin-flag' })
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', admin: true })}`
+      },
+      payload: {
+        bundle_hash: 'bundle-revoke-admin-flag',
+        reason: 'Admin override'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().revoked).toBe(true);
+  });
+
+  it('accepts revoke when JWT has roles array with admin entry', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({ deed_hash: 'bundle-revoke-role-array' })
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', roles: ['viewer', 'ADMIN'] })}`
+      },
+      payload: {
+        bundle_hash: 'bundle-revoke-role-array',
+        reason: 'Policy enforcement'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().revoked).toBe(true);
+  });
+
   it('blocks revoke when caller lacks admin claim', async () => {
     await app.inject({
       method: 'POST',
@@ -245,6 +358,131 @@ describe('Fastify verification routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json().message).toBe('Admin claim is required to revoke a bundle');
+  });
+
+  it('returns 404 when revoke target does not exist', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', role: 'admin' })}`
+      },
+      payload: {
+        bundle_hash: 'missing-bundle',
+        reason: 'Fraud investigation'
+      }
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().message).toBe('Verification record not found');
+  });
+
+  it('returns 400 for malformed revoke payload', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', role: 'admin' })}`
+      },
+      payload: {
+        bundle_hash: 'bundle-invalid',
+        reason: '  '
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('Invalid request body');
+  });
+
+  it('returns 502 when anchor service returns invalid timestamp', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({ deed_hash: 'bundle-invalid-anchor-ts' })
+    });
+
+    vi.mocked(anchorNullifierMock).mockResolvedValueOnce({
+      tx_hash: '0xanchor',
+      timestamp: 'not-a-timestamp',
+      nullifier_hash: '0xnullifier'
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', role: 'admin' })}`
+      },
+      payload: {
+        bundle_hash: 'bundle-invalid-anchor-ts',
+        reason: 'Malformed anchor response test'
+      }
+    });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json().message).toBe('Anchor service returned an invalid timestamp');
+  });
+
+  it('returns 404 when revocation update finds no record', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({ deed_hash: 'bundle-race-condition' })
+    });
+
+    vi.spyOn(store, 'revokeByBundleHash').mockResolvedValueOnce(null);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', role: 'admin' })}`
+      },
+      payload: {
+        bundle_hash: 'bundle-race-condition',
+        reason: 'Race condition simulation'
+      }
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().message).toBe('Verification record not found');
+  });
+
+  it('returns 502 when anchor dependency throws', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({ deed_hash: 'bundle-anchor-error' })
+    });
+
+    vi.mocked(anchorNullifierMock).mockRejectedValueOnce(new Error('rpc timeout'));
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', role: 'admin' })}`
+      },
+      payload: {
+        bundle_hash: 'bundle-anchor-error',
+        reason: 'Force upstream failure'
+      }
+    });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toEqual({
+      error: 'Upstream Error',
+      message: 'Failed to anchor revocation on Polygon Mumbai'
+    });
   });
 
   it('returns status for existing bundle record', async () => {
@@ -285,6 +523,37 @@ describe('Fastify verification routes', () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json().message).toBe('Verification record not found');
+  });
+
+  it('returns 400 for status request with whitespace bundleId', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/status/%20',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('Invalid path parameter');
+  });
+
+  it('returns 500 when status lookup throws non-Error values', async () => {
+    vi.spyOn(store, 'findByBundleHash').mockRejectedValueOnce('database unavailable');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/status/bundle-db-error',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      }
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({
+      error: 'Internal Server Error',
+      message: 'Unable to fetch verification status'
+    });
   });
 
   it('enforces 100 req/min per IP rate limit', async () => {

@@ -24,6 +24,8 @@ API defaults to `http://localhost:3001`, web runs on `http://localhost:3000`.
 - All `/api/v1/*` endpoints except `/api/v1/health` require `x-api-key`.
 - Configure API keys with `API_KEYS` and optional `API_KEY_SCOPES`.
 - CORS is deny-by-default in production unless `CORS_ALLOWLIST` is set.
+- JWT auth supports key rotation via `TRUSTSIGNAL_JWT_SECRETS` (comma-separated keys, newest first).
+- Structured request logging records `request_id`, route, latency, status, and bundle hash while redacting auth headers.
 - Revocation requires issuer signature headers:
   - `x-issuer-id`
   - `x-signature-timestamp`

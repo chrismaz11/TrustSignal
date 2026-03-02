@@ -3,11 +3,13 @@ import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { z } from 'zod';
 
 import { authenticateJWT } from '../middleware/auth.js';
+import { setRequestBundleHash } from '../middleware/logger.js';
+
 import { createRouteDependencies, type RouteDependencies } from './dependencies.js';
 
 const revokeBodySchema = z.object({
-  bundle_hash: z.string().min(1, 'bundle_hash is required'),
-  reason: z.string().min(3, 'reason is required')
+  bundle_hash: z.string().trim().min(1, 'bundle_hash is required'),
+  reason: z.string().trim().min(3, 'reason is required')
 });
 
 function hasAdminClaim(payload: JwtPayload | undefined): boolean {
@@ -59,6 +61,7 @@ export async function registerRevokeRoute(
     }
 
     const { bundle_hash: bundleHash, reason } = parsedBody.data;
+    setRequestBundleHash(request, bundleHash);
     const existingRecord = await deps.recordStore.findByBundleHash(bundleHash);
     if (!existingRecord) {
       return reply.code(404).send({

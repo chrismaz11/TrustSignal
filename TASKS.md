@@ -1,6 +1,6 @@
 # TrustSignal Execution Tasks
 
-Last updated: 2026-02-27
+Last updated: 2026-03-02
 Owner: Engineering
 Plan reference: `PROJECT_PLAN.md`
 
@@ -42,6 +42,14 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Replace permissive CORS with env-driven allowlist and safe production default.
 - [x] Improve grantor/owner matching with normalized overlap scoring.
 - [x] Remove SQLite CLI shelling from legacy `src/api` paths in favor of in-process DB access.
+
+### P1-S5 Session 6 Hardening (TrustSignal Runtime)
+- [x] Add structured JSON API logging middleware with request metadata and sensitive-data redaction.
+- [x] Harden JWT authentication with rotating key support (`TRUSTSIGNAL_JWT_SECRETS`).
+- [x] Add adversarial ZKML test suite (`tests/adversarial/zkml_adversarial.test.ts`).
+- [x] Raise scoped API runtime coverage above 90% with enforced Vitest thresholds.
+- [x] Add GitHub Actions CI workflow (`.github/workflows/ci.yml`) for lint, strict typecheck, coverage tests, and Rust build/tests.
+- [x] Publish OWASP audit and threat model deliverables (`security/audit_report.md`, `security/threat_model.md`).
 
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.

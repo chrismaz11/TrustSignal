@@ -4,9 +4,24 @@ export default defineConfig({
   test: {
     include: [
       'packages/core/src/**/*.test.ts',
-      'tests/integration/**/*.test.ts',
-      'tests/api/**/*.test.ts'
+      'tests/**/*.test.ts'
     ],
-    environment: 'node'
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: [
+        'src/core/**/*.ts',
+        'src/middleware/**/*.ts',
+        'src/routes/**/*.ts'
+      ],
+      exclude: ['**/*.d.ts'],
+      thresholds: {
+        lines: 90,
+        functions: 90,
+        branches: 90,
+        statements: 90
+      }
+    }
   }
 });

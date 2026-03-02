@@ -1,0 +1,100 @@
+name: TrustSignal CI
+
+on:
+  push:
+    branches:
+      - work
+      - master
+  pull_request:
+    branches:
+      - work
+      - master
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: |
+          npx eslint --no-ignore \
+            src/middleware/auth.ts \
+            src/middleware/logger.ts \
+            src/middleware/rateLimit.ts \
+            src/routes/app.ts \
+            src/routes/dependencies.ts \
+            src/routes/revoke.ts \
+            src/routes/status.ts \
+            src/routes/verify.ts \
+            src/core/verifyBundle.ts \
+            tests/api/routes.test.ts \
+            tests/integration/fullBundle.test.ts \
+            tests/middleware/auth.test.ts \
+            tests/middleware/logger.test.ts \
+            tests/middleware/rateLimit.test.ts \
+            tests/adversarial/zkml_adversarial.test.ts \
+            vitest.config.ts
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --strict --noEmit
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit/integration tests with coverage
+        run: npx vitest run --coverage
+
+  rust-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Halo2 verifier
+        working-directory: circuits/non_mem_gadget
+        run: cargo build --release --bin verify_bundle
+
+      - name: Run Halo2 tests
+        working-directory: circuits/non_mem_gadget
+        run: cargo test

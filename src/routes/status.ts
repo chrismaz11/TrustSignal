@@ -2,11 +2,13 @@ import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { z } from 'zod';
 
 import { authenticateJWT } from '../middleware/auth.js';
-import { createRouteDependencies, type RouteDependencies } from './dependencies.js';
+import { setRequestBundleHash } from '../middleware/logger.js';
 import type { CombinedResult } from '../types/VerificationResult.js';
 
+import { createRouteDependencies, type RouteDependencies } from './dependencies.js';
+
 const statusParamsSchema = z.object({
-  bundleId: z.string().min(1, 'bundleId is required')
+  bundleId: z.string().trim().min(1, 'bundleId is required')
 });
 
 interface StatusRoutePluginOptions extends FastifyPluginOptions {
@@ -49,14 +51,29 @@ export async function registerStatusRoute(
     }
 
     const { bundleId } = parsedParams.data;
-    const record = await deps.recordStore.findByBundleHash(bundleId);
-    if (!record) {
-      return reply.code(404).send({
-        error: 'Not Found',
-        message: 'Verification record not found'
+    setRequestBundleHash(request, bundleId);
+
+    try {
+      const record = await deps.recordStore.findByBundleHash(bundleId);
+      if (!record) {
+        return reply.code(404).send({
+          error: 'Not Found',
+          message: 'Verification record not found'
+        });
+      }
+
+      return reply.send(toCombinedResult(record));
+    } catch (error) {
+      request.log.error(
+        {
+          err: error instanceof Error ? error.message : String(error)
+        },
+        'status lookup failed'
+      );
+      return reply.code(500).send({
+        error: 'Internal Server Error',
+        message: 'Unable to fetch verification status'
       });
     }
-
-    return reply.send(toCombinedResult(record));
   });
 }

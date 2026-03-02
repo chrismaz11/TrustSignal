@@ -2,10 +2,12 @@ import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { z } from 'zod';
 
 import { authenticateJWT } from '../middleware/auth.js';
+import { setRequestBundleHash } from '../middleware/logger.js';
+
 import { createRouteDependencies, type RouteDependencies } from './dependencies.js';
 
 const verifyBundleBodySchema = z.object({
-  deed_hash: z.string().min(1, 'deed_hash is required'),
+  deed_hash: z.string().trim().min(1, 'deed_hash is required'),
   text_length: z.number().int().nonnegative(),
   num_signatures: z.number().int().nonnegative(),
   notary_present: z.boolean(),
@@ -59,6 +61,7 @@ export async function registerVerifyRoute(
 
     try {
       const body = parsedBody.data;
+      setRequestBundleHash(request, body.deed_hash);
       const combinedResult = await deps.verifyBundle({
         bundle_hash: body.deed_hash,
         deed_features: toFeatureVector(body)

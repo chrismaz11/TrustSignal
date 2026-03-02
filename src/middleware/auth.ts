@@ -22,6 +22,24 @@ function normalizeJwtPayload(decoded: string | JwtPayload): JwtPayload {
   return decoded;
 }
 
+function getJwtSecrets(): string[] {
+  const rotatingSecrets = process.env.TRUSTSIGNAL_JWT_SECRETS
+    ?.split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  if (rotatingSecrets && rotatingSecrets.length > 0) {
+    return rotatingSecrets;
+  }
+
+  const legacySecret = process.env.TRUSTSIGNAL_JWT_SECRET?.trim();
+  if (legacySecret) {
+    return [legacySecret];
+  }
+
+  return [];
+}
+
 export function authenticateJWT(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -39,21 +57,26 @@ export function authenticateJWT(
     return;
   }
 
-  const jwtSecret = process.env.TRUSTSIGNAL_JWT_SECRET;
-  if (!jwtSecret) {
+  const jwtSecrets = getJwtSecrets();
+  if (jwtSecrets.length === 0) {
     reply.code(500).send({
       error: 'Configuration Error',
-      message: 'TRUSTSIGNAL_JWT_SECRET is not configured'
+      message: 'TRUSTSIGNAL_JWT_SECRET or TRUSTSIGNAL_JWT_SECRETS must be configured'
     });
     done();
     return;
   }
 
-  try {
-    const decoded = verify(token, jwtSecret);
-    request.user = normalizeJwtPayload(decoded);
-    done();
-  } catch {
-    unauthorized(reply, 'Invalid or expired token', done);
+  for (const secret of jwtSecrets) {
+    try {
+      const decoded = verify(token, secret);
+      request.user = normalizeJwtPayload(decoded);
+      done();
+      return;
+    } catch {
+      // Continue to support key rotation: token may be signed with another configured key.
+    }
   }
+
+  unauthorized(reply, 'Invalid or expired token', done);
 }
