@@ -24,3 +24,4 @@ packages/core/registry/registry.private.jwk
 .aider*
 .vercel
 .env*.local
+circuits/non_mem_gadget/target/
