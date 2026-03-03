@@ -332,6 +332,20 @@ main,
 
 .dark-proof .section-kicker {
   color: #00d4aa;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.dark-proof .pricing-card__badge,
+.dark-proof .pricing-toggle__note,
+.dark-proof .enterprise-footnote,
+.dark-proof .pricing-footnote,
+.dark-proof .footer-legal,
+.dark-proof .footer-legal__links,
+.dark-proof .split-flow__panel,
+.dark-proof .pii-grid p {
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .dark-proof .card,
@@ -354,7 +368,8 @@ main,
 
 .hero-copyright {
   margin-top: var(--space-5);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
   letter-spacing: 0.04em;
   color: #8ca8be;
 }
@@ -409,7 +424,8 @@ main,
 .enterprise-stats__note {
   margin-top: var(--space-3);
   margin-bottom: 0;
-  font-size: 0.82rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
   color: #8ca8be;
   font-family: var(--font-mono);
 }
@@ -526,7 +542,8 @@ main,
 
 .split-flow__title {
   margin: 0 0 var(--space-2);
-  font-size: 0.7rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
