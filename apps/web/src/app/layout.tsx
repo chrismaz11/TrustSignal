@@ -8,8 +8,9 @@ const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-sans'
 const ibmPlexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '600'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'Deed Shield',
-  description: 'Pre-recording verification simulator for RON bundles.'
+  title: 'TrustSignal | Zero-Knowledge Verification Engine',
+  description:
+    'TrustSignal provides cryptographic verification for high-stakes records with deterministic policy checks and tamper-evident receipts.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -19,11 +20,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main>
           <header>
             <div>
-              <div className="badge">Deed Shield</div>
+              <div className="badge">TrustSignal</div>
               <h1>Verification Studio</h1>
-              <p className="muted">Simulate RON verification, receipts, and anchoring.</p>
+              <p className="muted">DeedShield pilot workflows with cryptographic verification and auditable receipts.</p>
             </div>
             <nav>
+              <Link href="/">Home</Link>
               <Link href="/verify">Verify</Link>
               <Link href="/receipts">Receipts</Link>
             </nav>
