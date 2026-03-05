@@ -89,6 +89,10 @@ All TrustSignal `/v1/*` endpoints require `Authorization: Bearer <jwt>`.
   - Anchors nullifier on Polygon Mumbai and marks record revoked.
 - `GET /v1/status/:bundleId`
   - Returns latest persisted verification state for a bundle hash.
+- `GET /api/v1/integrations/vanta/schema`
+  - Returns JSON Schema for Vanta-ingestable verification payloads.
+- `GET /api/v1/integrations/vanta/verification/:receiptId`
+  - Returns structured verification evidence payload (`trustsignal.vanta.verification_result.v1`).
 
 Reference implementation: `tests/api/routes.test.ts`.
 
@@ -148,6 +152,8 @@ For production, deploy with environment variables managed in Vercel project sett
 - `docs/final/01_EXECUTIVE_SUMMARY.md`
 - `docs/final/11_NSF_GRANT_WHITEPAPER.md`
 - `docs/final/12_R_AND_D_LOG.md`
+- `docs/final/13_SOC2_READINESS_KICKOFF.md`
+- `docs/final/14_VANTA_INTEGRATION_USE_CASE.md`
 - `TASKS.md`
 - `CHANGELOG.md`
 

@@ -82,6 +82,136 @@ const bundleSchema = z.object({
 
 const verifyInputSchema = bundleSchema;
 
+const vantaVerificationResultSchema = z.object({
+  schemaVersion: z.literal('trustsignal.vanta.verification_result.v1'),
+  generatedAt: z.string().datetime(),
+  vendor: z.object({
+    name: z.literal('TrustSignal'),
+    module: z.literal('DeedShield'),
+    environment: z.string(),
+    apiVersion: z.literal('v1')
+  }),
+  subject: z.object({
+    receiptId: z.string().min(1),
+    receiptHash: z.string().min(1),
+    policyProfile: z.string().min(1),
+    createdAt: z.string().datetime()
+  }),
+  result: z.object({
+    decision: z.enum(['ALLOW', 'FLAG', 'BLOCK']),
+    normalizedStatus: z.enum(['PASS', 'REVIEW', 'FAIL']),
+    riskScore: z.number().int().min(0).max(100),
+    reasons: z.array(z.string()),
+    checks: z.array(z.object({
+      checkId: z.string(),
+      status: z.string(),
+      details: z.string().optional()
+    })),
+    fraudRisk: z.object({
+      score: z.number(),
+      band: z.string(),
+      reasons: z.array(z.string())
+    }).nullable(),
+    zkpAttestation: z.object({
+      scheme: z.string(),
+      conformance: z.boolean().optional()
+    }).nullable()
+  }),
+  controls: z.object({
+    revoked: z.boolean(),
+    anchorStatus: z.string(),
+    anchored: z.boolean()
+  })
+});
+
+const vantaVerificationResultJsonSchema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  $id: 'https://trustsignal.dev/schemas/vanta/verification-result-v1.json',
+  title: 'TrustSignal Vanta Verification Result',
+  type: 'object',
+  additionalProperties: false,
+  required: ['schemaVersion', 'generatedAt', 'vendor', 'subject', 'result', 'controls'],
+  properties: {
+    schemaVersion: { const: 'trustsignal.vanta.verification_result.v1' },
+    generatedAt: { type: 'string', format: 'date-time' },
+    vendor: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name', 'module', 'environment', 'apiVersion'],
+      properties: {
+        name: { const: 'TrustSignal' },
+        module: { const: 'DeedShield' },
+        environment: { type: 'string' },
+        apiVersion: { const: 'v1' }
+      }
+    },
+    subject: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['receiptId', 'receiptHash', 'policyProfile', 'createdAt'],
+      properties: {
+        receiptId: { type: 'string', minLength: 1 },
+        receiptHash: { type: 'string', minLength: 1 },
+        policyProfile: { type: 'string', minLength: 1 },
+        createdAt: { type: 'string', format: 'date-time' }
+      }
+    },
+    result: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['decision', 'normalizedStatus', 'riskScore', 'reasons', 'checks', 'fraudRisk', 'zkpAttestation'],
+      properties: {
+        decision: { enum: ['ALLOW', 'FLAG', 'BLOCK'] },
+        normalizedStatus: { enum: ['PASS', 'REVIEW', 'FAIL'] },
+        riskScore: { type: 'integer', minimum: 0, maximum: 100 },
+        reasons: { type: 'array', items: { type: 'string' } },
+        checks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['checkId', 'status'],
+            properties: {
+              checkId: { type: 'string' },
+              status: { type: 'string' },
+              details: { type: 'string' }
+            }
+          }
+        },
+        fraudRisk: {
+          type: ['object', 'null'],
+          additionalProperties: false,
+          required: ['score', 'band', 'reasons'],
+          properties: {
+            score: { type: 'number' },
+            band: { type: 'string' },
+            reasons: { type: 'array', items: { type: 'string' } }
+          }
+        },
+        zkpAttestation: {
+          type: ['object', 'null'],
+          additionalProperties: false,
+          required: ['scheme'],
+          properties: {
+            scheme: { type: 'string' },
+            conformance: { type: 'boolean' }
+          }
+        }
+      }
+    },
+    controls: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['revoked', 'anchorStatus', 'anchored'],
+      properties: {
+        revoked: { type: 'boolean' },
+        anchorStatus: { type: 'string' },
+        anchored: { type: 'boolean' }
+      }
+    }
+  }
+} as const;
+
 const deedParsedSchema = z.object({
   jurisdiction: z.object({
     state: z.literal('IL'),
@@ -168,6 +298,66 @@ function receiptFromDb(record: ReceiptRecord) {
     // Revocation is returned in the envelope, but not part of the core signed receipt structure so far
     // unless v2 schema changes that. We'll return it in the API.
   };
+}
+
+function normalizeDecisionStatus(decision: 'ALLOW' | 'FLAG' | 'BLOCK'): 'PASS' | 'REVIEW' | 'FAIL' {
+  if (decision === 'ALLOW') return 'PASS';
+  if (decision === 'FLAG') return 'REVIEW';
+  return 'FAIL';
+}
+
+function toVantaVerificationResult(record: ReceiptRecord) {
+  const receipt = receiptFromDb(record);
+  const fraudRiskRaw = receipt.fraudRisk as Record<string, unknown> | undefined;
+  const zkpRaw = receipt.zkpAttestation as Record<string, unknown> | undefined;
+
+  const payload = {
+    schemaVersion: 'trustsignal.vanta.verification_result.v1' as const,
+    generatedAt: new Date().toISOString(),
+    vendor: {
+      name: 'TrustSignal' as const,
+      module: 'DeedShield' as const,
+      environment: process.env.NODE_ENV || 'development',
+      apiVersion: 'v1' as const
+    },
+    subject: {
+      receiptId: record.id,
+      receiptHash: record.receiptHash,
+      policyProfile: record.policyProfile,
+      createdAt: record.createdAt.toISOString()
+    },
+    result: {
+      decision: record.decision as 'ALLOW' | 'FLAG' | 'BLOCK',
+      normalizedStatus: normalizeDecisionStatus(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK'),
+      riskScore: record.riskScore,
+      reasons: JSON.parse(record.reasons) as string[],
+      checks: (JSON.parse(record.checks) as Array<{ checkId: string; status: string; details?: string }>).map((check) => ({
+        checkId: check.checkId,
+        status: check.status,
+        details: typeof check.details === 'string' ? check.details : undefined
+      })),
+      fraudRisk: fraudRiskRaw
+        ? {
+          score: Number(fraudRiskRaw.score ?? 0),
+          band: String(fraudRiskRaw.band ?? 'UNKNOWN'),
+          reasons: Array.isArray(fraudRiskRaw.reasons) ? fraudRiskRaw.reasons.map((v) => String(v)) : []
+        }
+        : null,
+      zkpAttestation: zkpRaw
+        ? {
+          scheme: String(zkpRaw.scheme ?? 'UNKNOWN'),
+          conformance: typeof zkpRaw.conformance === 'boolean' ? zkpRaw.conformance : undefined
+        }
+        : null
+    },
+    controls: {
+      revoked: record.revoked,
+      anchorStatus: record.anchorStatus,
+      anchored: record.anchorStatus === 'ANCHORED'
+    }
+  };
+
+  return vantaVerificationResultSchema.parse(payload);
 }
 
 class DatabaseCountyVerifier implements CountyVerifier {
@@ -428,6 +618,28 @@ export async function buildServer() {
   app.get('/api/v1/metrics', async (_request, reply) => {
     reply.header('Content-Type', metricsRegistry.contentType);
     return reply.send(await metricsRegistry.metrics());
+  });
+
+  app.get('/api/v1/integrations/vanta/schema', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async () => {
+    return {
+      schemaVersion: 'trustsignal.vanta.verification_result.v1',
+      schema: vantaVerificationResultJsonSchema
+    };
+  });
+
+  app.get('/api/v1/integrations/vanta/verification/:receiptId', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const { receiptId } = request.params as { receiptId: string };
+    const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
+    if (!record) {
+      return reply.code(404).send({ error: 'Receipt not found' });
+    }
+    return reply.send(toVantaVerificationResult(record));
   });
 
   app.post('/api/v1/verify/attom', {

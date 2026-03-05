@@ -89,6 +89,47 @@ describe.sequential('Security hardening: auth, scopes, and per-key throttling', 
     expect(forbidden.json().error).toContain('missing scope');
   });
 
+  it('exposes Vanta schema and structured verification payload', async () => {
+    const schemaRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/integrations/vanta/schema',
+      headers: { 'x-api-key': apiKeyRead }
+    });
+
+    expect(schemaRes.statusCode).toBe(200);
+    expect(schemaRes.json().schemaVersion).toBe('trustsignal.vanta.verification_result.v1');
+
+    const syntheticRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/synthetic',
+      headers: { 'x-api-key': apiKeyVerify }
+    });
+    expect(syntheticRes.statusCode).toBe(200);
+
+    const verifyRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/verify',
+      headers: { 'x-api-key': apiKeyVerify },
+      payload: syntheticRes.json()
+    });
+    expect(verifyRes.statusCode).toBe(200);
+
+    const receiptId = verifyRes.json().receiptId as string;
+    const vantaRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/integrations/vanta/verification/${receiptId}`,
+      headers: { 'x-api-key': apiKeyRead }
+    });
+
+    expect(vantaRes.statusCode).toBe(200);
+    const body = vantaRes.json();
+    expect(body.schemaVersion).toBe('trustsignal.vanta.verification_result.v1');
+    expect(body.vendor.name).toBe('TrustSignal');
+    expect(body.subject.receiptId).toBe(receiptId);
+    expect(['ALLOW', 'FLAG', 'BLOCK']).toContain(body.result.decision);
+    expect(['PASS', 'REVIEW', 'FAIL']).toContain(body.result.normalizedStatus);
+  });
+
   it('enforces per-api-key rate limiting', async () => {
     const first = await app.inject({
       method: 'GET',

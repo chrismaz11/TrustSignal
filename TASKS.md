@@ -49,6 +49,13 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Add Prisma migration to rename `rawInputs` to `rawInputsHash`.
 - [x] Update `.env.example` files with placeholder-only verifier and trust source configuration.
 
+### P1-S6 Vanta Partner Readiness
+- [x] Add live structured verification endpoint for Vanta ingestion (`GET /api/v1/integrations/vanta/verification/:receiptId`).
+- [x] Publish JSON schema endpoint for integration validation (`GET /api/v1/integrations/vanta/schema`).
+- [x] Start SOC 2 readiness process documentation (`docs/final/13_SOC2_READINESS_KICKOFF.md`).
+- [x] Document at least one integration pilot use case (`docs/final/14_VANTA_INTEGRATION_USE_CASE.md`).
+- [ ] Capture deployed endpoint evidence (staging/production probes + payload validation logs).
+
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.
 - [ ] Define idempotency, retry, and error semantics.

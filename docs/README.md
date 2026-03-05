@@ -15,6 +15,8 @@ This folder is organized into active, canonical documents and archived historica
 - `final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`
 - `final/11_NSF_GRANT_WHITEPAPER.md`
 - `final/12_R_AND_D_LOG.md`
+- `final/13_SOC2_READINESS_KICKOFF.md`
+- `final/14_VANTA_INTEGRATION_USE_CASE.md`
 
 ## Governance and Security Tracking
 - `PRODUCTION_GOVERNANCE_TRACKER.md`

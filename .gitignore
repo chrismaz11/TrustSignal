@@ -27,3 +27,4 @@ packages/core/registry/registry.private.jwk
 circuits/non_mem_gadget/target/
 ml/.venv/
 ml/zkml/deed_cnn.pk
+tmp/
