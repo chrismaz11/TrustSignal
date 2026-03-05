@@ -1,4 +1,4 @@
-import { AttomClient, AttomLookupResult, AttomProperty } from '@deed-shield/core';
+import { AttomClient, AttomLookupResult, AttomProperty } from '../../../../packages/core/dist/index.js';
 
 type Options = {
   apiKey: string;

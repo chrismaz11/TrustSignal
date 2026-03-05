@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 
-import { TrustRegistry, verifyRegistrySignature } from '@deed-shield/core';
+import { TrustRegistry, verifyRegistrySignature } from '../../../packages/core/dist/index.js';
 
 const registryDir = path.resolve(__dirname, '../../../packages/core/registry');
 

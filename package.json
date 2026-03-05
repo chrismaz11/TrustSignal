@@ -24,6 +24,7 @@
     "zod": "^3.25.76"
   },
   "scripts": {
+    "postinstall": "npm --workspace packages/core run build",
     "dev": "concurrently \"npm:dev --workspace apps/api\" \"npm:dev --workspace apps/web\"",
     "build": "npm -ws run build",
     "lint": "eslint .",

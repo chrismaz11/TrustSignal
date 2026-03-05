@@ -1,15 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "apps/api/api/[...path].ts": {
-      "runtime": "@vercel/node@3.2.24",
-      "maxDuration": 30
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/[...path].ts",
+      "use": "@vercel/node@3.2.24",
+      "config": {
+        "includeFiles": [
+          "packages/core/dist/**"
+        ]
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "apps/api/api/[...path].ts"
+      "dest": "api/[...path].ts"
     }
   ],
   "headers": [

@@ -28,14 +28,14 @@ import {
   CountyVerifier,
   nameOverlapScore,
   normalizeName
-} from '@deed-shield/core';
+} from '../../../packages/core/dist/index.js';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
 import { anchorReceipt } from './anchor.js';
 import { ensureDatabase } from './db.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
-import { attomCrossCheck, DeedParsed } from '@deed-shield/core';
+import { attomCrossCheck, DeedParsed } from '../../../packages/core/dist/index.js';
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 import {
@@ -592,9 +592,37 @@ export async function buildServer() {
       requestId: request.id
     })
   });
-  await ensureDatabase(prisma);
+  let databaseReady = true;
+  let databaseInitError: string | null = null;
+  try {
+    await ensureDatabase(prisma);
+  } catch (error) {
+    databaseReady = false;
+    databaseInitError = error instanceof Error ? error.message : 'database_initialization_failed';
+    app.log.error({ err: error }, 'database initialization failed; non-DB routes remain available');
+  }
 
-  app.get('/api/v1/health', async () => ({ status: 'ok' }));
+  const dbOptionalRoutes = new Set([
+    '/api/v1/health',
+    '/api/v1/status',
+    '/api/v1/metrics',
+    '/api/v1/integrations/vanta/schema'
+  ]);
+
+  app.addHook('preHandler', async (request, reply) => {
+    if (databaseReady) return;
+    const route = (request.routeOptions.url || request.url.split('?')[0] || '').toString();
+    if (dbOptionalRoutes.has(route)) return;
+    return reply.code(503).send({ error: 'Database unavailable' });
+  });
+
+  app.get('/api/v1/health', async () => ({
+    status: databaseReady ? 'ok' : 'degraded',
+    database: {
+      ready: databaseReady,
+      initError: databaseInitError
+    }
+  }));
   app.get('/api/v1/status', async (request) => {
     const forwardedProto = normalizeForwardedProto(request.headers['x-forwarded-proto']);
     return {
@@ -608,7 +636,9 @@ export async function buildServer() {
         forwardedHttps: forwardedProto === 'https'
       },
       database: {
-        sslModeRequired: databaseUrlHasRequiredSslMode(process.env.DATABASE_URL)
+        sslModeRequired: databaseUrlHasRequiredSslMode(process.env.DATABASE_URL),
+        ready: databaseReady,
+        initError: databaseInitError
       },
       trustRegistry: {
         source: process.env.TRUST_REGISTRY_SOURCE || 'local-signed-registry'
