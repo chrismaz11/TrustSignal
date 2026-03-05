@@ -15,11 +15,9 @@
 ## Current Blockers
 
 1. Worktree cleanliness is unresolved (tracked and untracked changes exist).
-2. Submodule state (`Deed_Shield`) is modified and should be normalized before external branch handoff.
-3. Partner API contract endpoints are drafted but not yet implemented as dedicated `/partner/v1/*` runtime routes.
+2. Partner API contract endpoints are drafted but not yet implemented as dedicated `/partner/v1/*` runtime routes.
 
 ## Fastest Path to Green
 
 1. Remove/archive accidental artifacts and commit intentional code changes.
-2. Confirm submodule pointer target and commit policy.
-3. Decide whether to ship `/partner/v1/*` aliases now or present mapping to existing `/api/v1/*` endpoints during call.
+2. Decide whether to ship `/partner/v1/*` aliases now or present mapping to existing `/api/v1/*` endpoints during call.

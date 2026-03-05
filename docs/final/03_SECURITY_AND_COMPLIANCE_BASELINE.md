@@ -21,5 +21,5 @@ Security and compliance claims require reproducible evidence:
 ## Source of Record
 - `../PRODUCTION_GOVERNANCE_TRACKER.md`
 - `../SECURITY.md`
-- `../../Deed_Shield/SECURITY_CHECKLIST.md`
+- `../../SECURITY.md`
 - `../legal/*.md` for policy/legal language

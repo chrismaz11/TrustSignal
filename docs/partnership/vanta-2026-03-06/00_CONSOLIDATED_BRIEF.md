@@ -42,7 +42,6 @@ Tracked modified:
 - `package-lock.json`
 - `packages/contracts/package.json`
 - `packages/core/tsconfig.tsbuildinfo`
-- Submodule pointer changed: `Deed_Shield`
 
 Untracked artifacts:
 - `.DS_Store`, `docs/.DS_Store`
@@ -54,7 +53,7 @@ Untracked artifacts:
 
 Leak/separation checks:
 - No obvious marketing-site keyword leakage found in `apps/api/src`.
-- Submodule remains isolated (`Deed_Shield` tracked as submodule), but pointer/worktree state is dirty and should be normalized before external handoff.
+- Current demo path runs fully from this repository.
 
 ## 4) Integration Story in One Sentence
 

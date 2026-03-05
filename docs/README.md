@@ -23,7 +23,7 @@ This folder is organized into active, canonical documents and archived historica
 - `SECURITY.md`
 - `verification.md`
 - `../PROJECT_PLAN.md`
-- `../Deed_Shield/SECURITY_CHECKLIST.md`
+- `../SECURITY.md`
 
 ## Policies and Legal
 - `legal/privacy-policy.md`
