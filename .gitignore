@@ -28,3 +28,9 @@ circuits/non_mem_gadget/target/
 ml/.venv/
 ml/zkml/deed_cnn.pk
 tmp/
+
+# Local workstation and generated artifacts
+.DS_Store
+**/.DS_Store
+fossa.debug.zip
+output/

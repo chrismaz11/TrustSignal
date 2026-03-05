@@ -3,7 +3,18 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const notifier = require('node-notifier');
+let notifier = {
+    notify: ({ title, message }) => {
+        console.log(`[notify] ${title}: ${message}`);
+    }
+};
+try {
+    // Optional desktop notifications; watcher still runs without this package.
+    // eslint-disable-next-line global-require
+    notifier = require('node-notifier');
+} catch (_err) {
+    // no-op fallback to console notifications
+}
 
 const WATCH_DIR = path.join(__dirname, '../watched_folder');
 const API_URL = 'http://127.0.0.1:3001/api/v1/verify';

@@ -1,0 +1,13 @@
+{
+  "idempotencyKey": "demo-real-estate-20260306-001",
+  "externalReference": "vanta-control-realestate-01",
+  "subjectType": "property",
+  "documentType": "property_deed",
+  "documentCommitment": "0x4ce3a69b2cb4854f8f4e9d89e2cb38ce4d9482d937f3418d57a6973012b6e278",
+  "policyProfile": "STANDARD_IL",
+  "metadata": {
+    "county": "Cook",
+    "state": "IL",
+    "parcelId": "17-20-226-014-0000"
+  }
+}

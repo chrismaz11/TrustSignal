@@ -1,0 +1,348 @@
+openapi: 3.1.0
+info:
+  title: TrustSignal Partner Integration API (Vanta Proposal)
+  version: 0.9.0-draft
+  description: |
+    Draft partnership API contract for Vanta integration pilot.
+    This contract is designed for Vanta workflow ingestion and maps to existing TrustSignal v1 capabilities.
+servers:
+  - url: https://api.trustsignal.ai/partner/v1
+    description: Production partner endpoint
+  - url: https://staging-api.trustsignal.ai/partner/v1
+    description: Staging partner endpoint
+security:
+  - ApiKeyAuth: []
+paths:
+  /verify/document:
+    post:
+      summary: Submit a document verification request
+      operationId: submitDocumentVerification
+      tags: [Verification]
+      description: Create an asynchronous verification job and return a verification ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyDocumentRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /verify/{verificationId}/status:
+    get:
+      summary: Get verification status
+      operationId: getVerificationStatus
+      tags: [Verification]
+      parameters:
+        - $ref: '#/components/parameters/VerificationId'
+      responses:
+        '200':
+          description: Verification status response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /verify/{verificationId}/receipt:
+    get:
+      summary: Fetch cryptographic receipt
+      operationId: getVerificationReceipt
+      tags: [Verification]
+      parameters:
+        - $ref: '#/components/parameters/VerificationId'
+      responses:
+        '200':
+          description: Signed cryptographic receipt payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationReceiptResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Partner-scoped API key (minimum scope: verify/read)
+    OAuth2ClientCredentials:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.trustsignal.ai/oauth/token
+          scopes:
+            verify: Submit verification requests
+            read: Read status and receipts
+    MutualTLS:
+      type: mutualTLS
+  parameters:
+    VerificationId:
+      name: verificationId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Request payload validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Authenticated but insufficient scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Verification ID not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Duplicate request or idempotency conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    RateLimited:
+      description: Rate limit exceeded; retry with backoff
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal service error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    VerifyDocumentRequest:
+      type: object
+      required:
+        - idempotencyKey
+        - subjectType
+        - documentType
+        - documentCommitment
+        - policyProfile
+      properties:
+        idempotencyKey:
+          type: string
+          description: Unique request key for safe retries
+        externalReference:
+          type: string
+          description: Vanta workflow or ticket ID
+        subjectType:
+          type: string
+          enum: [person, organization, property]
+        documentType:
+          type: string
+          examples: [property_deed, medical_license, notary_certificate]
+        documentCommitment:
+          type: string
+          description: Hash/commitment generated from source document
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Non-sensitive contextual fields for policy checks
+        policyProfile:
+          type: string
+          examples: [STANDARD_IL, HEALTHCARE_US, LEGAL_US]
+        callback:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+            secretRef:
+              type: string
+              description: Partner-managed secret identifier for webhook signing
+    VerifyAcceptedResponse:
+      type: object
+      required: [verificationId, status, submittedAt]
+      properties:
+        verificationId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING]
+        submittedAt:
+          type: string
+          format: date-time
+        estimatedCompletionMs:
+          type: integer
+          example: 2000
+    VerificationStatusResponse:
+      type: object
+      required:
+        - verificationId
+        - state
+        - decision
+        - normalizedStatus
+        - updatedAt
+      properties:
+        verificationId:
+          type: string
+        state:
+          type: string
+          enum: [PENDING, COMPLETE, FAILED]
+        decision:
+          type: string
+          enum: [ALLOW, FLAG, BLOCK]
+        normalizedStatus:
+          type: string
+          enum: [PASS, REVIEW, FAIL]
+        riskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        reasons:
+          type: array
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+    VerificationReceiptResponse:
+      type: object
+      required:
+        - schemaVersion
+        - receipt
+        - controls
+      properties:
+        schemaVersion:
+          type: string
+          example: trustsignal.vanta.verification_result.v1
+        receipt:
+          type: object
+          required:
+            - receiptId
+            - receiptHash
+            - inputsCommitment
+            - createdAt
+            - policyProfile
+            - checks
+            - decision
+            - zkpAttestation
+          properties:
+            receiptId:
+              type: string
+            receiptHash:
+              type: string
+            inputsCommitment:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            policyProfile:
+              type: string
+            checks:
+              type: array
+              items:
+                $ref: '#/components/schemas/CheckResult'
+            decision:
+              type: string
+              enum: [ALLOW, FLAG, BLOCK]
+            reasons:
+              type: array
+              items:
+                type: string
+            zkpAttestation:
+              type: object
+              properties:
+                scheme:
+                  type: string
+                  example: GROTH16-MOCK-v1
+                proofRef:
+                  type: string
+                verifierKeyRef:
+                  type: string
+            signature:
+              type: object
+              properties:
+                algorithm:
+                  type: string
+                  example: sha256
+                value:
+                  type: string
+        controls:
+          type: object
+          required: [revoked, anchorStatus, anchored]
+          properties:
+            revoked:
+              type: boolean
+            anchorStatus:
+              type: string
+              example: ANCHORED
+            anchored:
+              type: boolean
+            txHash:
+              type: string
+    CheckResult:
+      type: object
+      required: [checkId, status]
+      properties:
+        checkId:
+          type: string
+        status:
+          type: string
+          enum: [PASS, WARN, FAIL, FLAG]
+        details:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error, message, traceId]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
