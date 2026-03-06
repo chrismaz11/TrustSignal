@@ -50,7 +50,7 @@ Set real values in `.env.local` for:
 - `TRUSTSIGNAL_JWT_SECRETS` (or `TRUSTSIGNAL_JWT_SECRET`)
 - `POLYGON_MUMBAI_RPC_URL`
 - `POLYGON_MUMBAI_PRIVATE_KEY`
-- `DATABASE_URL`
+- `DATABASE_URL` (or `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` / `SUPABASE_DIRECT_URL`; or set `SUPABASE_DB_PASSWORD` and use Supabase CLI pooler metadata)
 
 Never commit real secrets.
 
@@ -93,6 +93,14 @@ All TrustSignal `/v1/*` endpoints require `Authorization: Bearer <jwt>`.
   - Returns JSON Schema for Vanta-ingestable verification payloads.
 - `GET /api/v1/integrations/vanta/verification/:receiptId`
   - Returns structured verification evidence payload (`trustsignal.vanta.verification_result.v1`).
+- `GET /api/v1/registry/sources`
+  - Returns configured primary-source registry adapters (OFAC/OIG/SAM/UK/BIS/CSL/NPPES/SEC/FDIC), freshness metadata, and circuit mapping.
+- `POST /api/v1/registry/verify`
+  - Runs a source-specific check with cached results and returns normalized match evidence (`MATCH`, `NO_MATCH`, `COMPLIANCE_GAP`).
+- `POST /api/v1/registry/verify-batch`
+  - Screens one subject across multiple registry sources and returns an aggregate summary including `complianceGapSources`.
+- `GET /api/v1/registry/jobs` and `GET /api/v1/registry/jobs/:jobId`
+  - Exposes ZK oracle dispatch job state for registry checks (`QUEUED`, `DISPATCHED`, `SKIPPED`, `FAILED`).
 
 Reference implementation: `tests/api/routes.test.ts`.
 
@@ -104,6 +112,7 @@ Reference implementation: `tests/api/routes.test.ts`.
 - Structured request logging with authorization redaction
 - Fail-closed behavior on proof verification errors
 - No stack traces or raw internals in API responses
+- Primary-source registry guardrails with explicit `COMPLIANCE_GAP` outcomes when authoritative endpoints are unavailable or non-compliant
 
 Detailed reports:
 

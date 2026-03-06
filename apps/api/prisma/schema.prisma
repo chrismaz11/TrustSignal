@@ -48,3 +48,55 @@ model Notary {
   status          String
   commissionState String
 }
+
+model RegistrySource {
+  id                   String          @id
+  name                 String
+  category             String
+  endpoint             String
+  zkCircuit            String
+  active               Boolean         @default(true)
+  freeTier             Boolean         @default(true)
+  fetchIntervalMinutes Int             @default(1440)
+  parserVersion        String          @default("v1")
+  lastFetchedAt        DateTime?
+  lastSuccessAt        DateTime?
+  lastError            String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  caches               RegistryCache[]
+  jobs                 RegistryOracleJob[]
+}
+
+model RegistryCache {
+  id           String         @id @default(cuid())
+  sourceId     String
+  subjectHash  String
+  responseJson String
+  status       String
+  fetchedAt    DateTime       @default(now())
+  expiresAt    DateTime
+  sourceVersion String?
+  source       RegistrySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, subjectHash])
+  @@index([expiresAt])
+}
+
+model RegistryOracleJob {
+  id              String         @id @default(cuid())
+  sourceId        String
+  subjectHash     String
+  zkCircuit       String
+  inputCommitment String
+  status          String
+  resultStatus    String?
+  proofUri        String?
+  error           String?
+  createdAt       DateTime       @default(now())
+  completedAt     DateTime?
+  source          RegistrySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, createdAt])
+  @@index([status])
+}

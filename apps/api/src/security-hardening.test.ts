@@ -11,6 +11,13 @@ const revocationSigner = Wallet.createRandom();
 
 type EnvSnapshot = Record<string, string | undefined>;
 
+const hasDatabaseUrl =
+  Boolean(process.env.DATABASE_URL) ||
+  Boolean(process.env.SUPABASE_DB_URL) ||
+  Boolean(process.env.SUPABASE_POOLER_URL) ||
+  Boolean(process.env.SUPABASE_DIRECT_URL);
+const describeWithDatabase = hasDatabaseUrl ? describe.sequential : describe.skip;
+
 function snapshotEnv(keys: string[]): EnvSnapshot {
   return Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 }
@@ -25,7 +32,7 @@ function restoreEnv(snapshot: EnvSnapshot) {
   }
 }
 
-describe.sequential('Security hardening: auth, scopes, and per-key throttling', () => {
+describeWithDatabase('Security hardening: auth, scopes, and per-key throttling', () => {
   let app: FastifyInstance;
   let envSnapshot: EnvSnapshot;
 

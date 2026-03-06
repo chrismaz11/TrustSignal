@@ -4,7 +4,14 @@ import { Buffer } from 'node:buffer';
 import { FastifyInstance } from 'fastify';
 import { Wallet } from 'ethers';
 
-describe('V2 Feature Integration', () => {
+const hasDatabaseUrl =
+  Boolean(process.env.DATABASE_URL) ||
+  Boolean(process.env.SUPABASE_DB_URL) ||
+  Boolean(process.env.SUPABASE_POOLER_URL) ||
+  Boolean(process.env.SUPABASE_DIRECT_URL);
+const describeWithDatabase = hasDatabaseUrl ? describe : describe.skip;
+
+describeWithDatabase('V2 Feature Integration', () => {
     let app: FastifyInstance;
     const apiKey = 'test-api-key';
     const revocationSigner = Wallet.createRandom();
@@ -30,6 +37,7 @@ describe('V2 Feature Integration', () => {
             url: '/api/v1/synthetic',
             headers: { 'x-api-key': apiKey }
         });
+        expect(syntheticRes.statusCode).toBe(200);
         const bundle = syntheticRes.json();
 
         // Add PDF content for Risk Engine (Base64)

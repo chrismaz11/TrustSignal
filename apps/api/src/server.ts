@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
@@ -39,6 +41,12 @@ import { attomCrossCheck, DeedParsed } from '../../../packages/core/dist/index.j
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 import {
+  createRegistryAdapterService,
+  getOfficialRegistrySourceName,
+  REGISTRY_SOURCE_IDS,
+  RegistrySourceId
+} from './services/registryAdapters.js';
+import {
   buildSecurityConfig,
   getApiRateLimitKey,
   isCorsOriginAllowed,
@@ -46,8 +54,56 @@ import {
   verifyRevocationHeaders
 } from './security.js';
 
+function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  const direct = (env.DATABASE_URL || '').trim();
+  if (direct) return direct;
+
+  const candidates = [
+    env.SUPABASE_DB_URL,
+    env.SUPABASE_POOLER_URL,
+    env.SUPABASE_DIRECT_URL
+  ];
+
+  for (const candidate of candidates) {
+    const value = (candidate || '').trim();
+    if (value) {
+      env.DATABASE_URL = value;
+      return value;
+    }
+  }
+
+  const supabasePassword = (env.SUPABASE_DB_PASSWORD || '').trim();
+  if (supabasePassword) {
+    const poolerCandidates = [
+      path.resolve(process.cwd(), 'supabase/.temp/pooler-url'),
+      path.resolve(process.cwd(), '../../supabase/.temp/pooler-url'),
+      path.resolve(process.env.HOME || '', 'supabase/.temp/pooler-url')
+    ];
+    for (const poolerPath of poolerCandidates) {
+      try {
+        const rawPoolerUrl = readFileSync(poolerPath, 'utf-8').trim();
+        if (!rawPoolerUrl) continue;
+        const parsed = new URL(rawPoolerUrl);
+        if (!parsed.password) {
+          parsed.password = encodeURIComponent(supabasePassword);
+        }
+        parsed.searchParams.set('sslmode', 'require');
+        const resolved = parsed.toString();
+        env.DATABASE_URL = resolved;
+        return resolved;
+      } catch {
+        // continue searching
+      }
+    }
+  }
+
+  return null;
+}
+
+resolveDatabaseUrl();
 const prisma = new PrismaClient();
 const REQUEST_START = Symbol('requestStartMs');
+const registrySourceIdEnum = z.enum(REGISTRY_SOURCE_IDS);
 
 const bundleSchema = z.object({
   bundleId: z.string().min(1),
@@ -77,10 +133,27 @@ const bundleSchema = z.object({
     propertyAddress: z.string().optional(),
     grantorName: z.string().optional()
   }).optional(),
+  registryScreening: z
+    .object({
+      subjectName: z.string().trim().min(2).max(256).optional(),
+      sourceIds: z.array(registrySourceIdEnum).min(1).max(50).optional(),
+      forceRefresh: z.boolean().optional()
+    })
+    .optional(),
   timestamp: z.string().datetime().optional()
 });
 
 const verifyInputSchema = bundleSchema;
+const registryVerifyInputSchema = z.object({
+  sourceId: registrySourceIdEnum,
+  subjectName: z.string().trim().min(2).max(256),
+  forceRefresh: z.boolean().optional()
+});
+const registryVerifyBatchInputSchema = z.object({
+  sourceIds: z.array(registrySourceIdEnum).min(1).max(50),
+  subjectName: z.string().trim().min(2).max(256),
+  forceRefresh: z.boolean().optional()
+});
 
 const vantaVerificationResultSchema = z.object({
   schemaVersion: z.literal('trustsignal.vanta.verification_result.v1'),
@@ -105,7 +178,8 @@ const vantaVerificationResultSchema = z.object({
     checks: z.array(z.object({
       checkId: z.string(),
       status: z.string(),
-      details: z.string().optional()
+      details: z.string().optional(),
+      source_name: z.string().optional()
     })),
     fraudRisk: z.object({
       score: z.number(),
@@ -174,7 +248,8 @@ const vantaVerificationResultJsonSchema = {
             properties: {
               checkId: { type: 'string' },
               status: { type: 'string' },
-              details: { type: 'string' }
+              details: { type: 'string' },
+              source_name: { type: 'string' }
             }
           }
         },
@@ -306,6 +381,12 @@ function normalizeDecisionStatus(decision: 'ALLOW' | 'FLAG' | 'BLOCK'): 'PASS' |
   return 'FAIL';
 }
 
+function resolveRegistrySourceNameFromCheckId(checkId: string): string | undefined {
+  if (!checkId.startsWith('registry-')) return undefined;
+  const sourceId = checkId.slice('registry-'.length);
+  return getOfficialRegistrySourceName(sourceId);
+}
+
 function toVantaVerificationResult(record: ReceiptRecord) {
   const receipt = receiptFromDb(record);
   const fraudRiskRaw = receipt.fraudRisk as Record<string, unknown> | undefined;
@@ -331,11 +412,15 @@ function toVantaVerificationResult(record: ReceiptRecord) {
       normalizedStatus: normalizeDecisionStatus(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK'),
       riskScore: record.riskScore,
       reasons: JSON.parse(record.reasons) as string[],
-      checks: (JSON.parse(record.checks) as Array<{ checkId: string; status: string; details?: string }>).map((check) => ({
-        checkId: check.checkId,
-        status: check.status,
-        details: typeof check.details === 'string' ? check.details : undefined
-      })),
+      checks: (JSON.parse(record.checks) as Array<{ checkId: string; status: string; details?: string }>).map((check) => {
+        const sourceName = resolveRegistrySourceNameFromCheckId(check.checkId);
+        return {
+          checkId: check.checkId,
+          status: check.status,
+          details: typeof check.details === 'string' ? check.details : undefined,
+          source_name: sourceName
+        };
+      }),
       fraudRisk: fraudRiskRaw
         ? {
           score: Number(fraudRiskRaw.score ?? 0),
@@ -535,11 +620,26 @@ class BlockchainVerifier {
   }
 }
 
-export async function buildServer() {
+type BuildServerOptions = {
+  fetchImpl?: typeof fetch;
+};
+
+type VerifyRouteInput = BundleInput & {
+  registryScreening?: {
+    subjectName?: string;
+    sourceIds?: RegistrySourceId[];
+    forceRefresh?: boolean;
+  };
+};
+
+export async function buildServer(options: BuildServerOptions = {}) {
   requireProductionVerifierConfig();
   const app = Fastify({ logger: true });
   const securityConfig = buildSecurityConfig();
   const propertyApiKey = resolvePropertyApiKey();
+  const registryAdapterService = createRegistryAdapterService(prisma, {
+    fetchImpl: options.fetchImpl
+  });
   const metricsRegistry = new Registry();
   collectDefaultMetrics({ register: metricsRegistry, prefix: 'deedshield_api_' });
   const httpRequestsTotal = new Counter({
@@ -672,6 +772,89 @@ export async function buildServer() {
     return reply.send(toVantaVerificationResult(record));
   });
 
+  app.get('/api/v1/registry/sources', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async () => {
+    const sources = await registryAdapterService.listSources();
+    return {
+      generatedAt: new Date().toISOString(),
+      sources
+    };
+  });
+
+  app.post('/api/v1/registry/verify', {
+    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = registryVerifyInputSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
+    }
+
+    try {
+      const result = await registryAdapterService.verify({
+        sourceId: parsed.data.sourceId as RegistrySourceId,
+        subject: parsed.data.subjectName,
+        forceRefresh: parsed.data.forceRefresh
+      });
+      return reply.send(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'registry_lookup_failed';
+      if (message === 'registry_source_not_found') {
+        return reply.code(404).send({ error: 'Registry source not found' });
+      }
+      return reply.code(502).send({ error: 'Registry source unavailable' });
+    }
+  });
+
+  app.post('/api/v1/registry/verify-batch', {
+    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = registryVerifyBatchInputSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
+    }
+
+    try {
+      const result = await registryAdapterService.verifyBatch({
+        sourceIds: parsed.data.sourceIds as RegistrySourceId[],
+        subject: parsed.data.subjectName,
+        forceRefresh: parsed.data.forceRefresh
+      });
+      return reply.send(result);
+    } catch {
+      return reply.code(502).send({ error: 'Registry sources unavailable' });
+    }
+  });
+
+  app.get('/api/v1/registry/jobs', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request) => {
+    const limitRaw = (request.query as { limit?: string } | undefined)?.limit;
+    const parsed = Number.parseInt(limitRaw || '50', 10);
+    const limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 50;
+    const jobs = await registryAdapterService.listOracleJobs(limit);
+    return {
+      generatedAt: new Date().toISOString(),
+      jobs
+    };
+  });
+
+  app.get('/api/v1/registry/jobs/:jobId', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const { jobId } = request.params as { jobId: string };
+    const job = await registryAdapterService.getOracleJob(jobId);
+    if (!job) {
+      return reply.code(404).send({ error: 'Registry oracle job not found' });
+    }
+    return reply.send(job);
+  });
+
   app.post('/api/v1/verify/attom', {
     preHandler: [requireApiKeyScope(securityConfig, 'verify')],
     config: { rateLimit: perApiKeyRateLimit }
@@ -703,7 +886,7 @@ export async function buildServer() {
       return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
     }
 
-    const input = parsed.data as BundleInput;
+    const input = parsed.data as VerifyRouteInput;
     const registry = await loadRegistry();
     const verifiers = {
       county: new DatabaseCountyVerifier(),
@@ -712,6 +895,56 @@ export async function buildServer() {
       blockchain: new BlockchainVerifier(process.env.RPC_URL || '', process.env.REGISTRY_ADDRESS || '')
     };
     const verification = await verifyBundle(input, registry, verifiers);
+
+    if (input.registryScreening) {
+      const subjectName =
+        input.registryScreening.subjectName ||
+        input.ocrData?.grantorName ||
+        input.ocrData?.notaryName;
+
+      if (subjectName) {
+        const defaultSources: RegistrySourceId[] = [
+          'ofac_sdn',
+          'ofac_sls',
+          'ofac_ssi',
+          'hhs_oig_leie',
+          'sam_exclusions',
+          'uk_sanctions_list',
+          'us_csl_consolidated'
+        ];
+        const sourceIds = (input.registryScreening.sourceIds as RegistrySourceId[] | undefined) || defaultSources;
+        const registryBatch = await registryAdapterService.verifyBatch({
+          sourceIds,
+          subject: subjectName,
+          forceRefresh: input.registryScreening.forceRefresh
+        });
+
+        let hasMatch = false;
+        let hasComplianceGap = false;
+        for (const result of registryBatch.results) {
+          if (result.status === 'MATCH') hasMatch = true;
+          if (result.status === 'COMPLIANCE_GAP') hasComplianceGap = true;
+          verification.checks.push({
+            checkId: `registry-${result.sourceId}`,
+            status: result.status === 'MATCH' ? 'FAIL' : result.status === 'COMPLIANCE_GAP' ? 'WARN' : 'PASS',
+            details:
+              result.status === 'MATCH'
+                ? `Matched ${result.matches.length} candidates in ${result.sourceName}`
+                : result.status === 'COMPLIANCE_GAP'
+                  ? `Compliance gap: ${result.sourceName} (${result.details || 'primary source unavailable'})`
+                  : `No match in ${result.sourceName}`
+          });
+        }
+
+        if (hasMatch) {
+          verification.decision = 'BLOCK';
+          verification.reasons.push('Registry sanctions screening found a match');
+        } else if (hasComplianceGap && verification.decision === 'ALLOW') {
+          verification.decision = 'FLAG';
+          verification.reasons.push('Registry screening has compliance gaps in primary-source coverage');
+        }
+      }
+    }
 
     // Cook County Compliance Check
     if (input.doc.pdfBase64) {
