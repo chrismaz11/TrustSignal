@@ -1,0 +1,13 @@
+{
+  "idempotencyKey": "demo-legal-20260306-001",
+  "externalReference": "vanta-control-legal-01",
+  "subjectType": "organization",
+  "documentType": "notary_certificate",
+  "documentCommitment": "0x18f4ac472f784db85922ee6c1878f3d1f356f4dd8f757f24fa87ee2b0abb4e13",
+  "policyProfile": "LEGAL_US",
+  "metadata": {
+    "notaryState": "IL",
+    "notaryCommissionId": "IL-NOTARY-00045",
+    "transactionType": "contract_execution"
+  }
+}

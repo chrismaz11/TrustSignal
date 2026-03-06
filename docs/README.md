@@ -13,13 +13,17 @@ This folder is organized into active, canonical documents and archived historica
 - `final/08_STAGING_SECURITY_EVIDENCE_CHECKLIST.md`
 - `final/09_GITHUB_SUPPORT_PURGE_REQUEST_TEMPLATE.md`
 - `final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`
+- `final/11_NSF_GRANT_WHITEPAPER.md`
+- `final/12_R_AND_D_LOG.md`
+- `final/13_SOC2_READINESS_KICKOFF.md`
+- `final/14_VANTA_INTEGRATION_USE_CASE.md`
 
 ## Governance and Security Tracking
 - `PRODUCTION_GOVERNANCE_TRACKER.md`
 - `SECURITY.md`
 - `verification.md`
 - `../PROJECT_PLAN.md`
-- `../Deed_Shield/SECURITY_CHECKLIST.md`
+- `../SECURITY.md`
 
 ## Policies and Legal
 - `legal/privacy-policy.md`

@@ -1,25 +1,28 @@
-# Deed Shield
+# TrustSignal
 
-Impeccable MVP for a pre-recording verification simulator that ingests synthetic notarized bundles, verifies a simulated RON seal and notary authority, emits immutable-style receipts, and anchors receipt hashes on EVM.
+Universal verification engine with a DeedShield property-record module and a forward path to healthcare credentialing.
+
+## Release Status (Session 7 Final)
+
+- Fastify v5 verification API contract: `/v1/verify-bundle`, `/v1/revoke`, `/v1/status/:bundleId`
+- Halo2 circuits (non-membership + revocation): `gate_count=1024`, `k=10`
+- ZKML artifact: `ml/zkml/deed_cnn.compiled` + benchmark (`proof_gen_ms=1506.46`, `auc=0.998`)
+- JavaScript SDK (`sdk/`): `verify()`, `revoke()`, `status()` with ESM + CJS builds and zero runtime dependencies
+- Test and quality posture: 64/64 tests passing, strict TypeScript clean, scoped coverage `99.34%`
+- Security posture: OWASP audit + threat model published, JWT rotation support, rate limiting, structured log redaction
+- CI posture: GitHub Actions jobs for lint, typecheck, tests+coverage, and Rust build/tests
+
+## Repository Scope
+
+This repository is the main TrustSignal project. It contains:
+
+- Product-facing docs and governance artifacts under `docs/`
+- TrustSignal verification runtime under `src/`
+- DeedShield API/Web implementation in `apps/`
+- Shared verification logic and contract code in `packages/`
+- Halo2 and ZKML proof artifacts in `circuits/` and `ml/`
 
 ## Quickstart
-
-```bash
-npm install
-npm -w apps/api run db:generate
-npm -w apps/api run db:push
-npm -w apps/api run dev
-```
-
-In another terminal:
-
-```bash
-npm -w apps/web run dev
-```
-
-API defaults to `http://localhost:3001`, web runs on `http://localhost:3000`.
-
-## API Security Defaults
 
 - All `/api/v1/*` endpoints except `/api/v1/health` require `x-api-key`.
 - Configure API keys with `API_KEYS` and optional `API_KEY_SCOPES`.
@@ -36,100 +39,135 @@ API defaults to `http://localhost:3001`, web runs on `http://localhost:3000`.
 
 ## Local Demo
 
-Runs 50 synthetic verifications, anchors 5 receipts, and verifies receipt integrity.
+### 2) Configure environment
 
 ```bash
-npm run demo
+cp .env.example .env.local
 ```
 
-## Anchoring Modes
+Set real values in `.env.local` for:
 
-- **Local mode (default)**
-  - Requires a local EVM RPC at `LOCAL_CHAIN_URL` (defaults to `http://127.0.0.1:8545`).
-  - Requires `LOCAL_PRIVATE_KEY` (demo sets it automatically).
-- **Sepolia mode**
-  - Set `SEPOLIA_RPC_URL` and `PRIVATE_KEY`.
-  - Provide `ANCHOR_REGISTRY_ADDRESS` (deployed contract address).
+- `TRUSTSIGNAL_JWT_SECRETS` (or `TRUSTSIGNAL_JWT_SECRET`)
+- `POLYGON_MUMBAI_RPC_URL`
+- `POLYGON_MUMBAI_PRIVATE_KEY`
+- `DATABASE_URL` (or `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` / `SUPABASE_DIRECT_URL`; or set `SUPABASE_DB_PASSWORD` and use Supabase CLI pooler metadata)
 
-If Sepolia env vars are missing, the API uses local mode.
+Never commit real secrets.
 
-## API Examples
+### 3) Run validation gates
 
 ```bash
-curl -s http://localhost:3001/api/v1/health
+npm run lint
+npm run typecheck
+npm test
 ```
+
+### 4) Run DeedShield API/Web (workspace apps)
 
 ```bash
-curl -s http://localhost:3001/api/v1/synthetic | \
-  curl -s -X POST http://localhost:3001/api/v1/verify \
-  -H 'x-api-key: dev-local-key' \
-  -H 'content-type: application/json' \
-  -d @-
+npm -w apps/api run db:generate
+npm -w apps/api run db:push
+npm -w apps/api run dev
 ```
+
+In a second terminal:
 
 ```bash
-curl -s http://localhost:3001/api/v1/receipt/<receiptId> \
-  -H 'x-api-key: dev-local-key'
+npm -w apps/web run dev
 ```
 
-```bash
-curl -s -X POST http://localhost:3001/api/v1/anchor/<receiptId> \
-  -H 'x-api-key: dev-local-key'
-```
+## TrustSignal API Contract (`src/routes`)
 
-OpenAPI spec: `apps/api/openapi.json`.
+All TrustSignal `/v1/*` endpoints require `Authorization: Bearer <jwt>`.
 
-## Threat Model Notes
+- `POST /v1/verify-bundle`
+  - Validates request with Zod.
+  - Runs non-membership proof, revocation proof, and ZKML verification.
+  - Persists result to `VerificationRecord`.
+- `POST /v1/revoke`
+  - Requires admin JWT claim (`role=admin` or equivalent claim form).
+  - Anchors nullifier on Polygon Mumbai and marks record revoked.
+- `GET /v1/status/:bundleId`
+  - Returns latest persisted verification state for a bundle hash.
+- `GET /api/v1/integrations/vanta/schema`
+  - Returns JSON Schema for Vanta-ingestable verification payloads.
+- `GET /api/v1/integrations/vanta/verification/:receiptId`
+  - Returns structured verification evidence payload (`trustsignal.vanta.verification_result.v1`).
+- `GET /api/v1/registry/sources`
+  - Returns configured primary-source registry adapters (OFAC/OIG/SAM/UK/BIS/CSL/NPPES/SEC/FDIC), freshness metadata, and circuit mapping.
+- `POST /api/v1/registry/verify`
+  - Runs a source-specific check with cached results and returns normalized match evidence (`MATCH`, `NO_MATCH`, `COMPLIANCE_GAP`).
+- `POST /api/v1/registry/verify-batch`
+  - Screens one subject across multiple registry sources and returns an aggregate summary including `complianceGapSources`.
+- `GET /api/v1/registry/jobs` and `GET /api/v1/registry/jobs/:jobId`
+  - Exposes ZK oracle dispatch job state for registry checks (`QUEUED`, `DISPATCHED`, `SKIPPED`, `FAILED`).
 
-- Synthetic-only: no real PII is ingested or persisted.
-- Receipts are immutable-style: integrity is derived from canonical JSON hashing.
-- Anchoring stores only hashes; no document contents are posted on-chain.
-- Trust registry validation rejects unsigned or tampered registries.
+Reference implementation: `tests/api/routes.test.ts`.
 
-## Repo Layout
+## Security Defaults
 
-- `apps/api`: Fastify API + Prisma (SQLite)
-- `apps/web`: Next.js portal UI
-- `packages/core`: canonicalization, hashing, registry, verification engine
-- `packages/contracts`: Solidity AnchorRegistry + deploy scripts
-- `scripts/demo.ts`: end-to-end demo run
+- Input validation at API boundaries (Zod)
+- JWT verification with key rotation (`TRUSTSIGNAL_JWT_SECRETS`)
+- Rate limiting using `@fastify/rate-limit`
+- Structured request logging with authorization redaction
+- Fail-closed behavior on proof verification errors
+- No stack traces or raw internals in API responses
+- Primary-source registry guardrails with explicit `COMPLIANCE_GAP` outcomes when authoritative endpoints are unavailable or non-compliant
 
-## Deed Shield v2 Risk & Proof Model
+Detailed reports:
 
-Deed Shield v2 introduces advanced risk detection and privacy-preserving proofs.
+- `security/audit_report.md`
+- `security/threat_model.md`
 
-### 1. Document Fraud Risk Engine
-An AI-driven module that analyzes deed PDFs for anomalies before recording.
-- **Forensics**: Dectects suspicious metadata/timestamps.
-- **Layout**: Validates structure against known templates.
-- **Result**: Generates a `fraudRisk` object in the verification receipt (Low/Medium/High risk bands).
+## Data Model
 
-### 2. Zero-Knowledge Compliance (ZKP)
-Proves policy compliance without revealing private transaction details (Notary ID, County codes).
-- **Output**: `zkpAttestation` embedded in receipts.
-- **Privacy**: Does not expose PII or internal rule logic.
+Primary runtime persistence model:
 
-### 3. Receipt Revocation
-Allows lifecycle management of issued receipts.
-- **Endpoint**: `POST /api/v1/receipt/:receiptId/revoke`
-- **Mechanism**: Updates status in registry; reflected in verification responses.
+- Prisma `VerificationRecord` (`prisma/schema.prisma`)
+  - Bundle hash, proof outcomes, fraud score, proof latency
+  - Revocation state, reason, transaction hash, and revocation timestamp
 
-### 4. Anchor Portability
-Designed for multi-chain anchoring.
-- **Stub**: `PortableAnchorManager` in core prepares for swapping anchor providers without invalidating historical proofs.
+## SDK
 
-## Documentation
+The TrustSignal JavaScript SDK is under `sdk/` and exposes:
 
-Documentation is organized under:
-- [Documentation Index](./docs/README.md)
-- [Project Plan](./PROJECT_PLAN.md)
-- [Execution Tasks](./TASKS.md)
-- [User Manual](./USER_MANUAL.md)
+- `verify(bundle)`
+- `revoke(bundleHash, reason)`
+- `status(bundleId)`
 
-## Security Hygiene Check
+See `sdk/README.md` for usage examples.
 
-Run repository guardrails before committing:
+## CI/CD
 
-```bash
-./scripts/check-repo-hygiene.sh
-```
+GitHub Actions workflow: `.github/workflows/ci.yml`
+
+- `lint`
+- `typecheck`
+- `test` (with coverage)
+- `rust-build` (Halo2 crate build + tests)
+
+## Vercel Deployment
+
+- API serverless entrypoint: `apps/api/api/[...path].ts`
+- Root deployment policy config: `vercel.json`
+- API-specific Vercel config (if deploying `apps/api` as project root): `apps/api/vercel.json`
+- Root `vercel.json` currently rewrites `/api/*` traffic to the API serverless entrypoint.
+
+For production, deploy with environment variables managed in Vercel project settings (never in repo files).
+
+## Canonical Documentation
+
+- `docs/README.md`
+- `docs/final/01_EXECUTIVE_SUMMARY.md`
+- `docs/final/11_NSF_GRANT_WHITEPAPER.md`
+- `docs/final/12_R_AND_D_LOG.md`
+- `docs/final/13_SOC2_READINESS_KICKOFF.md`
+- `docs/final/14_VANTA_INTEGRATION_USE_CASE.md`
+- `TASKS.md`
+- `CHANGELOG.md`
+
+## Compliance and Claims Boundaries
+
+- TrustSignal provides technical verification signals, not legal determinations.
+- Avoid PII in logs and artifacts.
+- Do not represent HIPAA or equivalent compliance unless infra and controls are independently validated.

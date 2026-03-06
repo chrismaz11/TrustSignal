@@ -1,6 +1,6 @@
 # TrustSignal Execution Tasks
 
-Last updated: 2026-02-27
+Last updated: 2026-03-02
 Owner: Engineering
 Plan reference: `PROJECT_PLAN.md`
 
@@ -48,6 +48,14 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Replace `Receipt.rawInputs` persistence with `Receipt.rawInputsHash` (inputs commitment only).
 - [x] Add Prisma migration to rename `rawInputs` to `rawInputsHash`.
 - [x] Update `.env.example` files with placeholder-only verifier and trust source configuration.
+
+### P1-S6 Vanta Partner Readiness
+- [x] Add live structured verification endpoint for Vanta ingestion (`GET /api/v1/integrations/vanta/verification/:receiptId`).
+- [x] Publish JSON schema endpoint for integration validation (`GET /api/v1/integrations/vanta/schema`).
+- [x] Start SOC 2 readiness process documentation (`docs/final/13_SOC2_READINESS_KICKOFF.md`).
+- [x] Document at least one integration pilot use case (`docs/final/14_VANTA_INTEGRATION_USE_CASE.md`).
+- [x] Publish partnership pitch and demo prep package for 2026-03-06 call (`docs/partnership/vanta-2026-03-06/`).
+- [ ] Capture deployed endpoint evidence (staging/production probes + payload validation logs).
 
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.

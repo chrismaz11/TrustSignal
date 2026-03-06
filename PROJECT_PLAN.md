@@ -1,7 +1,7 @@
-# TrustSignal / Deed Shield Project Plan
+# TrustSignal Project Plan
 
 Last updated: 2026-02-25
-Primary goal: production-ready TrustSignal/Deed Shield with a clear path to ICE Mortgage Technology / Encompass marketplace integration.
+Primary goal: production-ready TrustSignal verification platform with a clear path to ICE Mortgage Technology / Encompass marketplace integration.
 
 ## 1. Purpose and Success Criteria
 - Deliver a secure, stable verification platform that title companies and lenders can run in pilot with low operational risk.
@@ -17,7 +17,7 @@ Success criteria:
 - Source-of-truth and legal/compliance docs consistently describe a simulator-first posture and strict boundaries.
 - Security posture has strong in-repo controls, but production gate remains blocked on infra evidence and operational controls.
 - Documentation has drift and duplication:
-  - duplicated architecture summaries in root docs and submodule docs
+  - duplicated architecture summaries in canonical docs and legacy docs
   - mixed SQLite-vs-PostgreSQL assumptions across docs
   - mixed anchor network defaults across older docs/notebooks
   - old and new API contracts documented in parallel
@@ -118,7 +118,7 @@ Exit gate:
 ## 8. Source Mapping (Keep, Update, De-Prioritize)
 Keep and actively use:
 - `docs/PRODUCTION_GOVERNANCE_TRACKER.md`
-- `Deed_Shield/SECURITY_CHECKLIST.md`
+- `SECURITY.md`
 - `docs/verification.md`
 - `docs/final/01_EXECUTIVE_SUMMARY.md`
 - `docs/final/02_ARCHITECTURE_AND_BOUNDARIES.md`
@@ -131,7 +131,7 @@ Keep and actively use:
 Update/merge into canonical plan and current architecture reality:
 - `docs/README.md`
 - `docs/archive/README.md`
-- duplicated architecture summaries in root and submodule docs
+- duplicated architecture summaries in root and legacy docs
 
 De-prioritize until Phase 3:
 - items in `docs/archive/legacy-2026-02-25/notebook/deedshield_v2_notebook.md` requiring mock-to-real ZKP conversion or portability expansion

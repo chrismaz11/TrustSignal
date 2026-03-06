@@ -1,0 +1,131 @@
+{
+  "info": {
+    "name": "TrustSignal Vanta Partner Demo",
+    "description": "Collection for tomorrow's Vanta partnership call. Includes current TrustSignal endpoints and proposed partner contract endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "apiKey", "value": "replace-with-partner-api-key" },
+    { "key": "verificationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Current API Mapping",
+      "item": [
+        {
+          "name": "POST /api/v1/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "verify"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bundleId\": \"demo-vanta-001\",\n  \"transactionType\": \"DEED_TRANSFER\",\n  \"ron\": {\n    \"provider\": \"DemoRON\",\n    \"notaryId\": \"NTR-100\",\n    \"commissionState\": \"IL\",\n    \"sealPayload\": \"demo-seal\"\n  },\n  \"doc\": {\n    \"docHash\": \"0x4ce3a69b2cb4854f8f4e9d89e2cb38ce4d9482d937f3418d57a6973012b6e278\",\n    \"county\": \"Cook\",\n    \"state\": \"IL\",\n    \"parcelId\": \"17-20-226-014-0000\",\n    \"grantor\": \"Jane Seller\",\n    \"grantee\": \"Acme Title LLC\"\n  },\n  \"policy\": {\n    \"profile\": \"STANDARD_IL\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body && body.receiptId) { pm.collectionVariables.set('verificationId', body.receiptId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/integrations/vanta/verification/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/vanta/verification/{{verificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "integrations", "vanta", "verification", "{{verificationId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/receipt/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/receipt/{{verificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "receipt", "{{verificationId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Proposed Partner Contract",
+      "item": [
+        {
+          "name": "POST /partner/v1/verify/document",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/partner/v1/verify/document",
+              "host": ["{{baseUrl}}"],
+              "path": ["partner", "v1", "verify", "document"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"demo-partner-001\",\n  \"externalReference\": \"vanta-control-CC7-001\",\n  \"subjectType\": \"property\",\n  \"documentType\": \"property_deed\",\n  \"documentCommitment\": \"0x4ce3a69b2cb4854f8f4e9d89e2cb38ce4d9482d937f3418d57a6973012b6e278\",\n  \"policyProfile\": \"STANDARD_IL\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /partner/v1/verify/{verificationId}/status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/partner/v1/verify/{{verificationId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["partner", "v1", "verify", "{{verificationId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "GET /partner/v1/verify/{verificationId}/receipt",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/partner/v1/verify/{{verificationId}}/receipt",
+              "host": ["{{baseUrl}}"],
+              "path": ["partner", "v1", "verify", "{{verificationId}}", "receipt"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

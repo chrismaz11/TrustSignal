@@ -88,50 +88,11 @@ export function FileDropzone() {
             }
         } else if (selected.type === 'application/pdf') {
             try {
-                const arrayBuffer = await selected.arrayBuffer();
-
-                // Dynamically import pdfjs-dist and disable the worker to avoid cross-origin issues
-                // @ts-ignore - dynamic import types are tricky
-                const { getDocument, GlobalWorkerOptions, version } = await import('pdfjs-dist/build/pdf');
-                GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
-
-                const pdf = await getDocument({
-                    data: arrayBuffer,
-                    disableWorker: true, // keep everything in-page to avoid cross-origin worker errors
-                    useWorkerFetch: false,
-                    isEvalSupported: false
-                }).promise;
-
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const content = await page.getTextContent();
-                    const strings = content.items.map((item: any) => item.str);
-
-                    // Filter out common watermark/noise phrases to avoid pollution
-                    const pageText = cleanPdfText(strings.join(' '));
-
-                    text += pageText + ' ';
-                }
-
-                // 2. Fallback to OCR if text is empty (Scanned PDF)
-                if (text.trim().length < 50) {
-                    console.log('PDF text empty or sparse, switching to OCR for Scanned PDF...');
-
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const viewport = page.getViewport({ scale: 2.0 });
-                        const canvas = document.createElement('canvas');
-                        const context = canvas.getContext('2d');
-
-                        if (context) {
-                            canvas.height = viewport.height;
-                            canvas.width = viewport.width;
-
-                            await page.render({ canvasContext: context, viewport }).promise;
-                            text += await runOcr(canvas) + ' ';
-                        }
-                    }
-                }
+                // PDF text extraction is disabled in this build to avoid restricted licensing components.
+                // Users can still proceed by reviewing and entering metadata manually.
+                console.log('PDF text extraction disabled; continuing with manual review flow.');
+                setError('PDF auto-extraction is temporarily disabled. Please enter Parcel ID and Grantor manually.');
+                text = cleanPdfText(text);
             } catch (err) {
                 console.error('PDF Extraction Failed', err);
             }

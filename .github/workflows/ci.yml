@@ -1,0 +1,148 @@
+name: TrustSignal CI
+
+on:
+  push:
+    branches:
+      - work
+      - master
+  pull_request:
+    branches:
+      - work
+      - master
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --dir apps/api install --no-frozen-lockfile
+          pnpm --dir apps/web install --no-frozen-lockfile
+          pnpm --dir packages/core install --no-frozen-lockfile
+          pnpm --dir packages/contracts install --no-frozen-lockfile
+
+      - name: Run lint
+        run: |
+          pnpm exec eslint --no-ignore \
+            src/middleware/auth.ts \
+            src/middleware/logger.ts \
+            src/middleware/rateLimit.ts \
+            src/routes/app.ts \
+            src/routes/dependencies.ts \
+            src/routes/revoke.ts \
+            src/routes/status.ts \
+            src/routes/verify.ts \
+            src/core/verifyBundle.ts \
+            tests/api/routes.test.ts \
+            tests/integration/fullBundle.test.ts \
+            tests/middleware/auth.test.ts \
+            tests/middleware/logger.test.ts \
+            tests/middleware/rateLimit.test.ts \
+            tests/adversarial/zkml_adversarial.test.ts \
+            vitest.config.ts
+
+  typecheck:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --dir apps/api install --no-frozen-lockfile
+          pnpm --dir apps/web install --no-frozen-lockfile
+          pnpm --dir packages/core install --no-frozen-lockfile
+          pnpm --dir packages/contracts install --no-frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc --strict --noEmit
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --dir apps/api install --no-frozen-lockfile
+          pnpm --dir apps/web install --no-frozen-lockfile
+          pnpm --dir packages/core install --no-frozen-lockfile
+          pnpm --dir packages/contracts install --no-frozen-lockfile
+
+      - name: Run unit/integration tests with coverage
+        run: pnpm exec vitest run --coverage
+
+  rust-build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+    defaults:
+      run:
+        working-directory: circuits/non_mem_gadget
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Halo2 verifier
+        run: cargo build --release
+
+      - name: Run Halo2 tests
+        run: cargo test

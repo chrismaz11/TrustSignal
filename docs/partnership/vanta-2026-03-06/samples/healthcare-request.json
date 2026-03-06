@@ -1,0 +1,13 @@
+{
+  "idempotencyKey": "demo-healthcare-20260306-001",
+  "externalReference": "vanta-control-healthcare-01",
+  "subjectType": "person",
+  "documentType": "medical_license",
+  "documentCommitment": "0x9a3d159ef7dd9f36bd2a8a63cf8be4d168e0700f17c58b5ee7a3dd5120142f6c",
+  "policyProfile": "HEALTHCARE_US",
+  "metadata": {
+    "licenseState": "TX",
+    "licenseNumber": "TX-MD-DEMO-9001",
+    "specialty": "Anesthesiology"
+  }
+}

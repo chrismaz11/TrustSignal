@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { Receipt } from '@deed-shield/core';
+import { Receipt } from '../../../packages/core/dist/index.js';
 
 export async function renderReceiptPdf(receipt: Receipt): Promise<Buffer> {
   const doc = new PDFDocument({ margin: 48 });

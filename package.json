@@ -14,19 +14,21 @@
     "chokidar": "^4.0.3",
     "dotenv": "^17.2.3",
     "ethers": "^6.13.4",
-    "fastify": "5.7.4",
+    "fastify": "5.8.1",
+    "fastify-rate-limit": "^5.8.0",
     "hardhat": "3.1.6",
-    "next": "^15.5.11",
-    "node-notifier": "^10.0.1",
-    "pdf-parse": "^1.1.1"
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^3.25.76"
   },
   "scripts": {
+    "postinstall": "npm --workspace packages/core run build",
     "dev": "concurrently \"npm:dev --workspace apps/api\" \"npm:dev --workspace apps/web\"",
     "build": "npm -ws run build",
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
     "demo": "tsx scripts/demo.ts",
+    "demo:playwright": "node scripts/playwright-vanta-command-center.mjs",
     "start:verify": "node src/api/verify.js",
     "init:db": "rm -f ${DB_PATH:-attestations.sqlite} && sqlite3 ${DB_PATH:-attestations.sqlite} < schema.sqlite.sql",
     "gen:keys": "node scripts/gen-issuer-keys.js",
@@ -34,12 +36,15 @@
     "seed:parcel": "cd apps/api && tsx scripts/seed-parcel.ts"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^7.6.0",
     "@typescript-eslint/parser": "^7.6.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^8.2.2",
     "eslint": "^8.57.0",
     "eslint-plugin-import": "^2.29.1",
+    "playwright": "^1.58.2",
     "tsx": "^4.15.7",
     "typescript": "5.5.4",
     "vitest": "^3.2.4"
