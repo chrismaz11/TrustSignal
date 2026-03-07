@@ -19,7 +19,9 @@ export const REGISTRY_SOURCE_IDS = [
   'us_csl_consolidated',
   'nppes_npi_registry',
   'sec_edgar_company_tickers',
-  'fdic_bankfind_institutions'
+  'fdic_bankfind_institutions',
+  'openfema_nfip_community',
+  'gleif_lei_records'
 ] as const;
 
 export type RegistrySourceId = typeof REGISTRY_SOURCE_IDS[number];
@@ -29,7 +31,9 @@ type ProviderType =
   | 'sam_json'
   | 'npi_json'
   | 'sec_tickers_json'
-  | 'fdic_json';
+  | 'fdic_json'
+  | 'openfema_json'
+  | 'gleif_json';
 
 export type ComplianceState = 'MATCH' | 'NO_MATCH' | 'COMPLIANCE_GAP';
 
@@ -261,6 +265,34 @@ const SOURCE_SEEDS: RegistrySourceSeed[] = [
     officialSourceName: 'U.S. Federal Deposit Insurance Corporation - BankFind Suite',
     primarySourceHost: 'fdic.gov',
     requestAcceptHeader: 'application/json'
+  },
+  {
+    id: 'openfema_nfip_community',
+    name: 'OpenFEMA NFIP Community Layer',
+    category: 'deeds',
+    endpointEnv: 'OPENFEMA_NFIP_URL',
+    endpointDefault: 'https://www.fema.gov/api/open/v1/NfipCommunityLayerComprehensive',
+    zkCircuit: 'entity_registry_match',
+    fetchIntervalMinutes: 720,
+    parserVersion: 'openfema-json-v1',
+    providerType: 'openfema_json',
+    officialSourceName: 'U.S. Federal Emergency Management Agency - OpenFEMA NFIP Community Layer',
+    primarySourceHost: 'fema.gov',
+    requestAcceptHeader: 'application/json'
+  },
+  {
+    id: 'gleif_lei_records',
+    name: 'GLEIF LEI Records',
+    category: 'misc',
+    endpointEnv: 'GLEIF_LEI_API_URL',
+    endpointDefault: 'https://api.gleif.org/api/v1/lei-records',
+    zkCircuit: 'entity_registry_match',
+    fetchIntervalMinutes: 720,
+    parserVersion: 'gleif-json-v1',
+    providerType: 'gleif_json',
+    officialSourceName: 'Global Legal Entity Identifier Foundation - LEI API',
+    primarySourceHost: 'gleif.org',
+    requestAcceptHeader: 'application/vnd.api+json'
   }
 ];
 
@@ -714,6 +746,120 @@ async function fetchFdicMatches(
   return { matches, sourceVersion };
 }
 
+async function fetchOpenFemaMatches(
+  source: RegistrySourceSeed,
+  endpoint: string,
+  subject: string,
+  fetchImpl: FetchLike
+): Promise<{ matches: RegistryMatch[]; sourceVersion: string | null }> {
+  const url = new URL(endpoint);
+  url.searchParams.set('$top', '200');
+  url.searchParams.set('$select', 'COMMUNITY_NAME,COUNTY,STATE,COMMUNITY_NUMBER');
+
+  await applyProviderCooldown(source.id);
+  const response = await secureFetch(url.toString(), { accept: source.requestAcceptHeader }, fetchImpl);
+  if (!response.ok) {
+    throw new Error(`upstream_http_${response.status}`);
+  }
+
+  const payload = await response.json() as Record<string, unknown>;
+  const rows = Array.isArray(payload.NfipCommunityLayerComprehensive) ? payload.NfipCommunityLayerComprehensive : [];
+  const matchMap = new Map<string, number>();
+
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const record = row as Record<string, unknown>;
+    const community = typeof record.COMMUNITY_NAME === 'string' ? record.COMMUNITY_NAME.trim() : '';
+    const county = typeof record.COUNTY === 'string' ? record.COUNTY.trim() : '';
+    const state = typeof record.STATE === 'string' ? record.STATE.trim() : '';
+    const communityNumber = typeof record.COMMUNITY_NUMBER === 'string' ? record.COMMUNITY_NUMBER.trim() : '';
+
+    const candidates = [
+      community,
+      county,
+      `${community} ${state}`.trim(),
+      communityNumber
+    ].filter((candidate) => candidate.length > 0);
+
+    for (const candidate of candidates) {
+      const score = scoreCandidate(subject, candidate);
+      if (score >= 0.7) {
+        const current = matchMap.get(candidate) || 0;
+        if (score > current) matchMap.set(candidate, score);
+      }
+    }
+  }
+
+  const matches = [...matchMap.entries()]
+    .map(([name, score]) => ({ name, score: Number(score.toFixed(3)) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const sourceVersion = response.headers.get('etag') || response.headers.get('last-modified');
+  return { matches, sourceVersion };
+}
+
+async function fetchGleifMatches(
+  source: RegistrySourceSeed,
+  endpoint: string,
+  subject: string,
+  fetchImpl: FetchLike
+): Promise<{ matches: RegistryMatch[]; sourceVersion: string | null }> {
+  const url = new URL(endpoint);
+  url.searchParams.set('page[size]', '25');
+  url.searchParams.set('filter[entity.legalName]', subject);
+
+  await applyProviderCooldown(source.id);
+  const response = await secureFetch(url.toString(), { accept: source.requestAcceptHeader }, fetchImpl);
+  if (!response.ok) {
+    throw new Error(`upstream_http_${response.status}`);
+  }
+
+  const payload = await response.json() as Record<string, unknown>;
+  const rows = Array.isArray(payload.data) ? payload.data : [];
+  const matchMap = new Map<string, number>();
+
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const entry = row as Record<string, unknown>;
+    const attributes = (entry.attributes && typeof entry.attributes === 'object')
+      ? (entry.attributes as Record<string, unknown>)
+      : null;
+    const entity = (attributes?.entity && typeof attributes.entity === 'object')
+      ? (attributes.entity as Record<string, unknown>)
+      : null;
+    const legalNameObject = (entity?.legalName && typeof entity.legalName === 'object')
+      ? (entity.legalName as Record<string, unknown>)
+      : null;
+
+    const legalName = typeof legalNameObject?.name === 'string' ? legalNameObject.name.trim() : '';
+    const lei = typeof attributes?.lei === 'string' ? attributes.lei.trim() : '';
+    const otherNamesRaw = Array.isArray(entity?.otherNames) ? entity.otherNames : [];
+    const otherNames = otherNamesRaw
+      .map((item) => {
+        if (!item || typeof item !== 'object') return '';
+        const name = (item as Record<string, unknown>).name;
+        return typeof name === 'string' ? name.trim() : '';
+      })
+      .filter((name) => name.length > 0);
+
+    const candidates = [legalName, lei, ...otherNames].filter((candidate) => candidate.length > 0);
+    for (const candidate of candidates) {
+      const score = scoreCandidate(subject, candidate);
+      if (score >= 0.7) {
+        const current = matchMap.get(candidate) || 0;
+        if (score > current) matchMap.set(candidate, score);
+      }
+    }
+  }
+
+  const matches = [...matchMap.entries()]
+    .map(([name, score]) => ({ name, score: Number(score.toFixed(3)) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const sourceVersion = response.headers.get('etag') || response.headers.get('last-modified');
+  return { matches, sourceVersion };
+}
+
 async function syncRegistrySources(prisma: PrismaClient, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   for (const seed of SOURCE_SEEDS) {
     await prisma.registrySource.upsert({
@@ -806,6 +952,24 @@ async function runLookup(
 
     if (seed.providerType === 'fdic_json') {
       const result = await fetchFdicMatches(seed, source.endpoint, subject, fetchImpl);
+      return {
+        status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
+        matches: result.matches,
+        sourceVersion: result.sourceVersion
+      };
+    }
+
+    if (seed.providerType === 'openfema_json') {
+      const result = await fetchOpenFemaMatches(seed, source.endpoint, subject, fetchImpl);
+      return {
+        status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
+        matches: result.matches,
+        sourceVersion: result.sourceVersion
+      };
+    }
+
+    if (seed.providerType === 'gleif_json') {
+      const result = await fetchGleifMatches(seed, source.endpoint, subject, fetchImpl);
       return {
         status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
         matches: result.matches,

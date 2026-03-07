@@ -17,12 +17,13 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Add full-history blocked-path scan (`scripts/history-secret-scan.sh`).
 - [x] Publish rotation/history remediation runbook (`docs/final/07_SECRET_ROTATION_AND_HISTORY_REMEDIATION.md`).
 - [x] Rewrite and force-push sanitized branch/tag refs to GitHub canonical remote.
-- [ ] Open GitHub Support request to purge hidden `refs/pull/*` object retention and confirm final full-history clean scan. Tracking issue: `https://github.com/chrismaz11/TrustSignal/issues/4`
+- [ ] Open GitHub Support request to purge hidden `refs/pull/*` object retention and confirm final full-history clean scan. Tracking issue: `https://github.com/TrustSignal-dev/TrustSignal/issues/4`
 
 ### P1-S2 Staging Security Evidence
 - [x] Deploy Vercel preview with Supabase-backed PostgreSQL (`sslmode=require`) and capture API/TLS probe evidence (`docs/evidence/staging/vercel-staging-2026-02-27.md`).
 - [x] Collect staging evidence for PostgreSQL TLS and encrypted-at-rest controls (`docs/evidence/staging/supabase-db-security-2026-02-27.md`).
 - [ ] Collect staging evidence for HTTPS ingress forwarding and TLS policy.
+- [x] Expand staging evidence automation to capture ingress-forwarding probes, response headers, TLS policy placeholders, and deployed Vanta endpoint log-correlation templates (`scripts/capture-staging-evidence.sh`, `scripts/capture-vanta-integration-evidence.sh`, `docs/final/08_STAGING_SECURITY_EVIDENCE_CHECKLIST.md`).
 - [x] Attach evidence references to `docs/PRODUCTION_GOVERNANCE_TRACKER.md`.
 - [x] Publish staging evidence checklist (`docs/final/08_STAGING_SECURITY_EVIDENCE_CHECKLIST.md`).
 - [x] Add staging evidence capture script (`scripts/capture-staging-evidence.sh`).
@@ -34,6 +35,7 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Document incident/escalation workflow aligned with current architecture (`docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`).
 - [x] Define alert thresholds and dashboard/SLO targets baseline (`docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`).
 - [ ] Implement dashboard and alert rules in staging monitoring stack.
+- [x] Add baseline Prometheus alert rules and Grafana dashboard artifacts for staging rollout (`docs/ops/monitoring/alert-rules.yml`, `docs/ops/monitoring/grafana-dashboard-deedshield-api.json`, `docs/ops/monitoring/README.md`).
 
 ### P1-S4 API Boundary Hardening
 - [x] Enforce API key authentication on protected v1 endpoints.
@@ -56,12 +58,20 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Document at least one integration pilot use case (`docs/final/14_VANTA_INTEGRATION_USE_CASE.md`).
 - [x] Publish partnership pitch and demo prep package for 2026-03-06 call (`docs/partnership/vanta-2026-03-06/`).
 - [ ] Capture deployed endpoint evidence (staging/production probes + payload validation logs).
+- [x] Enhance deployed endpoint evidence script output with endpoint timeline, header correlation, and runtime/Vanta log placeholders (`scripts/capture-vanta-integration-evidence.sh`).
+
+### P1-S7 Governance Gate Unblock (Mar 2026)
+- [x] Implement CI required-check remediation in-repo (`.github/workflows/ci.yml` install/runner normalization + lazy EZKL loading in `src/verifiers/zkmlVerifier.ts`) and validate locally (`npx tsc --strict --noEmit`, `npx vitest run --coverage`).
+- [ ] Push remediation commit(s) and rerun required checks (`lint`, `typecheck`, `test`, `rust-build`) on `master` until green.
+- [x] Enable branch protection for `master`: require pull requests, at least 1 approval, and required checks (`lint`, `typecheck`, `test`, `rust-build`).
+- [x] Capture governance evidence after branch-protection apply in `docs/evidence/security/github-governance-2026-03-07.md` and reflect status updates in `BLOCKED.md` + `docs/PRODUCTION_GOVERNANCE_TRACKER.md`.
+- [x] Add reusable GitHub governance automation scripts for branch protection apply + evidence snapshot (`scripts/apply-github-branch-protection.sh`, `scripts/capture-github-governance-evidence.sh`).
 
 ### MVP10 Registry Adapter Sprint (Mar 2026)
 - [x] IL DMV adapter stub (`src/adapters/registries/il-dmv.ts`).
 - [x] `registries.sql` migration (`supabase/migrations/registries.sql`).
 - [x] E2E verify curl->proof test (`tests/e2e/verify.test.ts`).
-- [ ] Free registry expansion backlog (next source wave prioritization and implementation queue).
+- [x] Free registry expansion backlog (next source wave prioritization and implementation queue) documented in `docs/registry/free_primary_sources_catalog.md`; Wave 1 adapters seeded (`openfema_nfip_community`, `gleif_lei_records`).
 - [x] Fail-closed negative tests (`apps/api/src/registry-adapters.test.ts` compliance gap coverage).
 
 ## Phase 2 — ICE/Encompass Marketplace Ready

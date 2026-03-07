@@ -70,6 +70,41 @@ describeWithDatabase('Registry adapters: free source wiring', () => {
       );
     }
 
+    if (url.includes('NfipCommunityLayerComprehensive')) {
+      return new Response(
+        JSON.stringify({
+          NfipCommunityLayerComprehensive: [
+            {
+              COMMUNITY_NAME: 'Chicago',
+              COUNTY: 'Cook County',
+              STATE: 'IL',
+              COMMUNITY_NUMBER: '170074'
+            }
+          ]
+        }),
+        { status: 200, headers: { ETag: 'openfema-v1' } }
+      );
+    }
+
+    if (url.includes('api.gleif.org/api/v1/lei-records')) {
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              attributes: {
+                lei: '1234567890ABCDE12345',
+                entity: {
+                  legalName: { name: 'Acme Holdings LLC' },
+                  otherNames: [{ name: 'ACME HOLDINGS' }]
+                }
+              }
+            }
+          ]
+        }),
+        { status: 200, headers: { ETag: 'gleif-v1' } }
+      );
+    }
+
     return new Response('{}', { status: 200, headers: { ETag: 'default-v1' } });
   };
 
@@ -119,6 +154,8 @@ describeWithDatabase('Registry adapters: free source wiring', () => {
     expect(ids).toContain('nppes_npi_registry');
     expect(ids).toContain('sec_edgar_company_tickers');
     expect(ids).toContain('fdic_bankfind_institutions');
+    expect(ids).toContain('openfema_nfip_community');
+    expect(ids).toContain('gleif_lei_records');
   });
 
   it('verifies against OFAC and uses cache on repeated lookups', async () => {
@@ -174,6 +211,40 @@ describeWithDatabase('Registry adapters: free source wiring', () => {
     expect(body.status).toBe('COMPLIANCE_GAP');
     expect(body.matched).toBe(false);
     expect(body.details).toContain('SAM_API_KEY');
+  });
+
+  it('supports OpenFEMA and GLEIF primary-source adapters', async () => {
+    const openFemaRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/registry/verify',
+      headers: { 'x-api-key': 'test-verify' },
+      payload: {
+        sourceId: 'openfema_nfip_community',
+        subjectName: 'Cook County'
+      }
+    });
+
+    expect(openFemaRes.statusCode).toBe(200);
+    const openFemaBody = openFemaRes.json() as { status: string; matched: boolean; sourceName: string };
+    expect(openFemaBody.status).toBe('MATCH');
+    expect(openFemaBody.matched).toBe(true);
+    expect(openFemaBody.sourceName).toContain('Federal Emergency Management Agency');
+
+    const gleifRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/registry/verify',
+      headers: { 'x-api-key': 'test-verify' },
+      payload: {
+        sourceId: 'gleif_lei_records',
+        subjectName: 'Acme Holdings LLC'
+      }
+    });
+
+    expect(gleifRes.statusCode).toBe(200);
+    const gleifBody = gleifRes.json() as { status: string; matched: boolean; sourceName: string };
+    expect(gleifBody.status).toBe('MATCH');
+    expect(gleifBody.matched).toBe(true);
+    expect(gleifBody.sourceName).toContain('Global Legal Entity Identifier Foundation');
   });
 
   it('supports batch verify and oracle job listing', async () => {

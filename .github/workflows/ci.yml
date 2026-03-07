@@ -22,27 +22,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          pnpm install --no-frozen-lockfile
-          pnpm --dir apps/api install --no-frozen-lockfile
-          pnpm --dir apps/web install --no-frozen-lockfile
-          pnpm --dir packages/core install --no-frozen-lockfile
-          pnpm --dir packages/contracts install --no-frozen-lockfile
+        run: npm ci
 
       - name: Run lint
         run: |
-          pnpm exec eslint --no-ignore \
+          npx eslint --no-ignore \
             src/middleware/auth.ts \
             src/middleware/logger.ts \
             src/middleware/rateLimit.ts \
@@ -71,26 +62,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          pnpm install --no-frozen-lockfile
-          pnpm --dir apps/api install --no-frozen-lockfile
-          pnpm --dir apps/web install --no-frozen-lockfile
-          pnpm --dir packages/core install --no-frozen-lockfile
-          pnpm --dir packages/contracts install --no-frozen-lockfile
+        run: npm ci
 
       - name: Type check
-        run: pnpm exec tsc --strict --noEmit
+        run: npx tsc --strict --noEmit
 
   test:
     runs-on: ubuntu-latest
@@ -103,26 +85,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          pnpm install --no-frozen-lockfile
-          pnpm --dir apps/api install --no-frozen-lockfile
-          pnpm --dir apps/web install --no-frozen-lockfile
-          pnpm --dir packages/core install --no-frozen-lockfile
-          pnpm --dir packages/contracts install --no-frozen-lockfile
+        run: npm ci
 
       - name: Run unit/integration tests with coverage
-        run: pnpm exec vitest run --coverage
+        run: npx vitest run --coverage
 
   rust-build:
     runs-on: ubuntu-latest

@@ -4,7 +4,7 @@
 Request purge of sensitive objects retained in hidden pull refs (`refs/pull/*`) after history rewrite
 
 ## Repository
-`chrismaz11/TrustSignal`
+`TrustSignal-dev/TrustSignal`
 
 ## Request
 We performed a history rewrite and force-push across branch and tag refs to remove sensitive file paths:
