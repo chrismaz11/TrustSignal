@@ -1,6 +1,6 @@
 # TrustSignal Execution Tasks
 
-Last updated: 2026-03-02
+Last updated: 2026-03-06
 Owner: Engineering
 Plan reference: `PROJECT_PLAN.md`
 
@@ -56,6 +56,13 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Document at least one integration pilot use case (`docs/final/14_VANTA_INTEGRATION_USE_CASE.md`).
 - [x] Publish partnership pitch and demo prep package for 2026-03-06 call (`docs/partnership/vanta-2026-03-06/`).
 - [ ] Capture deployed endpoint evidence (staging/production probes + payload validation logs).
+
+### MVP10 Registry Adapter Sprint (Mar 2026)
+- [x] IL DMV adapter stub (`src/adapters/registries/il-dmv.ts`).
+- [x] `registries.sql` migration (`supabase/migrations/registries.sql`).
+- [x] E2E verify curl->proof test (`test/e2e/verify.test.ts`).
+- [ ] Free registry expansion backlog (next source wave prioritization and implementation queue).
+- [x] Fail-closed negative tests (`apps/api/src/registry-adapters.test.ts` compliance gap coverage).
 
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.

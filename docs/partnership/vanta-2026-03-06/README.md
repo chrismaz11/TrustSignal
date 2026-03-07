@@ -15,6 +15,7 @@
 - `10_DEMO_READINESS_STATUS.md`
 - `11_ENDPOINT_MAPPING.md`
 - `12_10_MIN_TALK_TRACK.md`
+- `13_CALL_COMMAND_CENTER.md`
 - `postman/TrustSignal_Vanta_Partner_Demo.postman_collection.json`
 - `samples/*.json`
 
@@ -23,6 +24,7 @@
 - Browser mock UI: `apps/api/public/demo/vanta-partner-demo.html`
 - CLI demo runner: `scripts/vanta-partner-demo.mjs`
 - Webhook mock sink: `scripts/mock-vanta-webhook-listener.mjs`
+- Playwright demo runner: `scripts/playwright-vanta-command-center.mjs`
 
 ## Suggested presentation order
 

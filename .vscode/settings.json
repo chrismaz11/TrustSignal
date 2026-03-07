@@ -1,3 +1,8 @@
 {
-    "vitest.disableWorkspaceWarning": true
+    "vitest.disableWorkspaceWarning": true,
+    "chatgpt.commentCodeLensEnabled": true,
+    "demoTime.defaultFileType": "json",
+    "workbench.statusBar.visible": true,
+    "workbench.editor.showTabs": "multiple",
+    "workbench.activityBar.location": "hidden"
 }
