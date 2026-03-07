@@ -1,6 +1,6 @@
 # TrustSignal
 
-Universal verification engine with a DeedShield property-record module and a forward path to healthcare credentialing.
+Universal verification engine with a TrustSignal property-record module and a forward path to healthcare credentialing.
 
 ## Release Status (Session 7 Final)
 
@@ -18,7 +18,7 @@ This repository is the main TrustSignal project. It contains:
 
 - Product-facing docs and governance artifacts under `docs/`
 - TrustSignal verification runtime under `src/`
-- DeedShield API/Web implementation in `apps/`
+- TrustSignal API/Web implementation in `apps/`
 - Shared verification logic and contract code in `packages/`
 - Halo2 and ZKML proof artifacts in `circuits/` and `ml/`
 
