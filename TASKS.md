@@ -62,7 +62,7 @@ Plan reference: `PROJECT_PLAN.md`
 
 ### P1-S7 Governance Gate Unblock (Mar 2026)
 - [x] Implement CI required-check remediation in-repo (`.github/workflows/ci.yml` install/runner normalization + lazy EZKL loading in `src/verifiers/zkmlVerifier.ts`) and validate locally (`npx tsc --strict --noEmit`, `npx vitest run --coverage`).
-- [x] Push remediation commits in PR `https://github.com/TrustSignal-dev/TrustSignal/pull/11` and rerun required checks until green (`https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801379633`).
+- [x] Push remediation commits in PR `https://github.com/TrustSignal-dev/TrustSignal/pull/11` and rerun required checks until green (`https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801575144`).
 - [ ] Obtain required review approval and merge PR `#11` into `master` (branch policy currently blocks merge without approval).
 - [x] Enable branch protection for `master`: require pull requests, at least 1 approval, and required checks (`lint`, `typecheck`, `test`, `rust-build`).
 - [x] Capture governance evidence after branch-protection apply in `docs/evidence/security/github-governance-2026-03-07.md` and reflect status updates in `BLOCKED.md` + `docs/PRODUCTION_GOVERNANCE_TRACKER.md`.
