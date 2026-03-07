@@ -1,6 +1,6 @@
 # TrustSignal Execution Tasks
 
-Last updated: 2026-03-07
+Last updated: 2026-03-08
 Owner: Engineering
 Plan reference: `PROJECT_PLAN.md`
 
@@ -17,7 +17,7 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Add full-history blocked-path scan (`scripts/history-secret-scan.sh`).
 - [x] Publish rotation/history remediation runbook (`docs/final/07_SECRET_ROTATION_AND_HISTORY_REMEDIATION.md`).
 - [x] Rewrite and force-push sanitized branch/tag refs to GitHub canonical remote.
-- [ ] Open GitHub Support request to purge hidden `refs/pull/*` object retention and confirm final full-history clean scan. Tracking issue: `https://github.com/chrismaz11/TrustSignal/issues/4`
+- [ ] Open GitHub Support request to purge hidden `refs/pull/*` object retention and confirm final full-history clean scan.
 
 ### P1-S2 Staging Security Evidence
 - [x] Deploy Vercel preview with Supabase-backed PostgreSQL (`sslmode=require`) and capture API/TLS probe evidence (`docs/evidence/staging/vercel-staging-2026-02-27.md`).
@@ -34,6 +34,7 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Document incident/escalation workflow aligned with current architecture (`docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`).
 - [x] Define alert thresholds and dashboard/SLO targets baseline (`docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`).
 - [ ] Implement dashboard and alert rules in staging monitoring stack.
+- [ ] Capture alert fire/resolution evidence from staging.
 
 ### P1-S4 API Boundary Hardening
 - [x] Enforce API key authentication on protected v1 endpoints.
@@ -56,6 +57,25 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Document at least one integration pilot use case (`docs/final/14_VANTA_INTEGRATION_USE_CASE.md`).
 - [x] Publish partnership pitch and demo prep package for 2026-03-06 call (`docs/partnership/vanta-2026-03-06/`).
 - [ ] Capture deployed endpoint evidence (staging/production probes + payload validation logs).
+- [x] Enhance endpoint evidence scripting for timeline/header/runtime placeholders (`scripts/capture-vanta-integration-evidence.sh`).
+
+### P1-S7 Governance Gate Unblock (Mar 2026)
+- [x] Implement repository guardrails and CI security checks in-repo (`AGENTS.md`, override files, docs, `.github/workflows/ci.yml`).
+- [x] Verify `master` branch protection on GitHub: PR required, 1 approval, required checks, signed commits, conversation resolution, admin enforcement.
+- [x] Add governance evidence capture scripts (`scripts/apply-github-branch-protection.sh`, `scripts/capture-github-governance-evidence.sh`).
+- [x] Capture governance evidence and CI-required-check artifacts under `docs/evidence/security/` and `notebooks/`.
+- [ ] Push `cm/integration-halo2-governance-20260308` and open the consolidated integration PR to `master`.
+- [ ] Obtain required review approval and merge the consolidated integration PR.
+- [ ] Capture fresh CI evidence tied to the consolidated integration PR after checks pass.
+
+### P1-S8 ZKP Productionization
+- [x] Remove mock-style ZKP attestation flow and secret witness key usage from active TypeScript paths.
+- [x] Enforce production-only external prover flow for verifiable attestation generation.
+- [x] Add canonical document commitment/public input model for document hashing.
+- [x] Add Rust Halo2 service entrypoint for prove/verify bridging (`circuits/non_mem_gadget/src/bin/zkp_service.rs`).
+- [x] Add tests covering dev-only guardrails, external prove path, and API/Vanta integration.
+- [ ] Run end-to-end proof generation benchmarks against the real prover path and record latency evidence.
+- [ ] Generate and manage proving/verifying keys for the production circuit lifecycle.
 
 ### MVP10 Registry Adapter Sprint (Mar 2026)
 - [x] IL DMV adapter stub (`src/adapters/registries/il-dmv.ts`).
@@ -73,4 +93,4 @@ Plan reference: `PROJECT_PLAN.md`
 ## Phase 3 — Long-Term Hardening
 - [ ] Key management uplift plan (KMS/HSM).
 - [ ] Dependency and supply-chain hardening controls.
-- [ ] Deferred advanced feature hardening (real ZKP, portability).
+- [ ] Deferred advanced feature hardening (real ZKP latency optimization, portability, multi-chain anchor operations).

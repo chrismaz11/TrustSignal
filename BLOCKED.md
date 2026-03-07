@@ -1,39 +1,63 @@
 # BLOCKED
 
-Date: 2026-03-07
-Repo: `chrismaz11/TrustSignal`
-Branch: `master`
-Primary run URL: https://github.com/chrismaz11/TrustSignal/actions/runs/22788031452
+Date: 2026-03-08
+Repo: `TrustSignal-dev/TrustSignal`
+Branch: `cm/integration-halo2-governance-20260308`
 
 ## Open blockers
 
-### 1) GitHub Actions billing lock (hard blocker)
+### 1) Consolidated integration branch is not merged to `master` (hard blocker)
 
-Root cause is account-level billing lock, not workflow YAML.
-
-Observed failures:
-- `lint` -> `The job was not started because your account is locked due to a billing issue.`
-- `typecheck` -> `The job was not started because your account is locked due to a billing issue.`
-- `test` -> `The job was not started because your account is locked due to a billing issue.`
-- `rust-build` -> `The job was not started because your account is locked due to a billing issue.`
-
-Required unblock:
-- Restore GitHub billing/account status.
-- Re-run failed CI jobs on `master`.
-
-### 2) Branch protection missing on `master` (high risk)
+The production-oriented Halo2/ZKP work and the SOC 2 governance guardrails now live together on
+`cm/integration-halo2-governance-20260308`, but `master` does not yet contain that integrated
+baseline.
 
 Current state:
-- `master` has no branch protection rules.
+- Local integration branch contains `halo2`, the PR `#12` governance guardrails, and follow-up test fixes.
+- `master` branch protection is active and verified via GitHub API.
+- Merge still requires a pull request, passing required checks, and at least 1 approval.
 
 Required unblock:
-- Require pull requests for `master`.
-- Require status checks: `lint`, `typecheck`, `test`, `rust-build`.
-- Require at least 1 approving review.
+- Push `cm/integration-halo2-governance-20260308`.
+- Open a PR to `master`.
+- Obtain required approval and merge without bypassing branch protection.
 
-## Recently resolved items
+### 2) Historical secret-remediation closure is still incomplete (high risk)
 
-- `PR #8` merged to `master` and feature branch deleted.
-- Remote branch cleanup completed for fully merged branches (`V2`, `work`, `deedshield-v2-risk-proof`, `codex/replace-mocked-zkp-verifier-with-halo2-rs-gadget`).
-- Additional stale remotes deleted (`antigravity-backup-2026-02-21`, `dependabot/npm_and_yarn/npm_and_yarn-415ef9698e`); retained `codex/production-governance-20260222` for targeted review.
-- Test root consolidation completed: canonical suite path is now `tests/` (legacy `test/` removed).
+Current state:
+- Tracked secrets were removed from the current tree and history rewrite/remediation work was previously performed.
+- Formal credential-rotation evidence and GitHub-side hidden ref purge confirmation are still not closed out.
+
+Required unblock:
+- Finish credential rotation evidence capture.
+- Confirm hidden `refs/pull/*` retention cleanup with GitHub support.
+
+### 3) HTTPS/TLS ingress evidence is still incomplete (high risk)
+
+Current state:
+- Runtime HTTPS guards exist in code.
+- Staging/production ingress evidence for forwarded HTTPS headers and certificate/TLS policy is still missing.
+
+Required unblock:
+- Capture edge TLS evidence for the deployed API surface.
+- Attach evidence to the governance tracker.
+
+### 4) Monitoring and alert evidence is still incomplete (medium risk)
+
+Current state:
+- Metrics/status endpoints and baseline monitoring docs exist.
+- Staging alert deployment and fired/resolved alert evidence are still missing.
+
+Required unblock:
+- Deploy alert rules/dashboard configuration.
+- Capture alert fire/resolution evidence.
+
+## Verified controls
+
+- `master` branch protection is active:
+  - required PR reviews: `1`
+  - required checks: `lint`, `typecheck`, `test`, `rust-build`
+  - required signatures: enabled
+  - conversation resolution: enabled
+  - admin enforcement: enabled
+- Repository guardrails are present in `AGENTS.md`, API override instructions, middleware override instructions, and CI security workflow checks.
