@@ -1,0 +1,20 @@
+# TrustSignal Primary-Source Registry Risk Register
+
+Scope: `POST /api/v1/registry/verify`, `POST /api/v1/registry/verify-batch`, registry adapters, cache layer, and evidence artifacts consumed by audit/compliance workflows.
+
+## Risk Register
+
+| ID | Risk | Severity | Likelihood | Detection | Mitigation | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| RR-01 | `.gov` or other authoritative registry API outage causes screening failures or silent pass-through. | High | Medium | Adapter health checks fail; spike in upstream `5xx`/timeouts; increase in `COMPLIANCE_GAP` responses per source. | Implement graceful degradation that returns explicit degraded status (`COMPLIANCE_GAP`) with source attribution; never auto-convert to `NO_MATCH`; circuit breaker + retry budget; on-call alerting at sustained outage threshold. | Registry Integrations + SRE |
+| RR-02 | Fail-open behavior in verification path permits approvals when upstream validation/proof path is unavailable. | Critical | Medium | Automated contract tests asserting fail-closed outcomes; runtime metric for verification requests completed without required source evidence; audit log review for missing failure reasons. | Enforce fail-closed policy in API handlers and orchestration (`error => deny/defer`, not allow); block issuance/green status unless all required sources succeed or policy explicitly marks pending review; policy checks in CI and release gates. | Backend Platform + Security Engineering |
+| RR-03 | Zero-knowledge metadata leakage (query timing, source IDs, subject correlation IDs, proof/public signals) exposes sensitive screening context. | High | Medium | Log redaction tests; privacy review of telemetry schema; anomalous access to proof metadata in logs/data lake. | Minimize metadata in logs/events; hash or tokenize stable identifiers; strict retention and access controls for proof artifacts; avoid embedding raw subject attributes in proof public inputs; periodic privacy threat-model review. | Security Engineering + Data Platform |
+| RR-04 | Rate-limit abuse (credential stuffing, high-volume scraping, abusive batch calls) degrades registry service and increases cost/error rates. | High | High | Per-key/IP request anomaly detection; elevated `429` and queue depth; unusual burst patterns by endpoint and tenant. | Layered rate limits (IP + API key + tenant + endpoint); stricter quotas for batch verification; adaptive throttling and temporary key quarantine; require idempotency keys and bounded batch sizes. | API Platform + SRE |
+| RR-05 | Stale cache returns outdated registry status (e.g., sanctions/licensure changes not reflected), creating compliance exposure. | High | Medium | Cache-age metrics vs source freshness SLO; scheduled canary re-checks against live source; audit job flags where `fetchedAt` exceeds TTL policy. | Per-source TTL with hard max age; mark stale entries as unusable for final decisions (force refresh or return `COMPLIANCE_GAP`); background refresh with jitter; expose freshness metadata in every response. | Registry Integrations |
+| RR-06 | Evidence integrity failure (tampered response payloads, broken hash chain, non-reproducible verification artifacts) weakens audit defensibility. | Critical | Low | Signature/hash verification failures; mismatch between stored evidence hash and recomputed digest; periodic integrity scan over evidence store. | Content-addressed evidence storage with SHA-256 digest at write; signed attestations for adapter outputs; append-only audit log; immutable retention for compliance artifacts; integrity verification in read path and nightly jobs. | Security Engineering + Compliance Operations |
+
+## Implementation Notes
+
+- Treat `COMPLIANCE_GAP` as a first-class outcome with source-level reason codes, not a transient internal error.
+- Emit structured fields for detection: `source`, `outcome`, `reasonCode`, `cacheAgeSeconds`, `evidenceHash`, `upstreamStatus`.
+- Require runbooks for RR-01, RR-02, and RR-04 with concrete paging thresholds and recovery criteria.
