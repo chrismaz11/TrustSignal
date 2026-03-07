@@ -93,6 +93,7 @@ describe('Fastify verification routes', () => {
 
   beforeEach(async () => {
     process.env.TRUSTSIGNAL_JWT_SECRET = JWT_SECRET;
+    process.env.TRUSTSIGNAL_JWT_SECRETS = JWT_SECRET;
     process.env.LOG_LEVEL = 'silent';
 
     store = new InMemoryVerificationRecordStore();
@@ -129,6 +130,7 @@ describe('Fastify verification routes', () => {
   afterEach(async () => {
     await app.close();
     delete process.env.TRUSTSIGNAL_JWT_SECRET;
+    delete process.env.TRUSTSIGNAL_JWT_SECRETS;
     delete process.env.LOG_LEVEL;
   });
 

@@ -39,12 +39,24 @@ async function curlJson(url: string, method: 'GET' | 'POST', payload?: unknown, 
   return { status, body };
 }
 
-const hasDatabase = Boolean(
-  process.env.DATABASE_URL ||
-  process.env.SUPABASE_DB_URL ||
-  process.env.SUPABASE_POOLER_URL ||
-  process.env.SUPABASE_DIRECT_URL
-);
+function getRuntimeDatabaseUrl(): string | undefined {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.SUPABASE_DB_URL ||
+    process.env.SUPABASE_POOLER_URL ||
+    process.env.SUPABASE_DIRECT_URL
+  );
+}
+
+function hasUsablePostgresUrl(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  return value.startsWith('postgresql://') || value.startsWith('postgres://');
+}
+
+const runtimeDatabaseUrl = getRuntimeDatabaseUrl();
+const hasDatabase = hasUsablePostgresUrl(runtimeDatabaseUrl);
 const describeWithDatabase = hasDatabase ? describe.sequential : describe.skip;
 
 describeWithDatabase('E2E /api/v1/verify via curl', () => {
@@ -53,12 +65,8 @@ describeWithDatabase('E2E /api/v1/verify via curl', () => {
   let envSnapshot: EnvSnapshot;
 
   beforeAll(async () => {
-    if (!process.env.DATABASE_URL) {
-      process.env.DATABASE_URL =
-        process.env.SUPABASE_DB_URL ||
-        process.env.SUPABASE_POOLER_URL ||
-        process.env.SUPABASE_DIRECT_URL ||
-        '';
+    if (!process.env.DATABASE_URL && runtimeDatabaseUrl) {
+      process.env.DATABASE_URL = runtimeDatabaseUrl;
     }
 
     envSnapshot = snapshotEnv([
