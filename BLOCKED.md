@@ -7,12 +7,13 @@ Primary run URL: https://github.com/TrustSignal-dev/TrustSignal/actions/runs/227
 
 ## Open blockers
 
-### 1) CI required checks still red on latest remote run (hard blocker)
+### 1) Remediation is complete in PR, but merge is policy-blocked pending approval (hard blocker)
 
-Root cause is no longer billing lock. Branch protection and required contexts are active, but latest remote run is still red while local remediation has been implemented and verified.
+CI remediation is implemented and validated in pull request `#11`, and all required checks are now passing. `master` is still blocked from receiving the fix because branch policy requires review approval before merge.
 
-Latest failing remote run:
-- `https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22797482456` (pre-remediation state)
+Latest passing remediation run:
+- `https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801379633` (`lint`, `typecheck`, `test`, `rust-build` all passed)
+- PR: `https://github.com/TrustSignal-dev/TrustSignal/pull/11`
 
 Local remediation already implemented:
 - CI workflow updated to `npm ci` and `npx` execution paths (`.github/workflows/ci.yml`).
@@ -20,8 +21,8 @@ Local remediation already implemented:
 - Local validation passed: `npx tsc --strict --noEmit`, targeted zkML tests, and `npx vitest run --coverage`.
 
 Required unblock:
-- Push remediation commit(s) to `master`.
-- Re-run required checks on `master` until all four required contexts (`lint`, `typecheck`, `test`, `rust-build`) pass.
+- Collect required review approval on PR `#11`.
+- Merge PR `#11` into `master` without bypassing branch-protection policy.
 
 ### 2) Secret-remediation governance closure still open (high risk)
 

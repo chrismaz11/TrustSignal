@@ -14,7 +14,7 @@ Scope: Repository-wide (`TrustSignal`)
 ## Production Gate
 - Current gate: `BLOCKED`
 - Reason:
-  - 2026-03-07 governance blocker: Latest remote GitHub Actions run is still red (`https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22797482456`), but CI remediation is now landed locally (`.github/workflows/ci.yml` + `src/verifiers/zkmlVerifier.ts`) and awaiting push/rerun evidence.
+  - 2026-03-07 governance blocker: CI remediation PR `#11` has all required checks passing (`https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801379633`), but merge is blocked by base-branch policy pending required review approval.
   - 2026-03-07 governance hardening completed: `master` branch protection is now active (PR required, 1 approval, required checks, conversation resolution, admin enforcement, signed commits); see `docs/evidence/security/github-governance-2026-03-07.md`.
   - Historical secret exposure remediation is still open for governance closure: history rewrite and force-push are complete, but hidden `refs/pull/*` retention purge confirmation and credential-rotation evidence are still pending (tracking issue `https://github.com/TrustSignal-dev/TrustSignal/issues/4`).
   - TLS 1.3/HTTPS enforcement is implemented in code, but staging/prod ingress evidence is still missing (`x-forwarded-proto=https` forwarding + certificate policy proof; `TASKS.md` P1-S2 unchecked item).
@@ -47,10 +47,11 @@ Scope: Repository-wide (`TrustSignal`)
 | 13 | Incident runbooks + real `status.deedshield.io` | `IN PROGRESS` | Incident/escalation baseline documented in `docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`; legacy runbook retained at `docs/archive/legacy-2026-02-25/ops/incident-response.md` | No live status-page implementation evidence or operator drill artifact |
 
 ## Dated Notes
-- 2026-03-07: `BLOCKED.md` is the source of truth for active governance blockers (remote CI still red pending rerun + remaining secret-remediation closure).
+- 2026-03-07: `BLOCKED.md` is the source of truth for active governance blockers (PR merge approval gate + remaining secret-remediation closure).
 - 2026-03-07: Registry adapter Wave 1 is complete per `TASKS.md` MVP10 and is not a production gate blocker at this time.
 - 2026-03-07: Branch protection and governance evidence capture completed via `scripts/apply-github-branch-protection.sh` and `scripts/capture-github-governance-evidence.sh`.
 - 2026-03-07: Local CI remediation verification passed (`npx tsc --strict --noEmit`, `npx vitest run --coverage`); session evidence recorded in `notebooks/governance-ci-unblock-2026-03-07.ipynb`.
+- 2026-03-07: PR `#11` remediation checks are green (`lint`, `typecheck`, `test`, `rust-build`), awaiting required approval before merge into `master`.
 
 ## Hard Security Blocks (Non-Negotiable)
 1. `BLOCK`: Secrets in git or history.
