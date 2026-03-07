@@ -1,6 +1,6 @@
 # TrustSignal Execution Tasks
 
-Last updated: 2026-03-06
+Last updated: 2026-03-07
 Owner: Engineering
 Plan reference: `PROJECT_PLAN.md`
 
@@ -60,7 +60,7 @@ Plan reference: `PROJECT_PLAN.md`
 ### MVP10 Registry Adapter Sprint (Mar 2026)
 - [x] IL DMV adapter stub (`src/adapters/registries/il-dmv.ts`).
 - [x] `registries.sql` migration (`supabase/migrations/registries.sql`).
-- [x] E2E verify curl->proof test (`test/e2e/verify.test.ts`).
+- [x] E2E verify curl->proof test (`tests/e2e/verify.test.ts`).
 - [ ] Free registry expansion backlog (next source wave prioritization and implementation queue).
 - [x] Fail-closed negative tests (`apps/api/src/registry-adapters.test.ts` compliance gap coverage).
 

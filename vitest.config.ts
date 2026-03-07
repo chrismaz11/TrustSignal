@@ -4,8 +4,7 @@ export default defineConfig({
   test: {
     include: [
       'packages/core/src/**/*.test.ts',
-      'tests/**/*.test.ts',
-      'test/**/*.test.ts'
+      'tests/**/*.test.ts'
     ],
     environment: 'node',
     coverage: {
