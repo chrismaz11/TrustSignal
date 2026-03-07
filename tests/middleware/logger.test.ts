@@ -44,6 +44,20 @@ describe('structured logger middleware', () => {
       return { ok: true };
     });
 
+    app.get(
+      '/actor/:bundleId',
+      {
+        preHandler: async (request) => {
+          request.user = { sub: 'issuer-service' };
+        }
+      },
+      async (request) => {
+        const params = request.params as { bundleId: string };
+        setRequestBundleHash(request, params.bundleId);
+        return { ok: true };
+      }
+    );
+
     await app.ready();
   });
 
@@ -60,6 +74,12 @@ describe('structured logger middleware', () => {
     expect(response.statusCode).toBe(200);
 
     const entry = findRequestCompleted(parseJsonLogs(logLines));
+    expect(entry.timestamp).toBeTypeOf('string');
+    expect(entry.actor).toBe('anonymous');
+    expect(entry.service_identity).toBe('trustsignal-api');
+    expect(entry.action).toBe('GET /bundle/:bundleId');
+    expect(entry.target).toBe('abC_123-xyz');
+    expect(entry.result).toBe('success');
     expect(entry.request_id).toBeTypeOf('string');
     expect(entry.route).toBe('/bundle/:bundleId');
     expect(entry.status_code).toBe(200);
@@ -95,7 +115,9 @@ describe('structured logger middleware', () => {
 
     const entry = findRequestCompleted(parseJsonLogs(logLines));
     expect(entry.route).toBe('/unknown-path');
+    expect(entry.target).toBe('/unknown-path');
     expect(entry.bundle_hash).toBeNull();
+    expect(entry.result).toBe('failure');
   });
 
   it('falls back to raw URL path when query string is absent', async () => {
@@ -108,5 +130,18 @@ describe('structured logger middleware', () => {
 
     const entry = findRequestCompleted(parseJsonLogs(logLines));
     expect(entry.route).toBe('/missing-no-query');
+  });
+
+  it('uses authenticated identity as the actor field when present', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/actor/verified-bundle'
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const entry = findRequestCompleted(parseJsonLogs(logLines));
+    expect(entry.actor).toBe('issuer-service');
+    expect(entry.target).toBe('verified-bundle');
   });
 });

@@ -12,7 +12,7 @@ Primary run URL: https://github.com/TrustSignal-dev/TrustSignal/actions/runs/227
 CI remediation is implemented and validated in pull request `#11`, and all required checks are now passing. `master` is still blocked from receiving the fix because branch policy requires review approval before merge.
 
 Latest passing remediation run:
-- `https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801575144` (`lint`, `typecheck`, `test`, `rust-build` all passed)
+- `https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801986229` (`lint`, `typecheck`, `test`, `rust-build` all passed)
 - PR: `https://github.com/TrustSignal-dev/TrustSignal/pull/11`
 
 Local remediation already implemented:

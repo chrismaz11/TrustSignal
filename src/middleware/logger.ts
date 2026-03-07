@@ -37,6 +37,19 @@ function resolveRoute(request: FastifyRequest): string {
   return url.slice(0, queryIndex);
 }
 
+function resolveActor(request: FastifyRequest): string {
+  const subject = request.user?.sub;
+  if (typeof subject === 'string' && subject.trim().length > 0) {
+    return subject.trim();
+  }
+
+  return 'anonymous';
+}
+
+function resolveTarget(request: FastifyRequest): string {
+  return request.trustSignalBundleHash ?? resolveRoute(request);
+}
+
 export function setRequestBundleHash(request: FastifyRequest, bundleHash: string): void {
   const normalized = normalizeBundleHash(bundleHash);
   if (!normalized) {
@@ -53,11 +66,19 @@ export async function registerStructuredLogger(app: FastifyInstance): Promise<vo
   app.addHook('onResponse', async (request, reply) => {
     const startedAtMs = request.trustSignalStartedAtMs ?? Date.now();
     const durationMs = Math.max(0, Date.now() - startedAtMs);
+    const route = resolveRoute(request);
+    const result = reply.statusCode >= 400 ? 'failure' : 'success';
 
     app.log.info(
       {
+        timestamp: new Date().toISOString(),
+        actor: resolveActor(request),
+        service_identity: process.env.SERVICE_NAME ?? 'trustsignal-api',
+        action: `${request.method} ${route}`,
+        target: resolveTarget(request),
+        result,
         request_id: request.id,
-        route: resolveRoute(request),
+        route,
         duration_ms: durationMs,
         status_code: reply.statusCode,
         bundle_hash: request.trustSignalBundleHash ?? null

@@ -14,7 +14,7 @@ Scope: Repository-wide (`TrustSignal`)
 ## Production Gate
 - Current gate: `BLOCKED`
 - Reason:
-  - 2026-03-07 governance blocker: CI remediation PR `#11` has all required checks passing (`https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801575144`), but merge is blocked by base-branch policy pending required review approval.
+  - 2026-03-07 governance blocker: CI remediation PR `#11` has all required checks passing (`https://github.com/TrustSignal-dev/TrustSignal/actions/runs/22801986229`), but merge is blocked by base-branch policy pending required review approval.
   - 2026-03-07 governance hardening completed: `master` branch protection is now active (PR required, 1 approval, required checks, conversation resolution, admin enforcement, signed commits); see `docs/evidence/security/github-governance-2026-03-07.md`.
   - Historical secret exposure remediation is still open for governance closure: history rewrite and force-push are complete, but hidden `refs/pull/*` retention purge confirmation and credential-rotation evidence are still pending (tracking issue `https://github.com/TrustSignal-dev/TrustSignal/issues/4`).
   - TLS 1.3/HTTPS enforcement is implemented in code, but staging/prod ingress evidence is still missing (`x-forwarded-proto=https` forwarding + certificate policy proof; `TASKS.md` P1-S2 unchecked item).
