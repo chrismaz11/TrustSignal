@@ -39,7 +39,10 @@ impl MerkleTree {
     }
 
     pub fn from_leaves(mut leaves: Vec<Fp>) -> Self {
-        assert!(leaves.len().is_power_of_two(), "leaf count must be power of two");
+        assert!(
+            leaves.len().is_power_of_two(),
+            "leaf count must be power of two"
+        );
         let mut levels = vec![leaves.clone()];
         while leaves.len() > 1 {
             let next: Vec<Fp> = leaves
@@ -60,7 +63,11 @@ impl MerkleTree {
         let mut idx = leaf_index;
         let mut siblings = Vec::with_capacity(self.levels.len() - 1);
         for level in &self.levels[..self.levels.len() - 1] {
-            let sib_idx = if idx.is_multiple_of(2) { idx + 1 } else { idx - 1 };
+            let sib_idx = if idx.is_multiple_of(2) {
+                idx + 1
+            } else {
+                idx - 1
+            };
             let is_left = sib_idx < idx;
             siblings.push(PathNode {
                 value: level[sib_idx],

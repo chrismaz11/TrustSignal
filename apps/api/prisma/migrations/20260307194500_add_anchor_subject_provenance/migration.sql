@@ -1,0 +1,4 @@
+ALTER TABLE "Receipt"
+ADD COLUMN IF NOT EXISTS "anchorSubjectDigest" TEXT,
+ADD COLUMN IF NOT EXISTS "anchorSubjectVersion" TEXT,
+ADD COLUMN IF NOT EXISTS "anchorAnchoredAt" TIMESTAMP(3);

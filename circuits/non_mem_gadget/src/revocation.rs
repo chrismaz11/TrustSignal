@@ -81,11 +81,12 @@ impl RevocationConfig {
             let l = meta.query_advice(left, Rotation::cur());
             let r = meta.query_advice(right, Rotation::cur());
             let p = meta.query_advice(parent, Rotation::cur());
-            vec![s
-                * (l * halo2_proofs::plonk::Expression::Constant(Fp::from(7))
+            vec![
+                s * (l * halo2_proofs::plonk::Expression::Constant(Fp::from(7))
                     + r * halo2_proofs::plonk::Expression::Constant(Fp::from(13))
                     + halo2_proofs::plonk::Expression::Constant(Fp::from(NON_MEM_DOMAIN_TAG))
-                    - p)]
+                    - p),
+            ]
         });
 
         let sel_nonzero = meta.selector();
@@ -177,9 +178,19 @@ pub fn synthesize_revocation_witness(
     layouter.assign_region(
         || "nullifier derivation",
         |mut region| {
-            region.assign_advice(|| "deed_hash", cfg.deed_hash, 0, || Value::known(witness.deed_hash))?;
+            region.assign_advice(
+                || "deed_hash",
+                cfg.deed_hash,
+                0,
+                || Value::known(witness.deed_hash),
+            )?;
             region.assign_advice(|| "secret", cfg.secret, 0, || Value::known(witness.secret))?;
-            region.assign_advice(|| "nullifier", cfg.nullifier, 0, || Value::known(witness.nullifier))?;
+            region.assign_advice(
+                || "nullifier",
+                cfg.nullifier,
+                0,
+                || Value::known(witness.nullifier),
+            )?;
             region.assign_advice(
                 || "expected_nullifier",
                 cfg.expected_nullifier,
@@ -218,7 +229,8 @@ pub fn synthesize_revocation_witness(
 
                 region.assign_advice(|| "left", cfg.left, offset, || Value::known(l))?;
                 region.assign_advice(|| "right", cfg.right, offset, || Value::known(r))?;
-                let parent_cell = region.assign_advice(|| "parent", cfg.parent, offset, || Value::known(p))?;
+                let parent_cell =
+                    region.assign_advice(|| "parent", cfg.parent, offset, || Value::known(p))?;
                 cfg.sel_hash.enable(&mut region, offset)?;
 
                 cur = p;
@@ -259,7 +271,8 @@ pub fn synthesize_revocation_witness(
 
                 region.assign_advice(|| "left", cfg.left, offset, || Value::known(l))?;
                 region.assign_advice(|| "right", cfg.right, offset, || Value::known(r))?;
-                let parent_cell = region.assign_advice(|| "parent", cfg.parent, offset, || Value::known(p))?;
+                let parent_cell =
+                    region.assign_advice(|| "parent", cfg.parent, offset, || Value::known(p))?;
                 cfg.sel_hash.enable(&mut region, offset)?;
 
                 cur = p;
@@ -278,9 +291,14 @@ pub fn synthesize_revocation_witness(
     Ok(())
 }
 
-pub fn prove_revocation(circuit: RevocationCircuit, root: Fp, k: u32) -> Result<(), RevocationError> {
+pub fn prove_revocation(
+    circuit: RevocationCircuit,
+    root: Fp,
+    k: u32,
+) -> Result<(), RevocationError> {
     validate_nullifier(&circuit.witness)?;
 
-    let prover = MockProver::run(k, &circuit, vec![vec![root]]).map_err(|_| RevocationError::NullifierSpent)?;
+    let prover = MockProver::run(k, &circuit, vec![vec![root]])
+        .map_err(|_| RevocationError::NullifierSpent)?;
     prover.verify().map_err(|_| RevocationError::NullifierSpent)
 }

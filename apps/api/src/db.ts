@@ -18,10 +18,16 @@ export async function ensureDatabase(prisma: PrismaClient) {
       "anchorTxHash" TEXT,
       "anchorChainId" TEXT,
       "anchorId" TEXT,
+      "anchorSubjectDigest" TEXT,
+      "anchorSubjectVersion" TEXT,
+      "anchorAnchoredAt" TIMESTAMP(3),
       "fraudRisk" TEXT,
       "zkpAttestation" TEXT,
       "revoked" BOOLEAN NOT NULL DEFAULT FALSE
     )`,
+    `ALTER TABLE "Receipt" ADD COLUMN IF NOT EXISTS "anchorSubjectDigest" TEXT`,
+    `ALTER TABLE "Receipt" ADD COLUMN IF NOT EXISTS "anchorSubjectVersion" TEXT`,
+    `ALTER TABLE "Receipt" ADD COLUMN IF NOT EXISTS "anchorAnchoredAt" TIMESTAMP(3)`,
     `CREATE TABLE IF NOT EXISTS "Property" (
       "parcelId" TEXT PRIMARY KEY,
       "currentOwner" TEXT NOT NULL,

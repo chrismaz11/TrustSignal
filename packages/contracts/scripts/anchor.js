@@ -1,7 +1,8 @@
-const { ethers } = require('hardhat');
+import { ethers } from 'hardhat';
 
 async function main() {
   const receiptHash = process.env.RECEIPT_HASH;
+  const subjectDigest = process.env.ANCHOR_SUBJECT_DIGEST || process.env.SUBJECT_DIGEST;
   const registryAddress = process.env.ANCHOR_REGISTRY_ADDRESS;
 
   if (!receiptHash || !registryAddress) {
@@ -9,9 +10,15 @@ async function main() {
   }
 
   const registry = await ethers.getContractAt('AnchorRegistry', registryAddress);
-  const tx = await registry.anchor(receiptHash);
+  const tx = subjectDigest
+    ? await registry.anchorWithSubject(receiptHash, subjectDigest)
+    : await registry.anchor(receiptHash);
   const receipt = await tx.wait();
-  console.log(`Anchored ${receiptHash} in tx ${receipt?.hash}`);
+  console.log(
+    subjectDigest
+      ? `Anchored ${receiptHash} with subject ${subjectDigest} in tx ${receipt?.hash}`
+      : `Anchored ${receiptHash} in tx ${receipt?.hash}`
+  );
 }
 
 main().catch((error) => {

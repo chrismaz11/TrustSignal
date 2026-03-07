@@ -2,11 +2,8 @@ import { randomUUID } from 'crypto';
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
 
 import { buildServer } from './server.js';
-
-const prisma = new PrismaClient();
 
 describe('Request validation hardening', () => {
   let app: FastifyInstance;
@@ -14,24 +11,15 @@ describe('Request validation hardening', () => {
   const validReceiptId = randomUUID();
 
   beforeAll(async () => {
+    process.env.API_KEYS = apiKey;
+    process.env.API_KEY_SCOPES = `${apiKey}=read|anchor|revoke`;
     app = await buildServer();
-    await prisma.organization.upsert({
-      where: { apiKey },
-      create: {
-        name: 'Validation Test Org',
-        adminEmail: 'validation@test.local',
-        apiKey
-      },
-      update: {}
-    });
   });
 
   afterAll(async () => {
-    await prisma.organization.deleteMany({
-      where: { apiKey }
-    });
     await app.close();
-    await prisma.$disconnect();
+    delete process.env.API_KEYS;
+    delete process.env.API_KEY_SCOPES;
   });
 
   it('rejects invalid receiptId params', async () => {

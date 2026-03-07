@@ -23,6 +23,9 @@ model Receipt {
   anchorTxHash     String?
   anchorChainId    String?
   anchorId         String?
+  anchorSubjectDigest  String?
+  anchorSubjectVersion String?
+  anchorAnchoredAt     DateTime?
   fraudRisk        String?  // JSON
   zkpAttestation   String?  // JSON
   revoked          Boolean  @default(false)
