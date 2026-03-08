@@ -134,7 +134,7 @@ jobs:
           sudo mv gitleaks /usr/local/bin/gitleaks
 
       - name: Gitleaks scan
-        run: gitleaks git --source . --redact --no-banner
+        run: gitleaks git . --redact --no-banner
 
   dependency-audit:
     runs-on: ubuntu-latest
