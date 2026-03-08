@@ -31,6 +31,17 @@ jobs:
               return;
             }
 
+            const prAuthor = pr.user?.login || '';
+            const isDependabotPr =
+              prAuthor === 'dependabot[bot]' ||
+              prAuthor === 'app/dependabot' ||
+              (pr.user?.type === 'Bot' && prAuthor.toLowerCase().includes('dependabot'));
+
+            if (isDependabotPr) {
+              core.info(`Skipping AI disclosure gate for Dependabot PR authored by ${prAuthor}.`);
+              return;
+            }
+
             const body = pr.body || '';
             const disclosurePattern = /-\s*\[( |x|X)\]\s*AI-assisted changes are included in this PR/;
             const aiAssistedPattern = /-\s*\[(x|X)\]\s*AI-assisted changes are included in this PR/;
