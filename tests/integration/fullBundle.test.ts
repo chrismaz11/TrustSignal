@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { verifyBundle } from '../../src/core/verifyBundle.js';
 import type { VerifyBundleInput } from '../../src/types/VerificationResult.js';
-import { verifyZkml } from '../../src/verifiers/zkmlVerifier.js';
 
 vi.mock('../../src/verifiers/zkmlVerifier.js', async () => {
   const actual = await vi.importActual<typeof import('../../src/verifiers/zkmlVerifier.js')>(
@@ -13,6 +11,9 @@ vi.mock('../../src/verifiers/zkmlVerifier.js', async () => {
     verifyZkml: vi.fn()
   };
 });
+
+const { verifyBundle } = await import('../../src/core/verifyBundle.js');
+const { verifyZkml } = await import('../../src/verifiers/zkmlVerifier.js');
 
 interface MockZkmlResponse {
   proven: boolean;
@@ -46,7 +47,7 @@ describe('full bundle verification', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    mockedVerifyZkml.mockReset();
   });
 
   it('verifies a valid bundle', { timeout: 30_000 }, async () => {
