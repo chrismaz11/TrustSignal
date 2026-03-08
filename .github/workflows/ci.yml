@@ -122,6 +122,8 @@ jobs:
 
   secret-scan:
     runs-on: ubuntu-latest
+    env:
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
