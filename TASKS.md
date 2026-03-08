@@ -86,6 +86,14 @@ Plan reference: `PROJECT_PLAN.md`
 - [ ] Free registry expansion backlog (next source wave prioritization and implementation queue).
 - [x] Fail-closed negative tests (`apps/api/src/registry-adapters.test.ts` compliance gap coverage).
 
+## Active Migration Blockers
+
+### Dependency Major Upgrade Triage (Mar 2026)
+- [x] Land low-risk Dependabot upgrades for GitHub Actions, `json-canonicalize`, and `next`.
+- [x] Land `jose` v6 compatibility fix in `packages/core/src/registry.ts`.
+- [ ] Replace or defer the `eslint` v10 PR until the import lint stack supports ESLint 10 without peer-dependency conflicts.
+- [x] Plan and execute the Prisma 7 migration as a dedicated refactor (`prisma.config.ts`, datasource removal from schema, runtime client adapter wiring, and Node 22-only validation).
+
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.
 - [ ] Define idempotency, retry, and error semantics.

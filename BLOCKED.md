@@ -19,7 +19,18 @@ Required unblock:
 - Either optimize the attestation circuit materially (lookup-table strategy / reduced witness surface) or pivot to a faster hash/circuit design such as Poseidon for the commitment statement while preserving auditability.
 - Only after release prove/verify succeeds reliably should proof-latency evidence be captured for partner-facing claims.
 
-### 2) Historical secret-remediation closure is still incomplete (high risk)
+### 2) ESLint 10 is blocked by the current lint plugin stack (medium risk)
+
+Current state:
+- Dependabot PR `#19` upgrades `eslint` to `10.0.3`.
+- The current stack uses `eslint-plugin-import@2.32.0`, which only declares support through ESLint 9.
+- `@typescript-eslint` can be moved forward, but the repo still needs a lint-plugin strategy that preserves current lint behavior.
+
+Required unblock:
+- Either replace `eslint-plugin-import` with a compatible supported alternative or defer ESLint 10 until the plugin ecosystem catches up.
+- Re-run `lint`, `typecheck`, and `test` after the lint-stack decision.
+
+### 3) Historical secret-remediation closure is still incomplete (high risk)
 
 Current state:
 - Tracked secrets were removed from the current tree and history rewrite/remediation work was previously performed.
@@ -29,7 +40,7 @@ Required unblock:
 - Finish credential rotation evidence capture.
 - Confirm hidden `refs/pull/*` retention cleanup with GitHub support.
 
-### 3) HTTPS/TLS ingress evidence is still incomplete (high risk)
+### 4) HTTPS/TLS ingress evidence is still incomplete (high risk)
 
 Current state:
 - Runtime HTTPS guards exist in code.
@@ -39,9 +50,9 @@ Required unblock:
 - Capture edge TLS evidence for the deployed API surface.
 - Attach evidence to the governance tracker.
 
-### 4) Monitoring and alert evidence is still incomplete (medium risk)
+### 5) Monitoring and alert evidence is still incomplete (medium risk)
 
-### 5) Prisma 7 upgrade is only completed for `apps/api` (medium risk)
+### 6) Prisma 7 upgrade is only completed for `apps/api` (medium risk)
 
 Current state:
 - `apps/api` now runs on Prisma 7 using `@prisma/adapter-pg`, `pg`, and `apps/api/prisma.config.ts`.
@@ -68,4 +79,5 @@ Required unblock:
   - required signatures: enabled
   - conversation resolution: enabled
   - admin enforcement: enabled
+- Consolidated Halo2/governance integration is already merged to `master` via PR `#13`.
 - Repository guardrails are present in `AGENTS.md`, API override instructions, middleware override instructions, and CI security workflow checks.
