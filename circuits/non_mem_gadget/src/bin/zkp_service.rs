@@ -244,8 +244,7 @@ mod tests {
     #[ignore = "slow cryptographic proof in debug mode; validate via release zkp_service"]
     fn prove_then_verify_round_trip_succeeds() {
         let prove_response = handle_request(prove_request()).expect("prove request should succeed");
-        let prove_json: serde_json::Value =
-            serde_json::from_str(&prove_response).expect("prove response should be valid json");
+        let prove_json = prove_response;
 
         let verify_request = serde_json::json!({
             "action": "verify",
@@ -255,8 +254,7 @@ mod tests {
             serde_json::from_value(verify_request).expect("verify request should parse"),
         )
         .expect("verify request should succeed");
-        let verify_json: serde_json::Value =
-            serde_json::from_str(&verify_response).expect("verify response should be valid json");
+        let verify_json = verify_response;
 
         assert_eq!(verify_json, serde_json::json!({ "verified": true }));
     }
@@ -265,8 +263,7 @@ mod tests {
     #[ignore = "slow cryptographic proof in debug mode; validate via release zkp_service"]
     fn verify_rejects_mismatched_proof_id() {
         let prove_response = handle_request(prove_request()).expect("prove request should succeed");
-        let mut prove_json: serde_json::Value =
-            serde_json::from_str(&prove_response).expect("prove response should be valid json");
+        let mut prove_json = prove_response;
         prove_json["attestation"]["proofId"] = serde_json::json!("0xnot-the-digest");
 
         let verify_request = serde_json::json!({
@@ -277,8 +274,7 @@ mod tests {
             serde_json::from_value(verify_request).expect("verify request should parse"),
         )
         .expect("verify request should succeed");
-        let verify_json: serde_json::Value =
-            serde_json::from_str(&verify_response).expect("verify response should be valid json");
+        let verify_json = verify_response;
 
         assert_eq!(verify_json, serde_json::json!({ "verified": false }));
     }
