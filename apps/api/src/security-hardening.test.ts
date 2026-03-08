@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Buffer } from 'node:buffer';
 import { FastifyInstance } from 'fastify';
 import { Wallet } from 'ethers';
 
@@ -112,12 +113,14 @@ describeWithDatabase('Security hardening: auth, scopes, and per-key throttling',
       headers: { 'x-api-key': apiKeyVerify }
     });
     expect(syntheticRes.statusCode).toBe(200);
+    const bundle = syntheticRes.json();
+    bundle.doc.pdfBase64 = Buffer.from('%PDF-1.4\nsecurity-hardening', 'utf8').toString('base64');
 
     const verifyRes = await app.inject({
       method: 'POST',
       url: '/api/v1/verify',
       headers: { 'x-api-key': apiKeyVerify },
-      payload: syntheticRes.json()
+      payload: bundle
     });
     expect(verifyRes.statusCode).toBe(200);
 
@@ -135,6 +138,23 @@ describeWithDatabase('Security hardening: auth, scopes, and per-key throttling',
     expect(body.subject.receiptId).toBe(receiptId);
     expect(['ALLOW', 'FLAG', 'BLOCK']).toContain(body.result.decision);
     expect(['PASS', 'REVIEW', 'FAIL']).toContain(body.result.normalizedStatus);
+    expect(body.result.zkpAttestation?.status).toBe('dev-only');
+    expect(body.result.zkpAttestation?.backend).toBe('halo2-dev');
+    expect(body.result.zkpAttestation?.circuitId).toBe('document-sha256-v1');
+    expect(typeof body.result.zkpAttestation?.publicInputs?.conformance).toBe('boolean');
+    expect(body.result.zkpAttestation?.publicInputs?.documentWitnessMode).toBe('canonical-document-bytes-v1');
+    expect(body.result.zkpAttestation?.publicInputs?.schemaVersion).toBe('trustsignal.document_sha256.v1');
+    expect(typeof body.result.zkpAttestation?.publicInputs?.declaredDocHash).toBe('string');
+    expect(typeof body.result.zkpAttestation?.publicInputs?.documentDigest).toBe('string');
+    expect(typeof body.result.zkpAttestation?.publicInputs?.documentCommitment).toBe('string');
+    expect(typeof body.result.zkpAttestation?.proofArtifact?.digest).toBe('string');
+    expect(body.result.zkpAttestation?.verificationKeyId).toBeUndefined();
+    expect(body.result.zkpAttestation?.verifiedAt).toBeUndefined();
+    expect(body.result.zkpAttestation?.proofArtifact?.encoding).toBeUndefined();
+    expect(body.result.zkpAttestation?.proofArtifact?.proof).toBeUndefined();
+    expect(body.controls.anchored).toBe(false);
+    expect(typeof body.controls.anchorSubjectDigest).toBe('string');
+    expect(body.controls.anchorSubjectVersion).toBe('trustsignal.anchor_subject.v1');
   });
 
   it('enforces per-api-key rate limiting', async () => {
@@ -195,6 +215,7 @@ describeWithDatabase('Security hardening: auth, scopes, and per-key throttling',
       headers: { 'x-api-key': apiKeyVerify }
     });
     const bundle = syntheticRes.json();
+    bundle.doc.pdfBase64 = Buffer.from('%PDF-1.4\nrevocation-test', 'utf8').toString('base64');
 
     const verifyRes = await app.inject({
       method: 'POST',

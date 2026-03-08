@@ -1,0 +1,77 @@
+name: AI PR Review Gate
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
+      - dismissed
+
+jobs:
+  ai-review-required:
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Enforce AI disclosure and human approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setFailed('No pull request payload found.');
+              return;
+            }
+
+            const body = pr.body || '';
+            const disclosurePattern = /-\s*\[( |x|X)\]\s*AI-assisted changes are included in this PR/;
+            const aiAssistedPattern = /-\s*\[(x|X)\]\s*AI-assisted changes are included in this PR/;
+
+            if (!disclosurePattern.test(body)) {
+              core.setFailed('PRs must disclose whether AI-assisted changes are included.');
+              return;
+            }
+
+            if (!aiAssistedPattern.test(body)) {
+              core.info('AI disclosure is present and no AI-assisted changes were declared.');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            const latestReviewByUser = new Map();
+            for (const review of reviews) {
+              if (!review.user || review.user.login === pr.user.login) {
+                continue;
+              }
+
+              latestReviewByUser.set(review.user.login, {
+                state: review.state,
+                type: review.user.type
+              });
+            }
+
+            const approvals = [...latestReviewByUser.values()].filter(
+              (review) => review.type !== 'Bot' && review.state === 'APPROVED'
+            );
+
+            if (approvals.length < 1) {
+              core.setFailed('AI-assisted PRs require at least one human approval before merge.');
+              return;
+            }
+
+            core.info(`AI-assisted PR approved by ${approvals.length} human reviewer(s).`);

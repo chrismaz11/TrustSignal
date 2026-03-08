@@ -92,7 +92,14 @@ describe('Fastify verification routes', () => {
   let anchorNullifierMock: RouteDependencies['anchorNullifier'];
 
   beforeEach(async () => {
+    const envSnapshot = {
+      TRUSTSIGNAL_JWT_SECRET: process.env.TRUSTSIGNAL_JWT_SECRET,
+      TRUSTSIGNAL_JWT_SECRETS: process.env.TRUSTSIGNAL_JWT_SECRETS,
+      LOG_LEVEL: process.env.LOG_LEVEL
+    };
+    (globalThis as typeof globalThis & { __routesTestEnvSnapshot?: typeof envSnapshot }).__routesTestEnvSnapshot = envSnapshot;
     process.env.TRUSTSIGNAL_JWT_SECRET = JWT_SECRET;
+    process.env.TRUSTSIGNAL_JWT_SECRETS = JWT_SECRET;
     process.env.LOG_LEVEL = 'silent';
 
     store = new InMemoryVerificationRecordStore();
@@ -128,8 +135,28 @@ describe('Fastify verification routes', () => {
 
   afterEach(async () => {
     await app.close();
-    delete process.env.TRUSTSIGNAL_JWT_SECRET;
-    delete process.env.LOG_LEVEL;
+    const envSnapshot = (globalThis as typeof globalThis & {
+      __routesTestEnvSnapshot?: {
+        TRUSTSIGNAL_JWT_SECRET?: string;
+        TRUSTSIGNAL_JWT_SECRETS?: string;
+        LOG_LEVEL?: string;
+      };
+    }).__routesTestEnvSnapshot;
+    if (envSnapshot?.TRUSTSIGNAL_JWT_SECRET === undefined) {
+      delete process.env.TRUSTSIGNAL_JWT_SECRET;
+    } else {
+      process.env.TRUSTSIGNAL_JWT_SECRET = envSnapshot.TRUSTSIGNAL_JWT_SECRET;
+    }
+    if (envSnapshot?.TRUSTSIGNAL_JWT_SECRETS === undefined) {
+      delete process.env.TRUSTSIGNAL_JWT_SECRETS;
+    } else {
+      process.env.TRUSTSIGNAL_JWT_SECRETS = envSnapshot.TRUSTSIGNAL_JWT_SECRETS;
+    }
+    if (envSnapshot?.LOG_LEVEL === undefined) {
+      delete process.env.LOG_LEVEL;
+    } else {
+      process.env.LOG_LEVEL = envSnapshot.LOG_LEVEL;
+    }
   });
 
   it('returns 401 when auth header is missing', async () => {

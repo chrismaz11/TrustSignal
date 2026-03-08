@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Deed Shield",
+    "title": "TrustSignal API",
     "version": "1.0.0"
   },
   "paths": {
@@ -9,7 +9,9 @@
       "get": {
         "summary": "Health check",
         "responses": {
-          "200": { "description": "OK" }
+          "200": {
+            "description": "OK"
+          }
         }
       }
     },
@@ -20,7 +22,9 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/VerifyInput" }
+              "schema": {
+                "$ref": "#/components/schemas/VerifyInput"
+              }
             }
           }
         },
@@ -29,7 +33,9 @@
             "description": "Verification receipt summary",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/VerifyResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyResponse"
+                }
               }
             }
           }
@@ -44,11 +50,23 @@
             "name": "receiptId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "Receipt details" }
+          "200": {
+            "description": "Receipt details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptResponse"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -60,27 +78,82 @@
             "name": "receiptId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "PDF" }
+          "200": {
+            "description": "PDF"
+          }
         }
       }
     },
-    "/api/v1/anchor/{receiptId}": {
+    "/api/v1/receipt/{receiptId}/verify": {
       "post": {
-        "summary": "Anchor a receipt hash on-chain",
+        "summary": "Verify stored receipt integrity and proof validity",
         "parameters": [
           {
             "name": "receiptId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "Anchor status" }
+          "200": {
+            "description": "Receipt integrity and proof verification status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptVerifyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/anchor/{receiptId}": {
+      "post": {
+        "summary": "Anchor a receipt hash and proof provenance subject on-chain",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Anchor status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnchorState"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Proof artifact digest required before anchoring",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -88,7 +161,9 @@
       "get": {
         "summary": "List receipts",
         "responses": {
-          "200": { "description": "Receipt list" }
+          "200": {
+            "description": "Receipt list"
+          }
         }
       }
     },
@@ -96,7 +171,54 @@
       "get": {
         "summary": "Get a synthetic sample bundle",
         "responses": {
-          "200": { "description": "Sample bundle" }
+          "200": {
+            "description": "Sample bundle"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/vanta/schema": {
+      "get": {
+        "summary": "Get the TrustSignal Vanta verification-result schema",
+        "responses": {
+          "200": {
+            "description": "Vanta schema metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VantaSchemaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/vanta/verification/{receiptId}": {
+      "get": {
+        "summary": "Get Vanta evidence for a receipt",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vanta verification evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VantaVerificationResult"
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -106,53 +228,762 @@
       "VerifyInput": {
         "type": "object",
         "properties": {
-          "bundleId": { "type": "string" },
-          "transactionType": { "type": "string" },
+          "bundleId": {
+            "type": "string"
+          },
+          "transactionType": {
+            "type": "string"
+          },
           "ron": {
             "type": "object",
             "properties": {
-              "provider": { "type": "string" },
-              "notaryId": { "type": "string" },
-              "commissionState": { "type": "string" },
-              "sealPayload": { "type": "string" }
+              "provider": {
+                "type": "string"
+              },
+              "notaryId": {
+                "type": "string"
+              },
+              "commissionState": {
+                "type": "string"
+              },
+              "sealPayload": {
+                "type": "string"
+              }
             },
-            "required": ["provider", "notaryId", "commissionState", "sealPayload"]
+            "required": [
+              "provider",
+              "notaryId",
+              "commissionState",
+              "sealPayload"
+            ]
           },
           "doc": {
             "type": "object",
             "properties": {
-              "docHash": { "type": "string" }
+              "docHash": {
+                "type": "string"
+              }
             },
-            "required": ["docHash"]
+            "required": [
+              "docHash"
+            ]
           },
           "policy": {
             "type": "object",
             "properties": {
-              "profile": { "type": "string" }
+              "profile": {
+                "type": "string"
+              }
             },
-            "required": ["profile"]
+            "required": [
+              "profile"
+            ]
           }
         },
-        "required": ["bundleId", "transactionType", "ron", "doc", "policy"]
+        "required": [
+          "bundleId",
+          "transactionType",
+          "ron",
+          "doc",
+          "policy"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "FraudSignal": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "FraudRisk": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FraudSignal"
+            }
+          }
+        },
+        "required": [
+          "score",
+          "band",
+          "signals"
+        ]
+      },
+      "RevocationState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "REVOKED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AnchorState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Anchoring lifecycle only. This does not imply the proof is cryptographically verifiable."
+          },
+          "backend": {
+            "type": "string",
+            "description": "Present on mapped receipt/verify responses. The direct anchor route currently omits this field."
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "chainId": {
+            "type": "string"
+          },
+          "anchorId": {
+            "type": "string"
+          },
+          "anchoredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subjectDigest": {
+            "type": "string",
+            "description": "Digest of the anchor provenance subject derived from receipt hash and attestation metadata."
+          },
+          "subjectVersion": {
+            "type": "string",
+            "enum": [
+              "trustsignal.anchor_subject.v1"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "subjectDigest",
+          "subjectVersion"
+        ]
+      },
+      "ZkpPublicInputs": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "policyHash": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inputsCommitment": {
+            "type": "string"
+          },
+          "conformance": {
+            "type": "boolean",
+            "description": "Policy conformance result only. No raw witness or PII-bearing fields are exposed."
+          },
+          "declaredDocHash": {
+            "type": "string"
+          },
+          "documentDigest": {
+            "type": "string"
+          },
+          "documentCommitment": {
+            "type": "string"
+          },
+          "schemaVersion": {
+            "type": "string"
+          },
+          "documentWitnessMode": {
+            "type": "string",
+            "enum": [
+              "canonical-document-bytes-v1",
+              "declared-doc-hash-v1"
+            ]
+          }
+        },
+        "required": [
+          "policyHash",
+          "timestamp",
+          "inputsCommitment",
+          "conformance",
+          "declaredDocHash",
+          "documentDigest",
+          "documentCommitment",
+          "schemaVersion",
+          "documentWitnessMode"
+        ]
+      },
+      "DevOnlyProofArtifact": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Digest of the dev-only document attestation artifact. This is not a serialized proof.",
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "digest"
+        ]
+      },
+      "VerifiableProofArtifact": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Serialized proof artifact for a verifiable Halo2 attestation.",
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "base64"
+            ]
+          },
+          "proof": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "digest",
+          "encoding",
+          "proof"
+        ]
+      },
+      "DevOnlyZkpAttestation": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Development-only document attestation metadata. Presence of this object does not mean the proof is cryptographically verifiable.",
+        "properties": {
+          "proofId": {
+            "type": "string"
+          },
+          "scheme": {
+            "type": "string",
+            "enum": [
+              "HALO2-DEV-v0"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "dev-only"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "halo2-dev"
+            ]
+          },
+          "circuitId": {
+            "type": "string"
+          },
+          "publicInputs": {
+            "$ref": "#/components/schemas/ZkpPublicInputs"
+          },
+          "proofArtifact": {
+            "$ref": "#/components/schemas/DevOnlyProofArtifact"
+          }
+        },
+        "required": [
+          "proofId",
+          "scheme",
+          "status",
+          "backend",
+          "circuitId",
+          "publicInputs",
+          "proofArtifact"
+        ]
+      },
+      "VerifiableZkpAttestation": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Cryptographically verifiable Halo2 document attestation.",
+        "properties": {
+          "proofId": {
+            "type": "string"
+          },
+          "scheme": {
+            "type": "string",
+            "enum": [
+              "HALO2-v1"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "verifiable"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "halo2"
+            ]
+          },
+          "circuitId": {
+            "type": "string"
+          },
+          "verificationKeyId": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicInputs": {
+            "$ref": "#/components/schemas/ZkpPublicInputs"
+          },
+          "proofArtifact": {
+            "$ref": "#/components/schemas/VerifiableProofArtifact"
+          }
+        },
+        "required": [
+          "proofId",
+          "scheme",
+          "status",
+          "backend",
+          "circuitId",
+          "verificationKeyId",
+          "verifiedAt",
+          "publicInputs",
+          "proofArtifact"
+        ]
+      },
+      "ZkpAttestation": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DevOnlyZkpAttestation"
+          },
+          {
+            "$ref": "#/components/schemas/VerifiableZkpAttestation"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "dev-only": "#/components/schemas/DevOnlyZkpAttestation",
+            "verifiable": "#/components/schemas/VerifiableZkpAttestation"
+          }
+        }
       },
       "VerifyResponse": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "decision": { "type": "string" },
-          "reasons": { "type": "array", "items": { "type": "string" } },
-          "riskScore": { "type": "integer" },
-          "receiptId": { "type": "string" },
-          "receiptHash": { "type": "string" },
+          "receiptVersion": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "decision": {
+            "type": "string"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "receiptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptHash": {
+            "type": "string"
+          },
+          "proofVerified": {
+            "type": "boolean",
+            "description": "Present when the API can truthfully report proof verification status without a separate verifier round-trip. Dev-only or missing attestations return false."
+          },
           "anchor": {
+            "$ref": "#/components/schemas/AnchorState"
+          },
+          "fraudRisk": {
+            "$ref": "#/components/schemas/FraudRisk"
+          },
+          "zkpAttestation": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZkpAttestation"
+              }
+            ]
+          },
+          "revocation": {
+            "$ref": "#/components/schemas/RevocationState"
+          },
+          "deprecated": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
-              "status": { "type": "string" },
-              "txHash": { "type": "string" },
-              "chainId": { "type": "string" },
-              "anchorId": { "type": "string" }
+              "riskScore": {
+                "type": "integer"
+              },
+              "revoked": {
+                "type": "boolean"
+              }
             }
           }
-        }
+        },
+        "required": [
+          "receiptVersion",
+          "decision",
+          "reasons",
+          "receiptId",
+          "receiptHash",
+          "anchor",
+          "fraudRisk",
+          "zkpAttestation",
+          "revocation"
+        ]
+      },
+      "ReceiptResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/VerifyResponse"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receipt": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "canonicalReceipt": {
+                "type": "string"
+              },
+              "pdfUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "receipt",
+              "canonicalReceipt",
+              "pdfUrl"
+            ]
+          }
+        ]
+      },
+      "ReceiptVerifyResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Integrity verification is distinct from proof verification. A dev-only attestation yields proofVerified=false.",
+        "properties": {
+          "verified": {
+            "type": "boolean"
+          },
+          "integrityVerified": {
+            "type": "boolean"
+          },
+          "proofVerified": {
+            "type": "boolean"
+          },
+          "recomputedHash": {
+            "type": "string"
+          },
+          "storedHash": {
+            "type": "string"
+          },
+          "inputsCommitment": {
+            "type": "string"
+          },
+          "revoked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "verified",
+          "integrityVerified",
+          "proofVerified",
+          "recomputedHash",
+          "storedHash",
+          "inputsCommitment",
+          "revoked"
+        ]
+      },
+      "VantaCheck": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "checkId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "source_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkId",
+          "status"
+        ]
+      },
+      "VantaFraudRisk": {
+        "type": "object",
+        "nullable": true,
+        "additionalProperties": false,
+        "properties": {
+          "score": {
+            "type": "number"
+          },
+          "band": {
+            "type": "string"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "score",
+          "band",
+          "reasons"
+        ]
+      },
+      "VantaControls": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "revoked": {
+            "type": "boolean"
+          },
+          "anchorStatus": {
+            "type": "string"
+          },
+          "anchored": {
+            "type": "boolean"
+          },
+          "anchorSubjectDigest": {
+            "type": "string"
+          },
+          "anchorSubjectVersion": {
+            "type": "string",
+            "enum": [
+              "trustsignal.anchor_subject.v1"
+            ]
+          },
+          "anchoredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "revoked",
+          "anchorStatus",
+          "anchored"
+        ]
+      },
+      "VantaVerificationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "enum": [
+              "trustsignal.vanta.verification_result.v1"
+            ]
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "vendor": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": [
+                  "TrustSignal"
+                ]
+              },
+              "module": {
+                "type": "string",
+                "enum": [
+                  "DeedShield"
+                ]
+              },
+              "environment": {
+                "type": "string"
+              },
+              "apiVersion": {
+                "type": "string",
+                "enum": [
+                  "v1"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "module",
+              "environment",
+              "apiVersion"
+            ]
+          },
+          "subject": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptId": {
+                "type": "string"
+              },
+              "receiptHash": {
+                "type": "string"
+              },
+              "policyProfile": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "receiptId",
+              "receiptHash",
+              "policyProfile",
+              "createdAt"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "ALLOW",
+                  "FLAG",
+                  "BLOCK"
+                ]
+              },
+              "normalizedStatus": {
+                "type": "string",
+                "enum": [
+                  "PASS",
+                  "REVIEW",
+                  "FAIL"
+                ]
+              },
+              "riskScore": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VantaCheck"
+                }
+              },
+              "fraudRisk": {
+                "$ref": "#/components/schemas/VantaFraudRisk"
+              },
+              "zkpAttestation": {
+                "nullable": true,
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ZkpAttestation"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "decision",
+              "normalizedStatus",
+              "riskScore",
+              "reasons",
+              "checks",
+              "fraudRisk",
+              "zkpAttestation"
+            ]
+          },
+          "controls": {
+            "$ref": "#/components/schemas/VantaControls"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "generatedAt",
+          "vendor",
+          "subject",
+          "result",
+          "controls"
+        ]
+      },
+      "VantaSchemaResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "enum": [
+              "trustsignal.vanta.verification_result.v1"
+            ]
+          },
+          "schema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "schema"
+        ]
       }
     }
   }

@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_24-682f2b555da537e46b295922c5704ae97eaf216c",
+  "solcVersion": "0.8.24",
+  "solcLongVersion": "0.8.24+commit.e11b9ed9",
+  "userSourceNameMap": {
+    "contracts/AnchorRegistry.sol": "project/contracts/AnchorRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/AnchorRegistry.sol": {
+        "content": "// SPDX-License-Identifier: Apache-2.0\npragma solidity ^0.8.24;\n\ncontract AnchorRegistry {\n    event Anchored(bytes32 receiptHash, bytes32 subjectDigest, bytes32 anchorId, address sender, uint256 timestamp);\n\n    mapping(bytes32 => bytes32) private receiptSubject;\n    mapping(bytes32 => bool) private anchoredSubject;\n\n    function anchor(bytes32 receiptHash) external returns (bytes32 anchorId) {\n        return anchorWithSubject(receiptHash, receiptHash);\n    }\n\n    function anchorWithSubject(bytes32 receiptHash, bytes32 subjectDigest) public returns (bytes32 anchorId) {\n        require(subjectDigest != bytes32(0), \"Invalid subject\");\n        require(receiptSubject[receiptHash] == bytes32(0), \"Receipt already anchored\");\n        require(!anchoredSubject[subjectDigest], \"Subject already anchored\");\n\n        receiptSubject[receiptHash] = subjectDigest;\n        anchoredSubject[subjectDigest] = true;\n        anchorId = keccak256(abi.encodePacked(receiptHash, subjectDigest, msg.sender, block.number));\n        emit Anchored(receiptHash, subjectDigest, anchorId, msg.sender, block.timestamp);\n    }\n\n    function isAnchored(bytes32 receiptHash) external view returns (bool) {\n        return receiptSubject[receiptHash] != bytes32(0);\n    }\n\n    function isSubjectAnchored(bytes32 subjectDigest) external view returns (bool) {\n        return anchoredSubject[subjectDigest];\n    }\n\n    function subjectForReceipt(bytes32 receiptHash) external view returns (bytes32) {\n        return receiptSubject[receiptHash];\n    }\n}\n"
+      }
+    }
+  }
+}

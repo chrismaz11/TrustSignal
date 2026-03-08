@@ -1,8 +1,9 @@
 use halo2_proofs::pasta::Fp;
 use non_mem_gadget::{
     merkle::{build_10_entry_db, MerkleTree},
-    prove_non_membership, NonMembershipCircuit,
+    prove_non_membership,
     revocation::{poseidon_nullifier_hash, prove_revocation, RevocationCircuit, RevocationWitness},
+    NonMembershipCircuit,
 };
 use serde::Serialize;
 use std::collections::hash_map::DefaultHasher;
@@ -141,7 +142,9 @@ fn verify_revocation(bundle_hash: &str, revoked: bool) -> VerifyOutput {
     let secret = Fp::from(((seed >> 16) % 50_000) + 9_001);
     let nullifier = poseidon_nullifier_hash(deed_hash, secret);
 
-    let mut leaves: Vec<Fp> = (1..=16).map(|value| Fp::from((value as u64) * 100)).collect();
+    let mut leaves: Vec<Fp> = (1..=16)
+        .map(|value| Fp::from((value as u64) * 100))
+        .collect();
     let left_idx = 4usize;
     let right_idx = 5usize;
 

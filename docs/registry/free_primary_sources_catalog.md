@@ -1,10 +1,21 @@
 # Free Primary-Source Registry Expansion Catalog (Beyond MVP10)
 
-Scope: additional no-cost primary sources to evaluate after current MVP coverage (`ofac_*`, `hhs_oig_leie`, `sam_exclusions`, `uk_sanctions_list`, `bis_*`, `us_csl_consolidated`, `nppes_npi_registry`, `sec_edgar_company_tickers`, `fdic_bankfind_institutions`).
+Scope: additional no-cost primary sources to evaluate after current MVP coverage (`ofac_*`, `hhs_oig_leie`, `sam_exclusions`, `uk_sanctions_list`, `bis_*`, `us_csl_consolidated`, `nppes_npi_registry`, `sec_edgar_company_tickers`, `fdic_bankfind_institutions`, `openfema_nfip_community`, `gleif_lei_records`).
 
 Legend:
 - `Integration mode`: `API-first`, `Bulk-download`, `Manual/portal`
 - `Adapter complexity`: `S` (simple parser/query), `M` (moderate transform/rate-limit/state handling), `L` (multi-file joins, large payloads, or brittle portal flow)
+
+## Current wave status (2026-03-07)
+
+- [x] `openfema_nfip_community` adapter implemented in `apps/api/src/services/registryAdapters.ts` (`openfema-json-v1`).
+- [x] `gleif_lei_records` adapter implemented in `apps/api/src/services/registryAdapters.ts` (`gleif-json-v1`).
+- [x] Route and adapter test coverage updated in `apps/api/src/registry-adapters.test.ts`.
+- [x] Notebook evidence log added: `notebooks/registry-wave1-primary-source-expansion-2026-03-07.ipynb`.
+- [ ] Next implementation queue:
+  1. United Nations Security Council consolidated sanctions XML.
+  2. NYC ACRIS endpoints (`master`, `legals`, `parties`) as a combined property-record adapter path.
+  3. IRS TEOS / EO BMF bulk ingest pipeline for nonprofit/entity verification anchors.
 
 | Official source name | Base domain / API endpoint | Category | Auth model | Integration mode | Adapter complexity |
 |---|---|---|---|---|---|

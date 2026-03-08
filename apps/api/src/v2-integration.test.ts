@@ -64,7 +64,24 @@ describeWithDatabase('V2 Feature Integration', () => {
         expect(["LOW", "MEDIUM", "HIGH"]).toContain(receipt.fraudRisk.band);
 
         expect(receipt.zkpAttestation).toBeDefined();
-        expect(receipt.zkpAttestation.scheme).toBe('GROTH16-MOCK-v1');
+        expect(receipt.zkpAttestation.scheme).toBe('HALO2-DEV-v0');
+        expect(receipt.zkpAttestation.status).toBe('dev-only');
+        expect(receipt.zkpAttestation.backend).toBe('halo2-dev');
+        expect(receipt.zkpAttestation.circuitId).toBe('document-sha256-v1');
+        expect(receipt.zkpAttestation.publicInputs.documentWitnessMode).toBe('canonical-document-bytes-v1');
+        expect(receipt.zkpAttestation.publicInputs.schemaVersion).toBe('trustsignal.document_sha256.v1');
+        expect(typeof receipt.zkpAttestation.publicInputs.declaredDocHash).toBe('string');
+        expect(typeof receipt.zkpAttestation.publicInputs.documentDigest).toBe('string');
+        expect(typeof receipt.zkpAttestation.publicInputs.documentCommitment).toBe('string');
+        expect(typeof receipt.zkpAttestation.proofArtifact?.digest).toBe('string');
+        expect(receipt.zkpAttestation.verificationKeyId).toBeUndefined();
+        expect(receipt.zkpAttestation.verifiedAt).toBeUndefined();
+        expect(receipt.zkpAttestation.proofArtifact?.encoding).toBeUndefined();
+        expect(receipt.zkpAttestation.proofArtifact?.proof).toBeUndefined();
+        expect(receipt.proofVerified).toBe(false);
+        expect(receipt.anchor.backend).toBe('EVM_LOCAL');
+        expect(typeof receipt.anchor.subjectDigest).toBe('string');
+        expect(receipt.anchor.subjectVersion).toBe('trustsignal.anchor_subject.v1');
 
         expect(receipt.revocation).toBeTruthy();
         expect(["ACTIVE", "REVOKED"]).toContain(receipt.revocation.status);
@@ -83,6 +100,11 @@ describeWithDatabase('V2 Feature Integration', () => {
         expect(fetched.receipt.fraudRisk).toBeDefined();
         expect(fetched.revoked).toBeUndefined();
         expect(fetched.revocation).toBeTruthy();
+        expect(fetched.zkpAttestation.status).toBe('dev-only');
+        expect(fetched.zkpAttestation.verificationKeyId).toBeUndefined();
+        expect(fetched.zkpAttestation.proofArtifact?.proof).toBeUndefined();
+        expect(fetched.proofVerified).toBe(false);
+        expect(typeof fetched.anchor.subjectDigest).toBe('string');
 
         // 4. Verify Receipt endpoint
         const checkRes = await app.inject({
@@ -91,7 +113,10 @@ describeWithDatabase('V2 Feature Integration', () => {
             headers: { 'x-api-key': apiKey }
         });
         const check = checkRes.json();
-        expect(check.verified).toBe(true);
+        expect(check.verified).toBe(false);
+        expect(check.integrityVerified).toBe(true);
+        expect(check.proofVerified).toBe(false);
+        expect(check.recomputedHash).toBe(receipt.receiptHash);
 
         // 5. Revoke
         const revocationTimestamp = Date.now().toString();

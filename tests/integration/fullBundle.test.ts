@@ -1,17 +1,41 @@
-import * as childProcess from 'node:child_process';
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { verifyBundle } from '../../src/core/verifyBundle.js';
 import type { VerifyBundleInput } from '../../src/types/VerificationResult.js';
 
-vi.mock('node:child_process', async () => {
-  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process');
+vi.mock('../../src/verifiers/revocationVerifier.js', async () => {
+  const actual = await vi.importActual<typeof import('../../src/verifiers/revocationVerifier.js')>(
+    '../../src/verifiers/revocationVerifier.js'
+  );
   return {
     ...actual,
-    execFile: vi.fn()
+    verifyRevocationProof: vi.fn()
   };
 });
+
+vi.mock('../../src/verifiers/zkProofVerifier.js', async () => {
+  const actual = await vi.importActual<typeof import('../../src/verifiers/zkProofVerifier.js')>(
+    '../../src/verifiers/zkProofVerifier.js'
+  );
+  return {
+    ...actual,
+    verifyZkProof: vi.fn()
+  };
+});
+
+vi.mock('../../src/verifiers/zkmlVerifier.js', async () => {
+  const actual = await vi.importActual<typeof import('../../src/verifiers/zkmlVerifier.js')>(
+    '../../src/verifiers/zkmlVerifier.js'
+  );
+  return {
+    ...actual,
+    verifyZkml: vi.fn()
+  };
+});
+
+const { verifyBundle } = await import('../../src/core/verifyBundle.js');
+const { verifyRevocationProof } = await import('../../src/verifiers/revocationVerifier.js');
+const { verifyZkProof } = await import('../../src/verifiers/zkProofVerifier.js');
+const { verifyZkml } = await import('../../src/verifiers/zkmlVerifier.js');
 
 interface MockZkmlResponse {
   proven: boolean;
@@ -20,7 +44,21 @@ interface MockZkmlResponse {
   error?: string;
 }
 
-const mockedExecFile = vi.mocked(childProcess.execFile);
+interface MockNonMemResponse {
+  non_mem_ok: boolean;
+  proof_gen_ms: number;
+  error?: string;
+}
+
+interface MockRevocationResponse {
+  revocation_ok: boolean;
+  proof_gen_ms: number;
+  error?: string;
+}
+
+const mockedVerifyRevocationProof = vi.mocked(verifyRevocationProof);
+const mockedVerifyZkProof = vi.mocked(verifyZkProof);
+const mockedVerifyZkml = vi.mocked(verifyZkml);
 const baseFeatures = [0.42, -0.18, 0.31, 0.22, -0.09, 0.58] as const;
 
 function buildInput(overrides: Partial<VerifyBundleInput> = {}): VerifyBundleInput {
@@ -31,32 +69,38 @@ function buildInput(overrides: Partial<VerifyBundleInput> = {}): VerifyBundleInp
 }
 
 function mockEzklChildProcess(response: MockZkmlResponse): void {
-  mockedExecFile.mockImplementation(((
-    ...args: unknown[]
-  ) => {
-    const callback = args.find((value): value is childProcess.ExecFileCallback => typeof value === 'function');
-    if (callback) {
-      callback(null, JSON.stringify(response), '');
-    }
-    return {
-      pid: 0,
-      kill: () => true
-    } as unknown as childProcess.ChildProcess;
-  }) as typeof childProcess.execFile);
+  mockedVerifyZkml.mockResolvedValue({
+    proven: response.proven,
+    fraud_score: response.fraud_score,
+    proof_gen_ms: response.proof_gen_ms,
+    error: response.error
+  });
+}
+
+function mockNonMembershipProof(response: MockNonMemResponse): void {
+  mockedVerifyZkProof.mockResolvedValue(response);
+}
+
+function mockRevocationProof(response: MockRevocationResponse): void {
+  mockedVerifyRevocationProof.mockResolvedValue(response);
 }
 
 describe('full bundle verification', () => {
   beforeEach(() => {
-    process.env.TRUSTSIGNAL_ZKML_MODE = 'python';
-    mockedExecFile.mockReset();
+    mockedVerifyRevocationProof.mockReset();
+    mockedVerifyZkProof.mockReset();
+    mockedVerifyZkml.mockReset();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    delete process.env.TRUSTSIGNAL_ZKML_MODE;
+    mockedVerifyRevocationProof.mockReset();
+    mockedVerifyZkProof.mockReset();
+    mockedVerifyZkml.mockReset();
   });
 
   it('verifies a valid bundle', { timeout: 30_000 }, async () => {
+    mockNonMembershipProof({ non_mem_ok: true, proof_gen_ms: 1488 });
+    mockRevocationProof({ revocation_ok: true, proof_gen_ms: 1492 });
     mockEzklChildProcess({ proven: true, fraud_score: 0.14, proof_gen_ms: 1506 });
 
     const result = await verifyBundle(buildInput());
@@ -70,6 +114,8 @@ describe('full bundle verification', () => {
   });
 
   it('marks fraud as detected when zkml score is high', async () => {
+    mockNonMembershipProof({ non_mem_ok: true, proof_gen_ms: 1489 });
+    mockRevocationProof({ revocation_ok: true, proof_gen_ms: 1493 });
     mockEzklChildProcess({ proven: true, fraud_score: 0.97, proof_gen_ms: 1508 });
 
     const result = await verifyBundle(buildInput());
@@ -79,6 +125,8 @@ describe('full bundle verification', () => {
   });
 
   it('fails revocation check for a revoked deed', async () => {
+    mockNonMembershipProof({ non_mem_ok: true, proof_gen_ms: 1487 });
+    mockRevocationProof({ revocation_ok: false, proof_gen_ms: 1504 });
     mockEzklChildProcess({ proven: true, fraud_score: 0.23, proof_gen_ms: 1504 });
 
     const revokedHash = 'revoked-bundle-hash';
@@ -95,6 +143,8 @@ describe('full bundle verification', () => {
   });
 
   it('fails non-membership check for a tampered bundle', async () => {
+    mockNonMembershipProof({ non_mem_ok: false, proof_gen_ms: 1510 });
+    mockRevocationProof({ revocation_ok: true, proof_gen_ms: 1494 });
     mockEzklChildProcess({ proven: true, fraud_score: 0.45, proof_gen_ms: 1510 });
 
     const result = await verifyBundle(
@@ -109,6 +159,8 @@ describe('full bundle verification', () => {
   });
 
   it('handles empty revocation DB edge case', async () => {
+    mockNonMembershipProof({ non_mem_ok: true, proof_gen_ms: 1486 });
+    mockRevocationProof({ revocation_ok: true, proof_gen_ms: 1498 });
     mockEzklChildProcess({ proven: true, fraud_score: 0.19, proof_gen_ms: 1498 });
 
     const result = await verifyBundle(

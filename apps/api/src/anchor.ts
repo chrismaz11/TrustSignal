@@ -1,9 +1,20 @@
 import { Contract, Interface, JsonRpcProvider, Log, Wallet } from 'ethers';
 
+import {
+  ANCHOR_SUBJECT_VERSION,
+  buildAnchorSubject as buildCoreAnchorSubject,
+  type ZKPAttestation
+} from '../../../packages/core/dist/index.js';
+
+export { ANCHOR_SUBJECT_VERSION } from '../../../packages/core/dist/index.js';
+
 const ABI = [
-  'event Anchored(bytes32 receiptHash, bytes32 anchorId, address sender, uint256 timestamp)',
+  'event Anchored(bytes32 receiptHash, bytes32 subjectDigest, bytes32 anchorId, address sender, uint256 timestamp)',
   'function anchor(bytes32 receiptHash) external returns (bytes32 anchorId)',
-  'function isAnchored(bytes32 receiptHash) external view returns (bool)'
+  'function anchorWithSubject(bytes32 receiptHash, bytes32 subjectDigest) external returns (bytes32 anchorId)',
+  'function isAnchored(bytes32 receiptHash) external view returns (bool)',
+  'function isSubjectAnchored(bytes32 subjectDigest) external view returns (bool)',
+  'function subjectForReceipt(bytes32 receiptHash) external view returns (bytes32)'
 ];
 
 export type AnchorResult = {
@@ -11,9 +22,40 @@ export type AnchorResult = {
   txHash?: string;
   chainId?: string;
   anchorId?: string;
+  subjectDigest: string;
+  subjectVersion: typeof ANCHOR_SUBJECT_VERSION;
+  anchoredAt?: string;
 };
 
-export async function anchorReceipt(receiptHash: string): Promise<AnchorResult> {
+export function buildAnchorSubject(receiptHash: string, attestation?: ZKPAttestation): {
+  version: typeof ANCHOR_SUBJECT_VERSION;
+  digest: string;
+} {
+  const subject = buildCoreAnchorSubject(receiptHash, attestation);
+
+  return {
+    version: subject.version,
+    digest: subject.hash
+  };
+}
+
+function parseAnchoredAtTimestamp(rawTimestamp: unknown): string | undefined {
+  if (typeof rawTimestamp === 'bigint') {
+    return new Date(Number(rawTimestamp) * 1000).toISOString();
+  }
+  if (typeof rawTimestamp === 'number') {
+    return new Date(rawTimestamp * 1000).toISOString();
+  }
+  if (typeof rawTimestamp === 'string' && rawTimestamp.length > 0) {
+    const parsed = Number(rawTimestamp);
+    if (!Number.isNaN(parsed)) {
+      return new Date(parsed * 1000).toISOString();
+    }
+  }
+  return undefined;
+}
+
+export async function anchorReceipt(receiptHash: string, attestation?: ZKPAttestation): Promise<AnchorResult> {
   const registryAddress = process.env.ANCHOR_REGISTRY_ADDRESS;
   if (!registryAddress) {
     throw new Error('ANCHOR_REGISTRY_ADDRESS is required');
@@ -34,13 +76,20 @@ export async function anchorReceipt(receiptHash: string): Promise<AnchorResult> 
   const chainId = network.chainId.toString();
   const wallet = new Wallet(privateKey, provider);
   const registry = new Contract(registryAddress, ABI, wallet);
+  const subject = buildAnchorSubject(receiptHash, attestation);
 
   const alreadyAnchored = await registry.isAnchored(receiptHash);
   if (alreadyAnchored) {
-    return { status: 'ALREADY_ANCHORED', chainId };
+    const existingSubjectDigest = await registry.subjectForReceipt(receiptHash);
+    return {
+      status: 'ALREADY_ANCHORED',
+      chainId,
+      subjectDigest: existingSubjectDigest || subject.digest,
+      subjectVersion: subject.version
+    };
   }
 
-  const tx = await registry.anchor(receiptHash);
+  const tx = await registry.anchorWithSubject(receiptHash, subject.digest);
   const receipt = await tx.wait();
   const iface = new Interface(ABI);
   const parsedLog = (receipt?.logs as Log[] | undefined)
@@ -53,11 +102,16 @@ export async function anchorReceipt(receiptHash: string): Promise<AnchorResult> 
     })
     .find((entry) => entry?.name === 'Anchored');
   const anchorId = parsedLog?.args?.anchorId ?? undefined;
+  const anchoredAt = parseAnchoredAtTimestamp(parsedLog?.args?.timestamp);
+  const subjectDigest = parsedLog?.args?.subjectDigest ?? subject.digest;
 
   return {
     status: 'ANCHORED',
     txHash: receipt?.hash,
     chainId,
-    anchorId
+    anchorId,
+    subjectDigest,
+    subjectVersion: subject.version,
+    anchoredAt
   };
 }

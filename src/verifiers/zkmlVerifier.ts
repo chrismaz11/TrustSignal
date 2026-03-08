@@ -3,8 +3,6 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-import * as ezkl from '@ezkljs/engine/nodejs/ezkl.js';
-
 import type { ZkmlResult } from '../types/VerificationResult.js';
 
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -27,6 +25,26 @@ interface PythonBridgeOutput {
 }
 
 type JsonRecord = Record<string, unknown>;
+type EzklBindings = {
+  serialize: (input: string) => Uint8Array;
+  deserialize: (input: Uint8ClampedArray) => unknown;
+  feltToFloat: (value: Uint8ClampedArray, scale: number) => number;
+  genWitness: (compiled: Uint8ClampedArray, inputSerialized: Uint8Array) => Uint8Array;
+  prove: (
+    witness: Uint8ClampedArray,
+    provingKey: Uint8ClampedArray,
+    compiled: Uint8ClampedArray,
+    srs: Uint8ClampedArray
+  ) => Uint8Array;
+  verify: (
+    proof: Uint8ClampedArray,
+    verifyingKey: Uint8ClampedArray,
+    settings: Uint8ClampedArray,
+    srs: Uint8ClampedArray
+  ) => boolean;
+};
+
+let cachedEzkl: EzklBindings | null = null;
 
 export class ZkmlVerificationError extends Error {
   constructor(message: string) {
@@ -54,6 +72,15 @@ function asRecord(value: unknown): JsonRecord | null {
 
 function toClampedArray(data: Buffer | Uint8Array): Uint8ClampedArray {
   return new Uint8ClampedArray(data.buffer, data.byteOffset, data.byteLength);
+}
+
+async function loadEzklBindings(): Promise<EzklBindings> {
+  if (cachedEzkl) {
+    return cachedEzkl;
+  }
+  const module = (await import('@ezkljs/engine/nodejs/ezkl.js')) as EzklBindings;
+  cachedEzkl = module;
+  return module;
 }
 
 function validateFeatureVector(features: readonly number[]): void {
@@ -95,7 +122,11 @@ function estimateFraudScore(features: readonly number[]): number {
   return clamp01(sigmoid(normalized));
 }
 
-function readFraudLogitFromWitness(witnessPayload: unknown, outputScale: number): number {
+function readFraudLogitFromWitness(
+  witnessPayload: unknown,
+  outputScale: number,
+  ezkl: Pick<EzklBindings, 'feltToFloat'>
+): number {
   const witness = asRecord(witnessPayload);
   if (!witness) {
     throw new ZkmlVerificationError('unable to parse witness payload');
@@ -174,6 +205,7 @@ async function runWithPythonBridge(features: readonly number[]): Promise<ZkmlRes
 }
 
 async function runWithJsBindings(features: readonly number[]): Promise<ZkmlResult> {
+  const ezkl = await loadEzklBindings();
   const [compiledRaw, provingKeyRaw, verifyingKeyRaw, settingsRaw, srsRaw] = await Promise.all([
     readFile(ARTIFACT_PATHS.compiled),
     readFile(ARTIFACT_PATHS.provingKey),
@@ -204,7 +236,7 @@ async function runWithJsBindings(features: readonly number[]): Promise<ZkmlResul
   let fraudScore = estimateFraudScore(features);
   try {
     const outputScale = extractOutputScale(settingsJson);
-    const fraudLogit = readFraudLogitFromWitness(witnessPayload, outputScale);
+    const fraudLogit = readFraudLogitFromWitness(witnessPayload, outputScale, ezkl);
     fraudScore = clamp01(sigmoid(fraudLogit));
   } catch {
     // Fall back to deterministic score estimate when witness decoding is unavailable.

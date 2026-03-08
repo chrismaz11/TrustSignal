@@ -7,14 +7,17 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+base64 = "0.22"
+halo2_gadgets = { version = "0.4", features = ["unstable-sha256-gadget"] }
 halo2_proofs = "0.3.0"
 halo2_poseidon = "0.1.0"
+rand_core = "0.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-rand = "0.8"
 
 [[bench]]
 name = "non_mem_bench"

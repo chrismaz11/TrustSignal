@@ -23,6 +23,7 @@ import {
   verifyBundle,
   RiskEngine,
   generateComplianceProof,
+  verifyComplianceProof,
   DocumentRisk,
   ZKPAttestation,
   NotaryVerifier,
@@ -33,7 +34,7 @@ import {
 } from '../../../packages/core/dist/index.js';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
-import { anchorReceipt } from './anchor.js';
+import { anchorReceipt, buildAnchorSubject } from './anchor.js';
 import { ensureDatabase } from './db.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
@@ -154,6 +155,9 @@ const registryVerifyBatchInputSchema = z.object({
   subjectName: z.string().trim().min(2).max(256),
   forceRefresh: z.boolean().optional()
 });
+const receiptIdParamSchema = z.object({
+  receiptId: z.string().uuid()
+});
 
 const vantaVerificationResultSchema = z.object({
   schemaVersion: z.literal('trustsignal.vanta.verification_result.v1'),
@@ -188,13 +192,37 @@ const vantaVerificationResultSchema = z.object({
     }).nullable(),
     zkpAttestation: z.object({
       scheme: z.string(),
-      conformance: z.boolean().optional()
+      status: z.enum(['dev-only', 'verifiable']),
+      backend: z.string(),
+      circuitId: z.string().optional(),
+      verificationKeyId: z.string().optional(),
+      verifiedAt: z.string().datetime().optional(),
+      publicInputs: z.object({
+        policyHash: z.string(),
+        timestamp: z.string().datetime(),
+        inputsCommitment: z.string(),
+        conformance: z.boolean(),
+        declaredDocHash: z.string(),
+        documentDigest: z.string(),
+        documentCommitment: z.string(),
+        schemaVersion: z.string(),
+        documentWitnessMode: z.enum(['canonical-document-bytes-v1', 'declared-doc-hash-v1'])
+      }),
+      proofArtifact: z.object({
+        format: z.string(),
+        digest: z.string(),
+        encoding: z.enum(['base64']).optional(),
+        proof: z.string().optional()
+      }).optional()
     }).nullable()
   }),
   controls: z.object({
     revoked: z.boolean(),
     anchorStatus: z.string(),
-    anchored: z.boolean()
+    anchored: z.boolean(),
+    anchorSubjectDigest: z.string().optional(),
+    anchorSubjectVersion: z.string().optional(),
+    anchoredAt: z.string().datetime().optional()
   })
 });
 
@@ -266,10 +294,53 @@ const vantaVerificationResultJsonSchema = {
         zkpAttestation: {
           type: ['object', 'null'],
           additionalProperties: false,
-          required: ['scheme'],
+          required: ['scheme', 'status', 'backend', 'publicInputs'],
           properties: {
             scheme: { type: 'string' },
-            conformance: { type: 'boolean' }
+            status: { enum: ['dev-only', 'verifiable'] },
+            backend: { type: 'string' },
+            circuitId: { type: 'string' },
+            verificationKeyId: { type: 'string' },
+            verifiedAt: { type: 'string', format: 'date-time' },
+            publicInputs: {
+              type: 'object',
+              additionalProperties: false,
+              required: [
+                'policyHash',
+                'timestamp',
+                'inputsCommitment',
+                'conformance',
+                'declaredDocHash',
+                'documentDigest',
+                'documentCommitment',
+                'schemaVersion',
+                'documentWitnessMode'
+              ],
+              properties: {
+                policyHash: { type: 'string' },
+                timestamp: { type: 'string', format: 'date-time' },
+                inputsCommitment: { type: 'string' },
+                conformance: { type: 'boolean' },
+                declaredDocHash: { type: 'string' },
+                documentDigest: { type: 'string' },
+                documentCommitment: { type: 'string' },
+                schemaVersion: { type: 'string' },
+                documentWitnessMode: {
+                  enum: ['canonical-document-bytes-v1', 'declared-doc-hash-v1']
+                }
+              }
+            },
+            proofArtifact: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['format', 'digest'],
+              properties: {
+                format: { type: 'string' },
+                digest: { type: 'string' },
+                encoding: { enum: ['base64'] },
+                proof: { type: 'string' }
+              }
+            }
           }
         }
       }
@@ -281,7 +352,10 @@ const vantaVerificationResultJsonSchema = {
       properties: {
         revoked: { type: 'boolean' },
         anchorStatus: { type: 'string' },
-        anchored: { type: 'boolean' }
+        anchored: { type: 'boolean' },
+        anchorSubjectDigest: { type: 'string' },
+        anchorSubjectVersion: { type: 'string' },
+        anchoredAt: { type: 'string', format: 'date-time' }
       }
     }
   }
@@ -387,6 +461,38 @@ function resolveRegistrySourceNameFromCheckId(checkId: string): string | undefin
   return getOfficialRegistrySourceName(sourceId);
 }
 
+function parseReceiptIdParam(
+  request: { params: unknown },
+  reply: { code: (statusCode: number) => { send: (payload: unknown) => unknown } }
+): string | null {
+  const parsed = receiptIdParamSchema.safeParse(request.params);
+  if (!parsed.success) {
+    reply.code(400).send({ error: 'invalid_receipt_id' });
+    return null;
+  }
+  return parsed.data.receiptId;
+}
+
+function hasUnexpectedBody(body: unknown): boolean {
+  if (typeof body === 'undefined') return false;
+  if (body === null) return false;
+  if (typeof body !== 'object') return true;
+  return Object.keys(body as Record<string, unknown>).length > 0;
+}
+
+function buildAnchorState(record: ReceiptRecord, attestation?: ZKPAttestation) {
+  const subject = buildAnchorSubject(record.receiptHash, attestation);
+  return {
+    status: record.anchorStatus,
+    txHash: record.anchorTxHash || undefined,
+    chainId: record.anchorChainId || undefined,
+    anchorId: record.anchorId || undefined,
+    anchoredAt: record.anchorAnchoredAt?.toISOString(),
+    subjectDigest: record.anchorSubjectDigest || subject.digest,
+    subjectVersion: record.anchorSubjectVersion || subject.version
+  };
+}
+
 function toVantaVerificationResult(record: ReceiptRecord) {
   const receipt = receiptFromDb(record);
   const fraudRiskRaw = receipt.fraudRisk as Record<string, unknown> | undefined;
@@ -431,14 +537,44 @@ function toVantaVerificationResult(record: ReceiptRecord) {
       zkpAttestation: zkpRaw
         ? {
           scheme: String(zkpRaw.scheme ?? 'UNKNOWN'),
-          conformance: typeof zkpRaw.conformance === 'boolean' ? zkpRaw.conformance : undefined
+          status: String(zkpRaw.status ?? 'unknown'),
+          backend: String(zkpRaw.backend ?? 'unknown'),
+          circuitId: typeof zkpRaw.circuitId === 'string' ? zkpRaw.circuitId : undefined,
+          verificationKeyId: typeof zkpRaw.verificationKeyId === 'string' ? zkpRaw.verificationKeyId : undefined,
+          verifiedAt: typeof zkpRaw.verifiedAt === 'string' ? zkpRaw.verifiedAt : undefined,
+          publicInputs: {
+            policyHash: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.policyHash ?? ''),
+            timestamp: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.timestamp ?? ''),
+            inputsCommitment: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.inputsCommitment ?? ''),
+            conformance: Boolean((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.conformance),
+            declaredDocHash: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.declaredDocHash ?? ''),
+            documentDigest: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.documentDigest ?? ''),
+            documentCommitment: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.documentCommitment ?? ''),
+            schemaVersion: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.schemaVersion ?? ''),
+            documentWitnessMode: String((zkpRaw.publicInputs as Record<string, unknown> | undefined)?.documentWitnessMode ?? '')
+          },
+          proofArtifact: (() => {
+            const proofArtifact = zkpRaw.proofArtifact as Record<string, unknown> | undefined;
+            if (!proofArtifact || typeof proofArtifact.format !== 'string' || typeof proofArtifact.digest !== 'string') {
+              return undefined;
+            }
+            return {
+              format: proofArtifact.format,
+              digest: proofArtifact.digest,
+              encoding: proofArtifact.encoding === 'base64' ? 'base64' : undefined,
+              proof: typeof proofArtifact.proof === 'string' ? proofArtifact.proof : undefined
+            };
+          })()
         }
         : null
     },
     controls: {
       revoked: record.revoked,
       anchorStatus: record.anchorStatus,
-      anchored: record.anchorStatus === 'ANCHORED'
+      anchored: record.anchorStatus === 'ANCHORED',
+      anchorSubjectDigest: buildAnchorState(record, receipt.zkpAttestation).subjectDigest,
+      anchorSubjectVersion: buildAnchorState(record, receipt.zkpAttestation).subjectVersion,
+      anchoredAt: buildAnchorState(record, receipt.zkpAttestation).anchoredAt
     }
   };
 
@@ -764,7 +900,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
-    const { receiptId } = request.params as { receiptId: string };
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -980,7 +1117,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const zkpAttestation = await generateComplianceProof({
       policyProfile: input.policy.profile,
       checksResult: verification.decision === 'ALLOW',
-      inputsCommitment: computeInputsCommitment(input)
+      inputsCommitment: computeInputsCommitment(input),
+      docHash: input.doc.docHash,
+      canonicalDocumentBase64: input.doc.pdfBase64
     });
 
     const receipt = buildReceipt(input, verification, 'deed-shield', {
@@ -1012,12 +1151,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
       reasons: receipt.reasons,
       receiptId: record.id,
       receiptHash: receipt.receiptHash,
-      anchor: {
-        status: record.anchorStatus,
-        txHash: record.anchorTxHash || undefined,
-        chainId: record.anchorChainId || undefined,
-        anchorId: record.anchorId || undefined
-      },
+      proofVerified: receipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
+      anchor: buildAnchorState(record, receipt.zkpAttestation),
       fraudRisk: receipt.fraudRisk,
       zkpAttestation: receipt.zkpAttestation,
       revoked: record.revoked,
@@ -1065,7 +1200,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
-    const { receiptId } = request.params as { receiptId: string };
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1097,12 +1233,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
       reasons: receipt.reasons,
       receiptId: receipt.receiptId,
       receiptHash: receipt.receiptHash,
-      anchor: {
-        status: record.anchorStatus,
-        txHash: record.anchorTxHash || undefined,
-        chainId: record.anchorChainId || undefined,
-        anchorId: record.anchorId || undefined
-      },
+      proofVerified: receipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
+      anchor: buildAnchorState(record, receipt.zkpAttestation),
       fraudRisk: receipt.fraudRisk,
       zkpAttestation: receipt.zkpAttestation,
       revoked: record.revoked,
@@ -1121,7 +1253,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
-    const { receiptId } = request.params as { receiptId: string };
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1140,7 +1273,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
-    const { receiptId } = request.params as { receiptId: string };
+    if (hasUnexpectedBody(request.body)) {
+      return reply.code(400).send({ error: 'request_body_not_allowed' });
+    }
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1167,10 +1304,14 @@ export async function buildServer(options: BuildServerOptions = {}) {
       zkpAttestation: receipt.zkpAttestation
     });
 
-    const ok = recomputedHash === receipt.receiptHash && inputsCommitment === record.inputsCommitment;
+    const integrityVerified = recomputedHash === receipt.receiptHash && inputsCommitment === record.inputsCommitment;
+    const proofVerified = receipt.zkpAttestation ? await verifyComplianceProof(receipt.zkpAttestation) : false;
+    const ok = integrityVerified && proofVerified;
 
     return reply.send({
       verified: ok,
+      integrityVerified,
+      proofVerified,
       recomputedHash,
       storedHash: receipt.receiptHash,
       inputsCommitment,
@@ -1182,37 +1323,45 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'anchor')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
-    const { receiptId } = request.params as { receiptId: string };
+    if (hasUnexpectedBody(request.body)) {
+      return reply.code(400).send({ error: 'request_body_not_allowed' });
+    }
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
+    const receipt = receiptFromDb(record);
+    if (!receipt) {
+      return reply.code(500).send({ error: 'Receipt reconstruction failed' });
+    }
+    if (!receipt.zkpAttestation?.proofArtifact?.digest) {
+      return reply.code(409).send({ error: 'proof_artifact_required_for_anchor' });
+    }
 
     if (record.anchorStatus === 'ANCHORED') {
       return reply.send({
-        status: 'ANCHORED',
-        txHash: record.anchorTxHash,
-        chainId: record.anchorChainId,
-        anchorId: record.anchorId
+        ...buildAnchorState(record, receipt.zkpAttestation)
       });
     }
 
-    const result = await anchorReceipt(record.receiptHash);
+    const result = await anchorReceipt(record.receiptHash, receipt.zkpAttestation);
     const updated = await prisma.receipt.update({
       where: { id: receiptId },
       data: {
         anchorStatus: 'ANCHORED',
         anchorTxHash: result.txHash,
         anchorChainId: result.chainId,
-        anchorId: result.anchorId
+        anchorId: result.anchorId,
+        anchorSubjectDigest: result.subjectDigest,
+        anchorSubjectVersion: result.subjectVersion,
+        anchorAnchoredAt: result.anchoredAt ? new Date(result.anchoredAt) : undefined
       }
     });
 
     return reply.send({
-      status: updated.anchorStatus,
-      txHash: updated.anchorTxHash,
-      chainId: updated.anchorChainId,
-      anchorId: updated.anchorId
+      ...buildAnchorState(updated, receipt.zkpAttestation)
     });
   });
 
@@ -1220,7 +1369,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'revoke')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
-    const { receiptId } = request.params as { receiptId: string };
+    if (hasUnexpectedBody(request.body)) {
+      return reply.code(400).send({ error: 'request_body_not_allowed' });
+    }
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
     const revocationVerification = verifyRevocationHeaders(request, receiptId, securityConfig);
     if ('error' in revocationVerification) {
       const statusCode = revocationVerification.error === 'issuer_not_allowed' ? 403 : 401;

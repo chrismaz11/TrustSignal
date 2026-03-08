@@ -39,13 +39,16 @@ async function curlJson(url: string, method: 'GET' | 'POST', payload?: unknown, 
   return { status, body };
 }
 
-const hasDatabase = Boolean(
+const databaseUrl =
   process.env.DATABASE_URL ||
   process.env.SUPABASE_DB_URL ||
   process.env.SUPABASE_POOLER_URL ||
-  process.env.SUPABASE_DIRECT_URL
-);
-const databaseSkipReason = 'skipped: DATABASE_URL or SUPABASE_* runtime env is missing';
+  process.env.SUPABASE_DIRECT_URL ||
+  '';
+const hasDatabase =
+  process.env.RUN_DB_E2E === '1' &&
+  (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://'));
+const databaseSkipReason = 'skipped: set RUN_DB_E2E=1 with a reachable PostgreSQL URL';
 const describeWithDatabase = hasDatabase ? describe.sequential : describe.skip;
 
 describeWithDatabase(`E2E /api/v1/verify fail-closed negative (${hasDatabase ? 'enabled' : databaseSkipReason})`, () => {
