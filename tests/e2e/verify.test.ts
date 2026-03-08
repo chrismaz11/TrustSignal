@@ -39,12 +39,15 @@ async function curlJson(url: string, method: 'GET' | 'POST', payload?: unknown, 
   return { status, body };
 }
 
-const hasDatabase = Boolean(
+const databaseUrl =
   process.env.DATABASE_URL ||
   process.env.SUPABASE_DB_URL ||
   process.env.SUPABASE_POOLER_URL ||
-  process.env.SUPABASE_DIRECT_URL
-);
+  process.env.SUPABASE_DIRECT_URL ||
+  '';
+const hasDatabase =
+  process.env.RUN_DB_E2E === '1' &&
+  (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://'));
 const describeWithDatabase = hasDatabase ? describe.sequential : describe.skip;
 
 describeWithDatabase('E2E /api/v1/verify via curl', () => {

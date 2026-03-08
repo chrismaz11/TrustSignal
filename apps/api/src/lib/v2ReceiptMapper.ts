@@ -17,7 +17,16 @@ export function toV2VerifyResponse(input: {
     reasons?: string[];
     receiptId: string;
     receiptHash: string;
-    anchor?: { status?: string; txHash?: string; chainId?: string; anchorId?: string; anchoredAt?: string };
+    proofVerified?: boolean;
+    anchor?: {
+        status?: string;
+        txHash?: string;
+        chainId?: string;
+        anchorId?: string;
+        anchoredAt?: string;
+        subjectDigest?: string;
+        subjectVersion?: string;
+    };
     fraudRisk?: { score?: number; band?: RiskBand; signals?: any[] };
     zkpAttestation?: any;
     revoked?: boolean;
@@ -33,13 +42,16 @@ export function toV2VerifyResponse(input: {
         reasons: input.reasons ?? [],
         receiptId: input.receiptId,
         receiptHash: input.receiptHash,
+        ...(typeof input.proofVerified === "boolean" ? { proofVerified: input.proofVerified } : {}),
         anchor: {
             status: input.anchor?.status ?? "PENDING",
             backend: "EVM_LOCAL", // Default for v2 MVP
             ...(input.anchor?.anchorId ? { anchorId: input.anchor.anchorId } : {}),
             ...(input.anchor?.txHash ? { txHash: input.anchor.txHash } : {}),
             ...(input.anchor?.chainId ? { chainId: input.anchor.chainId } : {}),
-            ...(input.anchor?.anchoredAt ? { anchoredAt: input.anchor.anchoredAt } : {})
+            ...(input.anchor?.anchoredAt ? { anchoredAt: input.anchor.anchoredAt } : {}),
+            ...(input.anchor?.subjectDigest ? { subjectDigest: input.anchor.subjectDigest } : {}),
+            ...(input.anchor?.subjectVersion ? { subjectVersion: input.anchor.subjectVersion } : {})
         },
         fraudRisk: {
             score,

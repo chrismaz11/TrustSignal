@@ -28,6 +28,7 @@ This repository is the main TrustSignal project. It contains:
 - Configure API keys with `API_KEYS` and optional `API_KEY_SCOPES`.
 - CORS is deny-by-default in production unless `CORS_ALLOWLIST` is set.
 - In production, startup fails if `NOTARY_API_KEY`, `PROPERTY_API_KEY`, or `TRUST_REGISTRY_SOURCE` are missing.
+- Receipt and Vanta responses expose `anchor.subjectDigest` / `anchorSubjectDigest` plus `anchorSubjectVersion` so proof provenance can be audited independently of the raw receipt JSON.
 - Revocation requires issuer signature headers:
   - `x-issuer-id`
   - `x-signature-timestamp`
@@ -48,11 +49,24 @@ cp .env.example .env.local
 Set real values in `.env.local` for:
 
 - `TRUSTSIGNAL_JWT_SECRETS` (or `TRUSTSIGNAL_JWT_SECRET`)
+- `TRUSTSIGNAL_ZKP_BACKEND`
+- `TRUSTSIGNAL_ZKP_PROVER_BIN` and `TRUSTSIGNAL_ZKP_VERIFIER_BIN` when `TRUSTSIGNAL_ZKP_BACKEND=external`
+  - Current bootstrap prover binary: `circuits/non_mem_gadget/target/release/zkp_service`
 - `POLYGON_MUMBAI_RPC_URL`
 - `POLYGON_MUMBAI_PRIVATE_KEY`
 - `DATABASE_URL` (or `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` / `SUPABASE_DIRECT_URL`; or set `SUPABASE_DB_PASSWORD` and use Supabase CLI pooler metadata)
 
 Never commit real secrets.
+
+ZKP status note:
+
+- `dev-only` remains the default local mode.
+- `external` now supports a real Halo2 proof round-trip through `circuits/non_mem_gadget/src/bin/zkp_service.rs`, but that binary currently proves a bootstrap attestation circuit over public proof inputs, not the final document-hash statement.
+- Do not describe the current bootstrap circuit as full document authenticity or PII-preserving document hashing.
+
+Contract note:
+
+- `packages/contracts` uses Hardhat 3 and needs Node 22+ for local compile/smoke runs.
 
 ### 3) Run validation gates
 
@@ -111,6 +125,7 @@ Reference implementation: `tests/api/routes.test.ts`.
 - Rate limiting using `@fastify/rate-limit`
 - Structured request logging with authorization redaction
 - Fail-closed behavior on proof verification errors
+- Production requires an explicit external ZKP backend; the built-in dev attestation path is blocked when `NODE_ENV=production`
 - No stack traces or raw internals in API responses
 - Primary-source registry guardrails with explicit `COMPLIANCE_GAP` outcomes when authoritative endpoints are unavailable or non-compliant
 

@@ -2,18 +2,27 @@
   "name": "@deed-shield/contracts",
   "version": "0.1.0",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
+  "engines": {
+    "node": ">=22.10.0 <23"
+  },
   "scripts": {
-    "build": "hardhat compile",
-    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
-    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
-    "anchor": "hardhat run scripts/anchor.js --network localhost"
+    "build": "hardhat compile --config hardhat.config.js",
+    "deploy:local": "hardhat run --config hardhat.config.js scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run --config hardhat.config.js scripts/deploy.js --network sepolia",
+    "anchor": "hardhat run --config hardhat.config.js scripts/anchor.js --network localhost",
+    "smoke": "hardhat run --config hardhat.config.js scripts/smoke.js",
+    "test": "hardhat test --config hardhat.config.js",
+    "test:mocha": "hardhat test mocha --config hardhat.config.js"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-ethers": "^4.0.6",
+    "@nomicfoundation/hardhat-mocha": "^3.0.12",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.11.30",
     "ethers": "^6.12.0",
-    "hardhat": "^3.1.6",
+    "hardhat": "^3.1.11",
+    "mocha": "^11.0.0",
     "ts-node": "^10.9.2",
     "typescript": "5.5.4"
   },

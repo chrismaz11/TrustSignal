@@ -1,3 +1,4 @@
+pub mod attestation;
 pub mod merkle;
 pub mod revocation;
 
@@ -13,7 +14,8 @@ use std::time::Instant;
 
 use merkle::{MerklePath, NON_MEM_DOMAIN_TAG};
 use revocation::{
-    synthesize_revocation_witness, validate_nullifier, RevocationConfig, RevocationError, RevocationWitness,
+    synthesize_revocation_witness, validate_nullifier, RevocationConfig, RevocationError,
+    RevocationWitness,
 };
 
 #[derive(Clone, Debug)]
@@ -48,10 +50,12 @@ impl NonMembershipConfig {
             let l = meta.query_advice(left, Rotation::cur());
             let r = meta.query_advice(right, Rotation::cur());
             let p = meta.query_advice(parent, Rotation::cur());
-            vec![s * (l * halo2_proofs::plonk::Expression::Constant(Fp::from(7))
-                + r * halo2_proofs::plonk::Expression::Constant(Fp::from(13))
-                + halo2_proofs::plonk::Expression::Constant(Fp::from(NON_MEM_DOMAIN_TAG))
-                - p)]
+            vec![
+                s * (l * halo2_proofs::plonk::Expression::Constant(Fp::from(7))
+                    + r * halo2_proofs::plonk::Expression::Constant(Fp::from(13))
+                    + halo2_proofs::plonk::Expression::Constant(Fp::from(NON_MEM_DOMAIN_TAG))
+                    - p),
+            ]
         });
 
         let sel_nonzero = meta.selector();
@@ -122,13 +126,22 @@ impl NonMembershipCircuit {
 
                     region.assign_advice(|| "left", cfg.left, offset, || Value::known(l))?;
                     region.assign_advice(|| "right", cfg.right, offset, || Value::known(r))?;
-                    let parent_cell =
-                        region.assign_advice(|| "parent", cfg.parent, offset, || Value::known(p))?;
+                    let parent_cell = region.assign_advice(
+                        || "parent",
+                        cfg.parent,
+                        offset,
+                        || Value::known(p),
+                    )?;
                     cfg.sel_hash.enable(&mut region, offset)?;
 
                     cur = p;
                     if offset + 1 < self.left_path.siblings.len() + 1 {
-                        region.assign_advice(|| "rolling node", cfg.node, offset + 1, || Value::known(cur))?;
+                        region.assign_advice(
+                            || "rolling node",
+                            cfg.node,
+                            offset + 1,
+                            || Value::known(cur),
+                        )?;
                     }
                     if offset == self.left_path.siblings.len() {
                         return Ok(parent_cell);
@@ -167,8 +180,12 @@ impl NonMembershipCircuit {
 
                     region.assign_advice(|| "left", cfg.left, offset, || Value::known(l))?;
                     region.assign_advice(|| "right", cfg.right, offset, || Value::known(r))?;
-                    let parent_cell =
-                        region.assign_advice(|| "parent", cfg.parent, offset, || Value::known(p))?;
+                    let parent_cell = region.assign_advice(
+                        || "parent",
+                        cfg.parent,
+                        offset,
+                        || Value::known(p),
+                    )?;
                     cfg.sel_hash.enable(&mut region, offset)?;
 
                     cur = p;
@@ -214,7 +231,9 @@ impl Circuit<Fp> for NonMembershipCircuit {
 
 pub fn prove_non_membership(circuit: NonMembershipCircuit, root: Fp, k: u32) -> Result<(), String> {
     let prover = MockProver::run(k, &circuit, vec![vec![root]]).map_err(|e| e.to_string())?;
-    prover.verify().map_err(|errs| format!("proof failed: {errs:?}"))
+    prover
+        .verify()
+        .map_err(|errs| format!("proof failed: {errs:?}"))
 }
 
 #[derive(Clone, Debug)]
@@ -276,8 +295,11 @@ impl Circuit<Fp> for CombinedCircuit {
     }
 
     fn synthesize(&self, cfg: Self::Config, mut layouter: impl Layouter<Fp>) -> Result<(), Error> {
-        self.non_membership
-            .synthesize_non_membership(&cfg.non_membership, layouter.namespace(|| "non-membership"), 0)?;
+        self.non_membership.synthesize_non_membership(
+            &cfg.non_membership,
+            layouter.namespace(|| "non-membership"),
+            0,
+        )?;
         synthesize_revocation_witness(
             &self.revocation,
             &cfg.revocation,
@@ -297,12 +319,16 @@ pub fn prove_and_verify(
     validate_nullifier(&circuit.revocation)?;
 
     let started_at = Instant::now();
-    let prover = MockProver::run(k, &circuit, vec![vec![non_membership_root, revocation_root]])
-        .map_err(|e| CombinedProofError::ProofFailed(e.to_string()))?;
+    let prover = MockProver::run(
+        k,
+        &circuit,
+        vec![vec![non_membership_root, revocation_root]],
+    )
+    .map_err(|e| CombinedProofError::ProofFailed(e.to_string()))?;
 
-    prover
-        .verify()
-        .map_err(|errs| CombinedProofError::ProofFailed(format!("combined proof failed: {errs:?}")))?;
+    prover.verify().map_err(|errs| {
+        CombinedProofError::ProofFailed(format!("combined proof failed: {errs:?}"))
+    })?;
 
     Ok(CombinedProofResult {
         k,

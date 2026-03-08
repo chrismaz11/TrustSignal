@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { getAddress, verifyMessage } from 'ethers';
 import { FastifyReply, FastifyRequest } from 'fastify';
 
-const DEFAULT_API_KEY = 'dev-local-key';
+const DEFAULT_API_KEY = 'example_local_key_id';
 const DEFAULT_SCOPES = ['verify', 'read', 'anchor', 'revoke'];
 const DEFAULT_DEV_CORS_ORIGINS = [
   'http://localhost:3000',

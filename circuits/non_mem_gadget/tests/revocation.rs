@@ -2,7 +2,8 @@ use halo2_proofs::pasta::Fp;
 use non_mem_gadget::{
     merkle::MerkleTree,
     revocation::{
-        poseidon_nullifier_hash, prove_revocation, RevocationCircuit, RevocationError, RevocationWitness,
+        poseidon_nullifier_hash, prove_revocation, RevocationCircuit, RevocationError,
+        RevocationWitness,
     },
 };
 

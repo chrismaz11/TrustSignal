@@ -2,9 +2,9 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use halo2_proofs::pasta::Fp;
 use non_mem_gadget::{
     merkle::{build_10_entry_db, MerkleTree},
-    prove_and_verify, CombinedCircuit,
-    NonMembershipCircuit,
+    prove_and_verify,
     revocation::{poseidon_nullifier_hash, RevocationWitness},
+    CombinedCircuit, NonMembershipCircuit,
 };
 use serde::Serialize;
 use std::fs;
@@ -86,7 +86,8 @@ fn bench_combined_proof(c: &mut Criterion) {
 
     c.bench_function("combined_non_mem_revocation_proof_gen", |b| {
         b.iter(|| {
-            let (bench_circuit, bench_non_mem_root, bench_revocation_root) = build_combined_circuit();
+            let (bench_circuit, bench_non_mem_root, bench_revocation_root) =
+                build_combined_circuit();
             let _ = prove_and_verify(bench_circuit, bench_non_mem_root, bench_revocation_root, k)
                 .expect("combined proof should verify");
         });

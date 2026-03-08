@@ -1,5 +1,7 @@
 use halo2_proofs::pasta::Fp;
-use non_mem_gadget::{merkle::build_10_entry_db, merkle::MerkleTree, prove_non_membership, NonMembershipCircuit};
+use non_mem_gadget::{
+    merkle::build_10_entry_db, merkle::MerkleTree, prove_non_membership, NonMembershipCircuit,
+};
 
 fn padded_db() -> Vec<Fp> {
     let mut db = build_10_entry_db();
