@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sign, type JwtPayload } from 'jsonwebtoken';
 import type { FastifyInstance } from 'fastify';
-import type { VerificationRecord } from '@prisma/client';
 
 import { buildApiServer } from '../../src/routes/app.js';
 import type { RouteDependencies } from '../../src/routes/dependencies.js';
@@ -9,6 +8,7 @@ import type { VerifyBundleInput } from '../../src/types/VerificationResult.js';
 import type {
   CreateVerificationRecordInput,
   RevokeVerificationRecordInput,
+  VerificationRecord,
   VerificationRecordStore
 } from '../../src/storage/verificationRecordStore.js';
 

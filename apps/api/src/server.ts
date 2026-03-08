@@ -1,15 +1,14 @@
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'crypto';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 
-import Fastify from 'fastify';
+import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
-import { keccak256, toUtf8Bytes, JsonRpcProvider, Contract } from 'ethers';
+import { keccak256, toUtf8Bytes, JsonRpcProvider } from 'ethers';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import type { Receipt } from '@prisma/client';
+
 import {
   BundleInput,
   CheckResult,
@@ -29,16 +28,16 @@ import {
   NotaryVerifier,
   PropertyVerifier,
   CountyVerifier,
-  nameOverlapScore,
-  normalizeName
+  nameOverlapScore
 } from '../../../packages/core/dist/index.js';
+import { attomCrossCheck, DeedParsed } from '../../../packages/core/dist/index.js';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
 import { anchorReceipt, buildAnchorSubject } from './anchor.js';
 import { ensureDatabase } from './db.js';
+import { getPrismaClient } from './prisma.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
-import { attomCrossCheck, DeedParsed } from '../../../packages/core/dist/index.js';
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 import {
@@ -55,54 +54,6 @@ import {
   verifyRevocationHeaders
 } from './security.js';
 
-function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
-  const direct = (env.DATABASE_URL || '').trim();
-  if (direct) return direct;
-
-  const candidates = [
-    env.SUPABASE_DB_URL,
-    env.SUPABASE_POOLER_URL,
-    env.SUPABASE_DIRECT_URL
-  ];
-
-  for (const candidate of candidates) {
-    const value = (candidate || '').trim();
-    if (value) {
-      env.DATABASE_URL = value;
-      return value;
-    }
-  }
-
-  const supabasePassword = (env.SUPABASE_DB_PASSWORD || '').trim();
-  if (supabasePassword) {
-    const poolerCandidates = [
-      path.resolve(process.cwd(), 'supabase/.temp/pooler-url'),
-      path.resolve(process.cwd(), '../../supabase/.temp/pooler-url'),
-      path.resolve(process.env.HOME || '', 'supabase/.temp/pooler-url')
-    ];
-    for (const poolerPath of poolerCandidates) {
-      try {
-        const rawPoolerUrl = readFileSync(poolerPath, 'utf-8').trim();
-        if (!rawPoolerUrl) continue;
-        const parsed = new URL(rawPoolerUrl);
-        if (!parsed.password) {
-          parsed.password = encodeURIComponent(supabasePassword);
-        }
-        parsed.searchParams.set('sslmode', 'require');
-        const resolved = parsed.toString();
-        env.DATABASE_URL = resolved;
-        return resolved;
-      } catch {
-        // continue searching
-      }
-    }
-  }
-
-  return null;
-}
-
-resolveDatabaseUrl();
-const prisma = new PrismaClient();
 const REQUEST_START = Symbol('requestStartMs');
 const registrySourceIdEnum = z.enum(REGISTRY_SOURCE_IDS);
 
@@ -392,8 +343,16 @@ const deedParsedSchema = z.object({
     .nullable()
 });
 
-type ReceiptRecord = NonNullable<Awaited<ReturnType<typeof prisma.receipt.findUnique>>>;
-type ReceiptListRecord = Awaited<ReturnType<typeof prisma.receipt.findMany>>[number];
+type ReceiptRecord = Receipt;
+type ReceiptListRecord = Receipt;
+
+function createLazyPrismaClient(): ReturnType<typeof getPrismaClient> {
+  return new Proxy({} as ReturnType<typeof getPrismaClient>, {
+    get(_target, key) {
+      return getPrismaClient()[key as keyof ReturnType<typeof getPrismaClient>];
+    }
+  });
+}
 
 function normalizeForwardedProto(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -411,6 +370,18 @@ function databaseUrlHasRequiredSslMode(databaseUrl: string | undefined): boolean
   } catch {
     return databaseUrl.toLowerCase().includes('sslmode=require');
   }
+}
+
+function replyIfDatabaseUnavailable(
+  reply: FastifyReply,
+  databaseReady: boolean
+): boolean {
+  if (databaseReady) {
+    return false;
+  }
+
+  reply.code(503).send({ error: 'Database unavailable' });
+  return true;
 }
 
 function requireProductionVerifierConfig(env: NodeJS.ProcessEnv = process.env): void {
@@ -582,12 +553,12 @@ function toVantaVerificationResult(record: ReceiptRecord) {
 }
 
 class DatabaseCountyVerifier implements CountyVerifier {
-  async verifyParcel(parcelId: string, county: string, state: string): Promise<CountyCheckResult> {
+  async verifyParcel(parcelId: string, _county: string, _state: string): Promise<CountyCheckResult> {
     // 1. Log the check
     console.log(`[DatabaseCountyVerifier] Checking parcel: ${parcelId}`);
 
     // 2. Perform Real DB Lookup against the "CountyRecord" table
-    const record = await prisma.countyRecord.findUnique({
+    const record = await getPrismaClient().countyRecord.findUnique({
       where: { parcelId }
     });
 
@@ -608,57 +579,17 @@ class DatabaseCountyVerifier implements CountyVerifier {
 class DatabaseNotaryVerifier implements NotaryVerifier {
   async verifyNotary(state: string, commissionId: string, name: string): Promise<{ status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | 'UNKNOWN'; details?: string }> {
     console.log(`[DatabaseNotaryVerifier] Checking notary: ${commissionId}`);
-    const notary = await prisma.notary.findUnique({ where: { id: commissionId } });
+    const notary = await getPrismaClient().notary.findUnique({ where: { id: commissionId } });
     if (!notary) return { status: 'UNKNOWN', details: 'Notary not found' };
-    if (notary.status !== 'ACTIVE') return { status: notary.status as any, details: 'Notary not active' };
+    if (notary.status !== 'ACTIVE') {
+      const status =
+        notary.status === 'SUSPENDED' || notary.status === 'REVOKED'
+          ? notary.status
+          : 'UNKNOWN';
+      return { status, details: 'Notary not active' };
+    }
     if (notary.commissionState !== state) return { status: 'ACTIVE', details: 'State mismatch (recorded)', };
     return { status: 'ACTIVE', details: `Found ${name}` };
-  }
-}
-
-class DatabasePropertyVerifier {
-  async verify(bundle: BundleInput): Promise<CheckResult> {
-    console.log(`[DatabasePropertyVerifier] Checking property: ${bundle.property.parcelId}`);
-
-    const existing = await prisma.receipt.findFirst({
-      where: {
-        parcelId: bundle.property.parcelId,
-        decision: 'ALLOW',
-        revoked: false
-      }
-    });
-
-    if (existing) {
-      return { checkId: 'property-database', status: 'FLAG', details: `Duplicate Title: Active receipt exists (${existing.id})` } as unknown as CheckResult;
-    }
-
-    // 2. Chain of Title Check (Grantor Verification)
-    if (bundle.ocrData?.grantorName) {
-      const property = await prisma.property.findUnique({
-        where: { parcelId: bundle.property.parcelId }
-      });
-
-      if (property) {
-        const score = nameOverlapScore([bundle.ocrData.grantorName], [property.currentOwner]);
-        const normalizedGrantor = normalizeName(bundle.ocrData.grantorName);
-        const normalizedOwner = normalizeName(property.currentOwner);
-
-        if (score < 0.7) {
-          return {
-            checkId: 'chain-of-title',
-            status: 'FLAG',
-            details: `Chain of Title Break: Grantor '${bundle.ocrData.grantorName}' does not match current owner '${property.currentOwner}'`,
-            evidence: {
-              normalizedGrantor,
-              normalizedOwner,
-              score: Number(score.toFixed(2))
-            } as unknown as Record<string, unknown>
-          } as unknown as CheckResult;
-        }
-      }
-    }
-
-    return { checkId: 'property-database', status: 'PASS', details: 'No duplicate titles found' } as unknown as CheckResult;
   }
 }
 
@@ -669,7 +600,7 @@ class AttomPropertyVerifier implements PropertyVerifier {
     console.log(`[AttomPropertyVerifier] Checking property owner: ${parcelId}`);
 
     // Check cache
-    const cached = await prisma.property.findUnique({ where: { parcelId } });
+    const cached = await getPrismaClient().property.findUnique({ where: { parcelId } });
     let ownerName = cached?.currentOwner || 'Unknown';
 
     if (!cached && this.apiKey) {
@@ -687,14 +618,14 @@ class AttomPropertyVerifier implements PropertyVerifier {
         if (ownerName && ownerName !== 'Unknown') {
           const saleDateStr = prop?.sale?.saleTransDate || prop?.assessment?.saleDate;
           const lastSaleDate = saleDateStr ? new Date(saleDateStr) : null;
-          await prisma.property.upsert({
+          await getPrismaClient().property.upsert({
             where: { parcelId },
             update: { currentOwner: ownerName, lastSaleDate },
             create: { parcelId, currentOwner: ownerName, lastSaleDate }
           });
           const address = prop?.address;
           if (address?.countrySubd || address?.countrySecondarySubd) {
-            await prisma.countyRecord.upsert({
+            await getPrismaClient().countyRecord.upsert({
               where: { parcelId },
               update: { county: address.countrySecondarySubd, state: address.countrySubd, active: true },
               create: { parcelId, county: address.countrySecondarySubd || 'Unknown', state: address.countrySubd || 'IL', active: true }
@@ -729,9 +660,7 @@ class BlockchainVerifier {
     try {
       // 2. Connect to Blockchain
       const provider = new JsonRpcProvider(this.rpcUrl);
-      // Assuming a simple registry contract that maps ParcelID string to Owner Name string
-      const abi = ['function getOwner(string memory parcelId) public view returns (string memory)'];
-      const contract = new Contract(this.contractAddress, abi, provider);
+      await provider.getBlockNumber();
 
       // 3. Query Registry (Read-Only)
       // const onChainOwner = await contract.getOwner(bundle.property.parcelId);
@@ -770,6 +699,7 @@ type VerifyRouteInput = BundleInput & {
 
 export async function buildServer(options: BuildServerOptions = {}) {
   requireProductionVerifierConfig();
+  const prisma = createLazyPrismaClient();
   const app = Fastify({ logger: true });
   const securityConfig = buildSecurityConfig();
   const propertyApiKey = resolvePropertyApiKey();
@@ -796,16 +726,17 @@ export async function buildServer(options: BuildServerOptions = {}) {
     timeWindow: securityConfig.rateLimitWindow,
     keyGenerator: getApiRateLimitKey
   };
+  type TimedFastifyRequest = FastifyRequest & { [REQUEST_START]?: number };
 
   app.addHook('onRequest', async (request) => {
-    (request as any)[REQUEST_START] = Date.now();
+    (request as TimedFastifyRequest)[REQUEST_START] = Date.now();
   });
 
   app.addHook('onResponse', async (request, reply) => {
     const route = (request.routeOptions.url || request.url.split('?')[0] || 'unknown').toString();
     const method = request.method;
     const statusCode = String(reply.statusCode);
-    const startedAt = (request as any)[REQUEST_START] as number | undefined;
+    const startedAt = (request as TimedFastifyRequest)[REQUEST_START];
     const durationSeconds = startedAt ? (Date.now() - startedAt) / 1000 : 0;
     httpRequestsTotal.inc({ method, route, status_code: statusCode });
     httpRequestDurationSeconds.observe({ method, route, status_code: statusCode }, durationSeconds);
@@ -842,7 +773,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
     '/api/v1/health',
     '/api/v1/status',
     '/api/v1/metrics',
-    '/api/v1/integrations/vanta/schema'
+    '/api/v1/integrations/vanta/schema',
+    '/api/v1/receipt/:receiptId',
+    '/api/v1/receipt/:receiptId/pdf',
+    '/api/v1/receipt/:receiptId/verify',
+    '/api/v1/anchor/:receiptId',
+    '/api/v1/receipt/:receiptId/revoke'
   ]);
 
   app.addHook('preHandler', async (request, reply) => {
@@ -902,6 +838,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    if (replyIfDatabaseUnavailable(reply, databaseReady)) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1202,6 +1139,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    if (replyIfDatabaseUnavailable(reply, databaseReady)) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1278,6 +1216,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    if (replyIfDatabaseUnavailable(reply, databaseReady)) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1328,6 +1267,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    if (replyIfDatabaseUnavailable(reply, databaseReady)) return;
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1374,6 +1314,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    if (replyIfDatabaseUnavailable(reply, databaseReady)) return;
     const revocationVerification = verifyRevocationHeaders(request, receiptId, securityConfig);
     if ('error' in revocationVerification) {
       const statusCode = revocationVerification.error === 'issuer_not_allowed' ? 403 : 401;

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
 import { useRouter } from 'next/navigation';
+import React, { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { createWorker } from 'tesseract.js';
+
 import { computeFileHash } from '../utils/hashing';
 import { extractMetadataFromText, cleanPdfText } from '../utils/extraction';
 
@@ -21,16 +22,15 @@ declare global {
         withResolvers<T>(): {
             promise: Promise<T>;
             resolve: (value: T | PromiseLike<T>) => void;
-            reject: (reason?: any) => void;
+            reject: (reason?: unknown) => void;
         };
     }
 }
 
 if (typeof Promise.withResolvers === 'undefined') {
-    // @ts-ignore - Polyfill for missing type definition
     Promise.withResolvers = function <T>() {
         let resolve!: (value: T | PromiseLike<T>) => void;
-        let reject!: (reason?: any) => void;
+        let reject!: (reason?: unknown) => void;
         const promise = new Promise<T>((res, rej) => {
             resolve = res;
             reject = rej;
@@ -72,10 +72,9 @@ export function FileDropzone() {
             langPath: 'https://tessdata.projectnaptha.com/4.0.0'
         } as const;
 
-
-        const runOcr = async (input: ImageBitmapSource | string | HTMLCanvasElement | Blob) => {
+        const runOcr = async (input: Blob | string) => {
             const worker = await createWorker('eng', undefined, workerOptions);
-            const ret = await worker.recognize(input as any);
+            const ret = await worker.recognize(input);
             await worker.terminate();
             return ret.data.text;
         };

@@ -1,17 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
-import { buildServer } from '../src/server.js';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { buildServer } from '../src/server.js';
+import { createPrismaClient } from '../src/prisma.js';
+
+const prisma = createPrismaClient();
 
 describe('Rate Limiting', () => {
   let app: FastifyInstance;
   let testOrgId1: string;
-  let testApiKey1 = 'test-key-rl-1';
+  const testApiKey1 = 'test-key-rl-1';
 
   let testOrgId2: string;
-  let testApiKey2 = 'test-key-rl-2';
+  const testApiKey2 = 'test-key-rl-2';
 
   beforeAll(async () => {
     // We configure to a small limit so we can easily test

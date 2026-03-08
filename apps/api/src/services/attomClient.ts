@@ -1,5 +1,18 @@
 import { AttomClient, AttomLookupResult, AttomProperty } from '../../../../packages/core/dist/index.js';
 
+type AttomApiResponse = {
+  property?: unknown[];
+  properties?: unknown[];
+  requestId?: string;
+  transactionId?: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 type Options = {
   apiKey: string;
   baseUrl?: string;
@@ -68,7 +81,7 @@ export class HttpAttomClient implements AttomClient {
           signal: controller.signal
         });
 
-        const json = await res.json().catch(() => ({}));
+        const json = (await res.json().catch(() => ({}))) as AttomApiResponse;
 
         if (res.status >= 500 || res.status === 429) {
           lastError = new Error(`ATTOM ${res.status}`);
@@ -80,7 +93,7 @@ export class HttpAttomClient implements AttomClient {
           break;
         }
 
-        const properties: any[] = json.property || json.properties || [];
+        const properties = (json.property || json.properties || []) as unknown[];
         for (const p of properties) {
           const property = mapProperty(p);
           results.push({
@@ -106,35 +119,75 @@ export class HttpAttomClient implements AttomClient {
   }
 }
 
-function mapProperty(p: any): AttomProperty {
-  const address = p.address || {};
-  const owner = p.owner || p.assessment?.owner || {};
+function mapProperty(value: unknown): AttomProperty {
+  const p = asRecord(value);
+  const address = asRecord(p.address);
+  const assessment = asRecord(p.assessment);
+  const owner = asRecord(p.owner || asRecord(assessment.owner));
   const owners: string[] = [];
-  if (owner.owner1?.fullName) owners.push(owner.owner1.fullName);
-  if (owner.owner2?.fullName) owners.push(owner.owner2.fullName);
+  const owner1 = asRecord(owner.owner1);
+  const owner2 = asRecord(owner.owner2);
+  if (typeof owner1.fullName === 'string') owners.push(owner1.fullName);
+  if (typeof owner2.fullName === 'string') owners.push(owner2.fullName);
 
-  const lot = p.lot || p.summary?.lot || {};
+  const summary = asRecord(p.summary);
+  const lot = asRecord(p.lot || asRecord(summary.lot));
+  const identifier = asRecord(p.identifier);
+  const location = asRecord(p.location);
+  const geo = asRecord(p.geo);
 
   return {
-    apn: p.identifier?.apn || p.identifier?.attomId || p.summary?.apn || p.apn,
-    altId: p.identifier?.altId || null,
+    apn:
+      (typeof identifier.apn === 'string' && identifier.apn) ||
+      (typeof identifier.attomId === 'string' && identifier.attomId) ||
+      (typeof summary.apn === 'string' && summary.apn) ||
+      (typeof p.apn === 'string' && p.apn) ||
+      undefined,
+    altId: typeof identifier.altId === 'string' ? identifier.altId : null,
     address: {
-      line1: address.line1 || address.oneLine || address.streetLine,
-      city: address.city || address.locality || address.countrySecondarySubd,
-      state: address.state || address.countrySubd,
-      zip: address.postalcode || address.postal1 || address.zipcode
+      line1:
+        (typeof address.line1 === 'string' && address.line1) ||
+        (typeof address.oneLine === 'string' && address.oneLine) ||
+        (typeof address.streetLine === 'string' && address.streetLine) ||
+        undefined,
+      city:
+        (typeof address.city === 'string' && address.city) ||
+        (typeof address.locality === 'string' && address.locality) ||
+        (typeof address.countrySecondarySubd === 'string' && address.countrySecondarySubd) ||
+        undefined,
+      state:
+        (typeof address.state === 'string' && address.state) ||
+        (typeof address.countrySubd === 'string' && address.countrySubd) ||
+        undefined,
+      zip:
+        (typeof address.postalcode === 'string' && address.postalcode) ||
+        (typeof address.postal1 === 'string' && address.postal1) ||
+        (typeof address.zipcode === 'string' && address.zipcode) ||
+        undefined
     },
     location: {
-      lat: p.location?.latitude || p.geo?.latitude || null,
-      lon: p.location?.longitude || p.geo?.longitude || null
+      lat:
+        (typeof location.latitude === 'number' && location.latitude) ||
+        (typeof geo.latitude === 'number' && geo.latitude) ||
+        null,
+      lon:
+        (typeof location.longitude === 'number' && location.longitude) ||
+        (typeof geo.longitude === 'number' && geo.longitude) ||
+        null
     },
     lot: {
-      lot: lot.lotNum || lot.lot,
-      block: lot.block,
-      tract: lot.tract,
-      subdivision: lot.subdivision || lot.secLot
+      lot:
+        (typeof lot.lotNum === 'string' && lot.lotNum) ||
+        (typeof lot.lot === 'string' && lot.lot) ||
+        undefined,
+      block: typeof lot.block === 'string' ? lot.block : undefined,
+      tract: typeof lot.tract === 'string' ? lot.tract : undefined,
+      subdivision:
+        (typeof lot.subdivision === 'string' && lot.subdivision) ||
+        (typeof lot.secLot === 'string' && lot.secLot) ||
+        undefined
     },
     owners,
-    assessment: p.assessment
+    assessment
   };
 }

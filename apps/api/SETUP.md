@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js** ≥ 18
+- **Node.js** 22.x recommended
 - **PostgreSQL** ≥ 14 (local or remote)
 - **npm** ≥ 9
 
@@ -28,12 +28,15 @@ cp apps/api/.env.example apps/api/.env
 
 | Variable           | Description                                | Example                                             |
 | ------------------ | ------------------------------------------ | --------------------------------------------------- |
-| `DATABASE_URL`     | PostgreSQL connection string               | `postgresql://user:pass@localhost:5432/deed_shield` |
+| `DATABASE_URL`     | Runtime PostgreSQL connection string       | `postgresql://user:pass@localhost:5432/deed_shield` |
+| `DIRECT_URL`       | Direct PostgreSQL connection for Prisma CLI | `postgresql://user:pass@localhost:5432/deed_shield` |
 | `ATTOM_API_KEY`    | ATTOM Data API key (obtain from team lead) | `ak_...`                                            |
 | `OPENAI_API_KEY`   | OpenAI key for compliance checks           | `sk-...`                                            |
 | `PRIVATE_KEY`      | Ethereum wallet private key for anchoring  | `0x...`                                             |
 | `RPC_URL`          | EVM JSON-RPC endpoint                      | `https://sepolia.infura.io/v3/...`                  |
 | `REGISTRY_ADDRESS` | On-chain registry contract address         | `0x...`                                             |
+
+For Supabase, use the pooled connection string in `DATABASE_URL` and the direct database host in `DIRECT_URL`. Prisma 7 reads the CLI datasource from `apps/api/prisma.config.ts`.
 
 ### Optional Variables
 
@@ -52,8 +55,9 @@ cp apps/api/.env.example apps/api/.env
 # Create the database
 createdb deed_shield
 
-# Set DATABASE_URL in apps/api/.env
+# Set DATABASE_URL and DIRECT_URL in apps/api/.env
 # DATABASE_URL="postgresql://postgres:localdev@localhost:5432/deed_shield"
+# DIRECT_URL="postgresql://postgres:localdev@localhost:5432/deed_shield"
 
 # Run migrations
 cd apps/api
@@ -73,7 +77,9 @@ docker run -d \
   -p 5432:5432 \
   postgres:16-alpine
 
-# Then set: DATABASE_URL="postgresql://postgres:localdev@localhost:5432/deed_shield"
+# Then set:
+# DATABASE_URL="postgresql://postgres:localdev@localhost:5432/deed_shield"
+# DIRECT_URL="postgresql://postgres:localdev@localhost:5432/deed_shield"
 ```
 
 ## 4. Run the API
@@ -91,7 +97,7 @@ cd apps/api
 npm test
 ```
 
-> **Note:** Tests require a running PostgreSQL instance with a valid `DATABASE_URL`.
+> **Note:** Tests require a running PostgreSQL instance with a valid `DATABASE_URL`. Prisma CLI commands also require `DIRECT_URL` (or `SUPABASE_DIRECT_URL`) for Prisma 7.
 
 ## Security Reminders
 

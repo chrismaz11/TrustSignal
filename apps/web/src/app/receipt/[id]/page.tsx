@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
@@ -26,21 +26,22 @@ type ReceiptDetail = {
   };
 };
 
-export default function ReceiptDetailPage({ params }: { params: { id: string } }) {
+export default function ReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [detail, setDetail] = useState<ReceiptDetail | null>(null);
   const [verifyResult, setVerifyResult] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const res = await fetch(`${API_BASE}/api/v1/receipt/${params.id}`);
+      const res = await fetch(`${API_BASE}/api/v1/receipt/${id}`);
       const data = (await res.json()) as ReceiptDetail;
       setDetail(data);
     };
     load();
-  }, [params.id]);
+  }, [id]);
 
   const verifyIntegrity = async () => {
-    const res = await fetch(`${API_BASE}/api/v1/receipt/${params.id}/verify`, { method: 'POST' });
+    const res = await fetch(`${API_BASE}/api/v1/receipt/${id}/verify`, { method: 'POST' });
     const data = await res.json();
     setVerifyResult(data.verified ? 'Integrity verified' : 'Mismatch detected');
   };

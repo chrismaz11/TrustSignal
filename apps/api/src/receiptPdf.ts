@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+
 import { Receipt } from '../../../packages/core/dist/index.js';
 
 export async function renderReceiptPdf(receipt: Receipt): Promise<Buffer> {

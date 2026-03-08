@@ -64,8 +64,8 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Verify `master` branch protection on GitHub: PR required, 1 approval, required checks, signed commits, conversation resolution, admin enforcement.
 - [x] Add governance evidence capture scripts (`scripts/apply-github-branch-protection.sh`, `scripts/capture-github-governance-evidence.sh`).
 - [x] Capture governance evidence and CI-required-check artifacts under `docs/evidence/security/` and `notebooks/`.
-- [ ] Push `cm/integration-halo2-governance-20260308` and open the consolidated integration PR to `master`.
-- [ ] Obtain required review approval and merge the consolidated integration PR.
+- [x] Push `cm/integration-halo2-governance-20260308` and open the consolidated integration PR to `master`.
+- [x] Obtain required review approval and merge the consolidated integration PR.
 - [ ] Capture fresh CI evidence tied to the consolidated integration PR after checks pass.
 
 ### P1-S8 ZKP Productionization
@@ -74,6 +74,7 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Add canonical document commitment/public input model for document hashing.
 - [x] Add Rust Halo2 service entrypoint for prove/verify bridging (`circuits/non_mem_gadget/src/bin/zkp_service.rs`).
 - [x] Add tests covering dev-only guardrails, external prove path, and API/Vanta integration.
+- [x] Migrate `apps/api` to Prisma 7 with adapter-backed Postgres connectivity and a separate Prisma CLI datasource config.
 - [ ] Run end-to-end proof generation benchmarks against the real prover path and record latency evidence.
 - [ ] Generate and manage proving/verifying keys for the production circuit lifecycle.
 

@@ -2,27 +2,11 @@
 
 Date: 2026-03-08
 Repo: `TrustSignal-dev/TrustSignal`
-Branch: `cm/integration-halo2-governance-20260308`
+Branch: `master`
 
 ## Open blockers
 
-### 1) Consolidated integration branch is not merged to `master` (hard blocker)
-
-The production-oriented Halo2/ZKP work and the SOC 2 governance guardrails now live together on
-`cm/integration-halo2-governance-20260308`, but `master` does not yet contain that integrated
-baseline.
-
-Current state:
-- Local integration branch contains `halo2`, the PR `#12` governance guardrails, and follow-up test fixes.
-- `master` branch protection is active and verified via GitHub API.
-- Merge still requires a pull request, passing required checks, and at least 1 approval.
-
-Required unblock:
-- Push `cm/integration-halo2-governance-20260308`.
-- Open a PR to `master`.
-- Obtain required approval and merge without bypassing branch protection.
-
-### 2) Historical secret-remediation closure is still incomplete (high risk)
+### 1) Historical secret-remediation closure is still incomplete (high risk)
 
 Current state:
 - Tracked secrets were removed from the current tree and history rewrite/remediation work was previously performed.
@@ -32,7 +16,7 @@ Required unblock:
 - Finish credential rotation evidence capture.
 - Confirm hidden `refs/pull/*` retention cleanup with GitHub support.
 
-### 3) HTTPS/TLS ingress evidence is still incomplete (high risk)
+### 2) HTTPS/TLS ingress evidence is still incomplete (high risk)
 
 Current state:
 - Runtime HTTPS guards exist in code.
@@ -42,7 +26,18 @@ Required unblock:
 - Capture edge TLS evidence for the deployed API surface.
 - Attach evidence to the governance tracker.
 
-### 4) Monitoring and alert evidence is still incomplete (medium risk)
+### 3) Monitoring and alert evidence is still incomplete (medium risk)
+
+### 4) Prisma 7 upgrade is only completed for `apps/api` (medium risk)
+
+Current state:
+- `apps/api` now runs on Prisma 7 using `@prisma/adapter-pg`, `pg`, and `apps/api/prisma.config.ts`.
+- Legacy root `src/` paths were decoupled from direct Prisma type imports so they do not block the upgrade.
+- The repo-wide `typecheck` gate is still red because of pre-existing `apps/web` generated-type/import drift, not the Prisma migration.
+
+Required unblock:
+- Repair the `apps/web` import/type drift so repo-wide `tsc -b` is green again.
+- Decide whether the root legacy Prisma usage should also be migrated to Prisma 7 or isolated behind its own package boundary.
 
 Current state:
 - Metrics/status endpoints and baseline monitoring docs exist.

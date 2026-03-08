@@ -25,7 +25,7 @@
     "dev": "concurrently \"npm:dev --workspace apps/api\" \"npm:dev --workspace apps/web\"",
     "build": "npm -ws run build",
     "lint": "eslint .",
-    "typecheck": "tsc -b",
+    "typecheck": "npm -w apps/web exec next typegen && tsc -b",
     "test": "vitest run",
     "validate": "npm run lint && npm run typecheck && npm test && npm run build",
     "security:audit": "npm audit --omit=dev --audit-level=high",

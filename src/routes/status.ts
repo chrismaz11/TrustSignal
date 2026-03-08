@@ -39,7 +39,7 @@ export async function registerStatusRoute(
   app: FastifyInstance,
   options: StatusRoutePluginOptions = {}
 ): Promise<void> {
-  const deps = createRouteDependencies(options.deps);
+  const deps = await createRouteDependencies(options.deps);
 
   app.get('/v1/status/:bundleId', { preHandler: authenticateJWT }, async (request, reply) => {
     const parsedParams = statusParamsSchema.safeParse(request.params);

@@ -3,8 +3,7 @@ import {
   normalizePin,
   addressSimilarity,
   nameOverlapScore,
-  canonicalDeedHash,
-  redact
+  canonicalDeedHash
 } from './normalize.js';
 
 type ConfidenceContrib = {
@@ -59,7 +58,7 @@ function calcConfidence(weights: ConfidenceContrib): number {
 export async function attomCrossCheck(
   deed: DeedParsed,
   client: AttomClient,
-  now: Date = new Date()
+  _now: Date = new Date()
 ): Promise<VerificationReport> {
   const checks: ReportCheck[] = [];
   const canonicalHash = canonicalDeedHash(deed);
@@ -78,7 +77,7 @@ export async function attomCrossCheck(
       evidence: {
         endpointUsed: undefined,
         matchConfidence: 0,
-        timestamp: now.toISOString(),
+        timestamp: _now.toISOString(),
         reason: 'INSUFFICIENT_INPUT',
         canonicalHash
       }
@@ -111,7 +110,7 @@ export async function attomCrossCheck(
       evidence: {
         endpointUsed: endpoint,
         matchConfidence: 0,
-        timestamp: now.toISOString(),
+        timestamp: _now.toISOString(),
         reason: 'ATTOM_NO_MATCH',
         canonicalHash
       }
@@ -243,7 +242,7 @@ export async function attomCrossCheck(
     if (exec.getTime() > rec.getTime()) {
       checks.push(buildCheck({ id: 'temporal', status: 'WARN', message: 'Execution date is after recording date' }));
     }
-    if (rec.getTime() > now.getTime()) {
+    if (rec.getTime() > _now.getTime()) {
       checks.push(buildCheck({ id: 'temporal', status: 'WARN', message: 'Recording date is in the future' }));
     }
   }
@@ -271,7 +270,7 @@ export async function attomCrossCheck(
       attomRequestId: candidate.requestId,
       endpointUsed: candidate.endpoint,
       matchConfidence: confidence,
-      timestamp: now.toISOString(),
+      timestamp: _now.toISOString(),
       reason: undefined,
       canonicalHash
     }
@@ -281,7 +280,7 @@ export async function attomCrossCheck(
 // Convenience mock client for tests/offline use
 export class MockAttomClient implements AttomClient {
   constructor(private responses: { parcel?: AttomLookupResult[]; address?: AttomLookupResult[] }) {}
-  async getByParcel(pin: string): Promise<AttomLookupResult[]> {
+  async getByParcel(_pin: string): Promise<AttomLookupResult[]> {
     return this.responses.parcel || [];
   }
   async getByAddress(): Promise<AttomLookupResult[]> {

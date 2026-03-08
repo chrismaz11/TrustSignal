@@ -19,12 +19,14 @@ module.exports = {
   ignorePatterns: [
     '**/node_modules/**',
     '**/.next/**',
+    '**/next-env.d.ts',
     '**/dist/**',
     '**/build/**',
     '**/.turbo/**',
     '**/coverage/**',
     'src/**',
     'scripts/*.js',
+    'packages/contracts/artifacts/**/*.d.ts',
     'packages/contracts/**/*.js',
     'packages/contracts/**/*.cjs'
   ]

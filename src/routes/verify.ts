@@ -48,7 +48,7 @@ export async function registerVerifyRoute(
   app: FastifyInstance,
   options: VerifyRoutePluginOptions = {}
 ): Promise<void> {
-  const deps = createRouteDependencies(options.deps);
+  const deps = await createRouteDependencies(options.deps);
 
   app.post('/v1/verify-bundle', { preHandler: authenticateJWT }, async (request, reply) => {
     const parsedBody = verifyBundleBodySchema.safeParse(request.body);

@@ -1,5 +1,3 @@
-import { Prisma, PrismaClient, type VerificationRecord } from '@prisma/client';
-
 export interface CreateVerificationRecordInput {
   bundleHash: string;
   nonMemOk: boolean;
@@ -16,6 +14,23 @@ export interface RevokeVerificationRecordInput {
   revokedAt: Date;
 }
 
+export interface VerificationRecord {
+  id: string;
+  bundleHash: string;
+  nonMemOk: boolean;
+  revocationOk: boolean;
+  zkmlOk: boolean;
+  fraudScore: number;
+  proofGenMs: number;
+  timestamp: string;
+  revoked: boolean;
+  revocationReason: string | null;
+  revocationTxHash: string | null;
+  revokedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface VerificationRecordStore {
   create(input: CreateVerificationRecordInput): Promise<VerificationRecord>;
   findByBundleHash(bundleHash: string): Promise<VerificationRecord | null>;
@@ -25,8 +40,30 @@ export interface VerificationRecordStore {
   ): Promise<VerificationRecord | null>;
 }
 
+type VerificationRecordDelegate = {
+  create(args: {
+    data: CreateVerificationRecordInput;
+  }): Promise<VerificationRecord>;
+  findUnique(args: {
+    where: { bundleHash: string };
+  }): Promise<VerificationRecord | null>;
+  update(args: {
+    where: { bundleHash: string };
+    data: {
+      revoked: boolean;
+      revocationReason: string;
+      revocationTxHash: string;
+      revokedAt: Date;
+    };
+  }): Promise<VerificationRecord>;
+};
+
+type PrismaVerificationRecordStoreClient = {
+  verificationRecord: VerificationRecordDelegate;
+};
+
 export class PrismaVerificationRecordStore implements VerificationRecordStore {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaVerificationRecordStoreClient) {}
 
   async create(input: CreateVerificationRecordInput): Promise<VerificationRecord> {
     return this.prisma.verificationRecord.create({
@@ -63,7 +100,12 @@ export class PrismaVerificationRecordStore implements VerificationRecordStore {
         }
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'P2025'
+      ) {
         return null;
       }
       throw error;

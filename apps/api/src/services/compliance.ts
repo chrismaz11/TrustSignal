@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+
 import OpenAI from 'openai';
 import PDFParser from 'pdf2json';
 
@@ -368,8 +369,8 @@ export class CookCountyComplianceValidator {
     private extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
         return new Promise((resolve, reject) => {
             const pdfParser = new PDFParser(null, true);
-            pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
-            pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+            pdfParser.on("pdfParser_dataError", (errData: { parserError: Error }) => reject(errData.parserError));
+            pdfParser.on("pdfParser_dataReady", (_pdfData: unknown) => {
                 const text = pdfParser.getRawTextContent();
                 resolve(text);
             });

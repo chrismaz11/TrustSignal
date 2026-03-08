@@ -42,7 +42,7 @@ export async function registerRevokeRoute(
   app: FastifyInstance,
   options: RevokeRoutePluginOptions = {}
 ): Promise<void> {
-  const deps = createRouteDependencies(options.deps);
+  const deps = await createRouteDependencies(options.deps);
 
   app.post('/v1/revoke', { preHandler: authenticateJWT }, async (request, reply) => {
     const parsedBody = revokeBodySchema.safeParse(request.body);

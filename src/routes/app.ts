@@ -23,7 +23,7 @@ export async function buildApiServer(options: BuildApiServerOptions = {}): Promi
     },
     disableRequestLogging: true
   });
-  const deps = createRouteDependencies(options.deps);
+  const deps = await createRouteDependencies(options.deps);
 
   await registerStructuredLogger(app);
   await registerRateLimit(app);

@@ -1,5 +1,3 @@
-import { PrismaClient } from '@prisma/client';
-
 import { verifyBundle as verifyBundlePipeline } from '../core/verifyBundle.js';
 import { anchorNullifierToPolygonMumbai, type PolygonAnchorResult } from '../services/polygonMumbaiAnchor.js';
 import {
@@ -14,12 +12,19 @@ export interface RouteDependencies {
   anchorNullifier: (bundleHash: string) => Promise<PolygonAnchorResult>;
 }
 
-const prisma = new PrismaClient();
+export async function createRouteDependencies(
+  overrides: Partial<RouteDependencies> = {}
+): Promise<RouteDependencies> {
+  let recordStore = overrides.recordStore;
+  if (!recordStore) {
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    recordStore = new PrismaVerificationRecordStore(prisma);
+  }
 
-export function createRouteDependencies(overrides: Partial<RouteDependencies> = {}): RouteDependencies {
   return {
     verifyBundle: verifyBundlePipeline,
-    recordStore: new PrismaVerificationRecordStore(prisma),
+    recordStore,
     anchorNullifier: anchorNullifierToPolygonMumbai,
     ...overrides
   };

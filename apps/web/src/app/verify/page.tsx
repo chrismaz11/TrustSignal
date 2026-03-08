@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
@@ -41,7 +41,7 @@ type BundleInput = {
   timestamp?: string;
 };
 
-export default function VerifyPage() {
+function VerifyPageContent() {
   const searchParams = useSearchParams();
   const [payload, setPayload] = useState<BundleInput>({
     bundleId: 'BUNDLE-' + Date.now(),
@@ -263,5 +263,22 @@ export default function VerifyPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense
+      fallback={(
+        <div className="grid">
+          <div className="card">
+            <h2>Verify bundle</h2>
+            <p className="muted">Loading verification form...</p>
+          </div>
+        </div>
+      )}
+    >
+      <VerifyPageContent />
+    </Suspense>
   );
 }

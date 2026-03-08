@@ -40,6 +40,11 @@ This repository is the main TrustSignal project. It contains:
 
 ## Local Demo
 
+Prerequisites:
+
+- Root workspace: Node 18+ is supported.
+- `apps/api` with Prisma 7 and Hardhat 3 is validated on Node 22.
+
 ### 2) Configure environment
 
 ```bash
@@ -54,7 +59,9 @@ Set real values in `.env.local` for:
   - Current bootstrap prover binary: `circuits/non_mem_gadget/target/release/zkp_service`
 - `POLYGON_MUMBAI_RPC_URL`
 - `POLYGON_MUMBAI_PRIVATE_KEY`
-- `DATABASE_URL` (or `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` / `SUPABASE_DIRECT_URL`; or set `SUPABASE_DB_PASSWORD` and use Supabase CLI pooler metadata)
+- `DATABASE_URL` for runtime pooled access
+- `DIRECT_URL` for Prisma CLI access (`npm -w apps/api run db:generate`, `db:push`, migrations)
+- optional aliases: `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` for pooled runtime, `SUPABASE_DIRECT_URL` for Prisma CLI, or `SUPABASE_DB_PASSWORD` plus Supabase CLI pooler metadata discovery
 
 Never commit real secrets.
 
@@ -83,6 +90,11 @@ npm -w apps/api run db:generate
 npm -w apps/api run db:push
 npm -w apps/api run dev
 ```
+
+Notes:
+
+- Prisma 7 in `apps/api` resolves the CLI datasource through `apps/api/prisma.config.ts`.
+- Keep the pooled connection in `DATABASE_URL` and the direct Postgres connection in `DIRECT_URL` to avoid migration/provisioning issues on Supabase.
 
 In a second terminal:
 

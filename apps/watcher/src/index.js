@@ -1,7 +1,9 @@
-const chokidar = require('chokidar');
+/* eslint-disable @typescript-eslint/no-var-requires */
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+
+const chokidar = require('chokidar');
 const axios = require('axios');
 let notifier = {
     notify: ({ title, message }) => {
@@ -29,7 +31,7 @@ console.log(`DeedShield Watcher Service started.`);
 console.log(`Monitoring: ${WATCH_DIR}`);
 
 const watcher = chokidar.watch(WATCH_DIR, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
+    ignored: /(^|[/\\])\../, // ignore dotfiles
     persistent: true,
     ignoreInitial: true, // Don't process existing files on startup for this demo
     awaitWriteFinish: {
