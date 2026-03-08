@@ -64,9 +64,9 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Verify `master` branch protection on GitHub: PR required, 1 approval, required checks, signed commits, conversation resolution, admin enforcement.
 - [x] Add governance evidence capture scripts (`scripts/apply-github-branch-protection.sh`, `scripts/capture-github-governance-evidence.sh`).
 - [x] Capture governance evidence and CI-required-check artifacts under `docs/evidence/security/` and `notebooks/`.
-- [ ] Push `cm/integration-halo2-governance-20260308` and open the consolidated integration PR to `master`.
-- [ ] Obtain required review approval and merge the consolidated integration PR.
-- [ ] Capture fresh CI evidence tied to the consolidated integration PR after checks pass.
+- [x] Push `cm/integration-halo2-governance-20260308` and open the consolidated integration PR to `master`.
+- [x] Obtain required review approval and merge the consolidated integration PR.
+- [x] Capture fresh CI evidence tied to the consolidated integration PR after checks pass.
 
 ### P1-S8 ZKP Productionization
 - [x] Remove mock-style ZKP attestation flow and secret witness key usage from active TypeScript paths.
@@ -83,6 +83,14 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] E2E verify curl->proof test (`tests/e2e/verify.test.ts`).
 - [ ] Free registry expansion backlog (next source wave prioritization and implementation queue).
 - [x] Fail-closed negative tests (`apps/api/src/registry-adapters.test.ts` compliance gap coverage).
+
+## Active Migration Blockers
+
+### Dependency Major Upgrade Triage (Mar 2026)
+- [x] Land low-risk Dependabot upgrades for GitHub Actions, `json-canonicalize`, and `next`.
+- [x] Isolate `jose` v6 compatibility fix in `packages/core/src/registry.ts`.
+- [ ] Replace or defer the `eslint` v10 PR until the import lint stack supports ESLint 10 without peer-dependency conflicts.
+- [ ] Plan and execute the Prisma 7 migration as a dedicated refactor (`prisma.config.ts`, datasource removal from schema, runtime client adapter wiring, and Node 22-only validation).
 
 ## Phase 2 — ICE/Encompass Marketplace Ready
 - [ ] Draft integration contract for Encompass-facing flows.

@@ -1,3 +1,5 @@
+import { webcrypto } from 'node:crypto';
+
 import { CompactSign, compactVerify, generateKeyPair, importJWK, exportJWK, JWK } from 'jose';
 
 import { canonicalizeJson } from './canonicalize.js';
@@ -8,8 +10,20 @@ export type RegistrySignatureBundle = {
   signature: string;
 };
 
+function ensureWebCrypto() {
+  if (!globalThis.crypto) {
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: webcrypto
+    });
+  }
+}
+
 export async function generateRegistryKeypair() {
-  const { publicKey, privateKey } = await generateKeyPair('EdDSA');
+  ensureWebCrypto();
+  const { publicKey, privateKey } = await generateKeyPair('EdDSA', {
+    extractable: true
+  });
   const publicJwk = await exportJWK(publicKey);
   const privateJwk = await exportJWK(privateKey);
   return { publicJwk, privateJwk };
@@ -20,6 +34,7 @@ export async function signRegistry(
   privateJwk: JWK,
   keyId: string
 ): Promise<string> {
+  ensureWebCrypto();
   const canonical = canonicalizeJson(registry);
   const encoder = new TextEncoder();
   const key = await importJWK(privateJwk, 'EdDSA');
@@ -33,6 +48,7 @@ export async function verifyRegistrySignature(
   signature: string,
   publicJwk: JWK
 ): Promise<boolean> {
+  ensureWebCrypto();
   const canonical = canonicalizeJson(registry);
   const encoder = new TextEncoder();
   const key = await importJWK(publicJwk, 'EdDSA');
