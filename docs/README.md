@@ -22,6 +22,7 @@ This folder is organized into active, canonical documents and archived historica
 - `PRODUCTION_GOVERNANCE_TRACKER.md`
 - `SECURITY.md`
 - `verification.md`
+- `ops/monitoring/README.md`
 - `../PROJECT_PLAN.md`
 - `../SECURITY.md`
 

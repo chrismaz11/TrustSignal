@@ -12,6 +12,21 @@ This folder contains versioned experimental notebooks for R&D and QA across Trus
   - Purpose: pre-proof signal extraction QA by vertical.
   - Track: precision/recall, false-positive rate by document category, and threshold tuning decisions.
 
+- `registry-wave1-primary-source-expansion-2026-03-07.ipynb`
+  - Purpose: change log and validation evidence for registry adapter Wave 1 expansion.
+  - Track: source additions, security guardrails, validation commands, and control-to-artifact mapping for compliance review.
+  - Export artifact: `notebooks/artifacts/vanta-controls-registry-wave1-2026-03-07.csv`
+
+- `vanta-evidence-master.ipynb`
+  - Purpose: repo-level evidence index for Vanta-aligned controls across security, API, operations, and governance workstreams.
+  - Track: 90-day git timeline, control matrix status (`READY`/`IN_PROGRESS`/`GAP`), evidence paths, and open task gaps.
+  - Export artifact: `notebooks/artifacts/vanta-controls-master-2026-03-07.csv`
+
+- `governance-ci-unblock-2026-03-07.ipynb`
+  - Purpose: evidence trail for GitHub governance hardening and CI required-check unblock remediation.
+  - Track: workflow remediation actions, lazy EZKL loading fix rationale, validation command outcomes, and session control mapping.
+  - Export artifact: `notebooks/artifacts/vanta-controls-ci-unblock-2026-03-07.csv`
+
 ## Session Workflow (Required)
 
 1. Pull latest `work` branch before edits.
@@ -27,6 +42,7 @@ This folder contains versioned experimental notebooks for R&D and QA across Trus
 - Put all run configuration near the top of each notebook.
 - Persist machine-readable snapshots under:
   - `notebooks/artifacts/ezkl/` for EZKL runs
+  - `notebooks/artifacts/` for compliance/control export snapshots
   - `notebooks/data/` for local evaluation datasets
 - Prefer deterministic seeds for synthetic or sampled experiments.
 

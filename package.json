@@ -27,6 +27,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "validate": "npm run lint && npm run typecheck && npm test && npm run build",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
     "demo": "tsx scripts/demo.ts",
     "demo:playwright": "node scripts/playwright-vanta-command-center.mjs",
     "start:verify": "node src/api/verify.js",
