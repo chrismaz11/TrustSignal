@@ -1,15 +1,16 @@
-import * as childProcess from 'node:child_process';
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { verifyBundle } from '../../src/core/verifyBundle.js';
 import type { VerifyBundleInput } from '../../src/types/VerificationResult.js';
+import { verifyZkml } from '../../src/verifiers/zkmlVerifier.js';
 
-vi.mock('node:child_process', async () => {
-  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process');
+vi.mock('../../src/verifiers/zkmlVerifier.js', async () => {
+  const actual = await vi.importActual<typeof import('../../src/verifiers/zkmlVerifier.js')>(
+    '../../src/verifiers/zkmlVerifier.js'
+  );
   return {
     ...actual,
-    execFile: vi.fn()
+    verifyZkml: vi.fn()
   };
 });
 
@@ -20,7 +21,7 @@ interface MockZkmlResponse {
   error?: string;
 }
 
-const mockedExecFile = vi.mocked(childProcess.execFile);
+const mockedVerifyZkml = vi.mocked(verifyZkml);
 const baseFeatures = [0.42, -0.18, 0.31, 0.22, -0.09, 0.58] as const;
 
 function buildInput(overrides: Partial<VerifyBundleInput> = {}): VerifyBundleInput {
@@ -31,29 +32,21 @@ function buildInput(overrides: Partial<VerifyBundleInput> = {}): VerifyBundleInp
 }
 
 function mockEzklChildProcess(response: MockZkmlResponse): void {
-  mockedExecFile.mockImplementation(((
-    ...args: unknown[]
-  ) => {
-    const callback = args.find((value): value is childProcess.ExecFileCallback => typeof value === 'function');
-    if (callback) {
-      callback(null, JSON.stringify(response), '');
-    }
-    return {
-      pid: 0,
-      kill: () => true
-    } as unknown as childProcess.ChildProcess;
-  }) as typeof childProcess.execFile);
+  mockedVerifyZkml.mockResolvedValue({
+    proven: response.proven,
+    fraud_score: response.fraud_score,
+    proof_gen_ms: response.proof_gen_ms,
+    error: response.error
+  });
 }
 
 describe('full bundle verification', () => {
   beforeEach(() => {
-    process.env.TRUSTSIGNAL_ZKML_MODE = 'python';
-    mockedExecFile.mockReset();
+    mockedVerifyZkml.mockReset();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    delete process.env.TRUSTSIGNAL_ZKML_MODE;
+    vi.clearAllMocks();
   });
 
   it('verifies a valid bundle', { timeout: 30_000 }, async () => {
