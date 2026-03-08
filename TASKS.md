@@ -75,6 +75,7 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] Add Rust Halo2 service entrypoint for prove/verify bridging (`circuits/non_mem_gadget/src/bin/zkp_service.rs`).
 - [x] Add tests covering dev-only guardrails, external prove path, and API/Vanta integration.
 - [x] Migrate `apps/api` to Prisma 7 with adapter-backed Postgres connectivity and a separate Prisma CLI datasource config.
+- [ ] Hard-pivot the document attestation circuit: current release-path SHA-256 proof generation exceeds 60s in ignored release tests and must be optimized or redesigned before claiming production readiness.
 - [ ] Run end-to-end proof generation benchmarks against the real prover path and record latency evidence.
 - [ ] Generate and manage proving/verifying keys for the production circuit lifecycle.
 

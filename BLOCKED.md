@@ -6,7 +6,20 @@ Branch: `master`
 
 ## Open blockers
 
-### 1) Historical secret-remediation closure is still incomplete (high risk)
+### 1) Release attestation prover is not production-ready (hard blocker)
+
+Current state:
+- The release `zkp_service` binary builds successfully and setup material exists in `circuits/non_mem_gadget/keys/`.
+- The toy combined non-membership/revocation Criterion benchmark still reports roughly `1.9 ms`, but that is not the document-hash attestation circuit used by the external prover path.
+- Running the ignored release attestation tests shows the real SHA-256 document proof path running past 60 seconds.
+- A direct release `zkp_service` prove attempt using the baked sample attestation payload returned `The constraint system is not satisfied`, so correctness and latency both need more work before this can be presented as production-grade.
+
+Required unblock:
+- Reproduce the failing release `zkp_service` prove path with a deterministic harness and isolate whether the sample payload or the SHA-256 attestation circuit is at fault.
+- Either optimize the attestation circuit materially (lookup-table strategy / reduced witness surface) or pivot to a faster hash/circuit design such as Poseidon for the commitment statement while preserving auditability.
+- Only after release prove/verify succeeds reliably should proof-latency evidence be captured for partner-facing claims.
+
+### 2) Historical secret-remediation closure is still incomplete (high risk)
 
 Current state:
 - Tracked secrets were removed from the current tree and history rewrite/remediation work was previously performed.
@@ -16,7 +29,7 @@ Required unblock:
 - Finish credential rotation evidence capture.
 - Confirm hidden `refs/pull/*` retention cleanup with GitHub support.
 
-### 2) HTTPS/TLS ingress evidence is still incomplete (high risk)
+### 3) HTTPS/TLS ingress evidence is still incomplete (high risk)
 
 Current state:
 - Runtime HTTPS guards exist in code.
@@ -26,9 +39,9 @@ Required unblock:
 - Capture edge TLS evidence for the deployed API surface.
 - Attach evidence to the governance tracker.
 
-### 3) Monitoring and alert evidence is still incomplete (medium risk)
+### 4) Monitoring and alert evidence is still incomplete (medium risk)
 
-### 4) Prisma 7 upgrade is only completed for `apps/api` (medium risk)
+### 5) Prisma 7 upgrade is only completed for `apps/api` (medium risk)
 
 Current state:
 - `apps/api` now runs on Prisma 7 using `@prisma/adapter-pg`, `pg`, and `apps/api/prisma.config.ts`.
