@@ -52,5 +52,10 @@
     "tsx": "^4.15.7",
     "typescript": "5.5.4",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "mocha": {
+      "serialize-javascript": "7.0.3"
+    }
   }
 }

@@ -45,6 +45,8 @@ jobs:
             const body = pr.body || '';
             const disclosurePattern = /-\s*\[( |x|X)\]\s*AI-assisted changes are included in this PR/;
             const aiAssistedPattern = /-\s*\[(x|X)\]\s*AI-assisted changes are included in this PR/;
+            const soloMaintainerWaiverPattern =
+              /-\s*\[(x|X)\]\s*Solo maintainer approval waiver is required for this PR/;
 
             if (!disclosurePattern.test(body)) {
               core.setFailed('PRs must disclose whether AI-assisted changes are included.');
@@ -53,6 +55,11 @@ jobs:
 
             if (!aiAssistedPattern.test(body)) {
               core.info('AI disclosure is present and no AI-assisted changes were declared.');
+              return;
+            }
+
+            if (soloMaintainerWaiverPattern.test(body)) {
+              core.info('Solo maintainer approval waiver declared in PR body; skipping human approval requirement.');
               return;
             }
 
