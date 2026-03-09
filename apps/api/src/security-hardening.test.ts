@@ -353,3 +353,37 @@ describe.sequential('Security hardening: production receipt-signing configuratio
     );
   });
 });
+
+describe.sequential('Security hardening: development receipt-signing configuration', () => {
+  let envSnapshot: EnvSnapshot;
+
+  beforeAll(() => {
+    const keysToSnapshot = [
+      'NODE_ENV',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_KID'
+    ];
+    envSnapshot = snapshotEnv(keysToSnapshot);
+    process.env.NODE_ENV = 'development';
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK;
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK;
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS;
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_KID;
+  });
+
+  afterAll(() => {
+    restoreEnv(envSnapshot);
+  });
+
+  it('uses an ephemeral dev-only signing key when env vars are absent', () => {
+    const config = buildReceiptSigningConfig(process.env);
+
+    expect(config.mode).toBe('dev-only');
+    expect(config.current.kid).toBe('dev-local-receipt-signer-v1');
+    expect(config.current.privateJwk.kty).toBe('OKP');
+    expect(typeof config.current.privateJwk.d).toBe('string');
+    expect(config.verificationKeys.get(config.current.kid)).toEqual(config.current.publicJwk);
+  });
+});

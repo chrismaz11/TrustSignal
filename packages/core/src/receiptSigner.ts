@@ -57,23 +57,24 @@ export async function verifyReceiptSignature(
   keyStore: ReceiptVerifierKeyStore
 ): Promise<ReceiptSignatureVerification> {
   const keys = toKeyStoreMap(keyStore);
-  const header = decodeProtectedHeader(receiptSignature.signature);
-  const alg = typeof header.alg === 'string' ? header.alg : receiptSignature.alg;
-  const kid = typeof header.kid === 'string' ? header.kid : receiptSignature.kid;
-  const publicJwk = keys.get(kid);
-
-  if (!publicJwk) {
-    return {
-      verified: false,
-      keyResolved: false,
-      payloadMatches: false,
-      kid,
-      alg,
-      reason: 'unknown_kid'
-    };
-  }
 
   try {
+    const header = decodeProtectedHeader(receiptSignature.signature);
+    const alg = typeof header.alg === 'string' ? header.alg : receiptSignature.alg;
+    const kid = typeof header.kid === 'string' ? header.kid : receiptSignature.kid;
+    const publicJwk = keys.get(kid);
+
+    if (!publicJwk) {
+      return {
+        verified: false,
+        keyResolved: false,
+        payloadMatches: false,
+        kid,
+        alg,
+        reason: 'unknown_kid'
+      };
+    }
+
     const key = await importJWK(publicJwk, alg);
     const { payload: verifiedPayload, protectedHeader } = await compactVerify(receiptSignature.signature, key);
     const payloadString = new TextDecoder().decode(verifiedPayload);
@@ -93,10 +94,10 @@ export async function verifyReceiptSignature(
   } catch (error) {
     return {
       verified: false,
-      keyResolved: true,
+      keyResolved: false,
       payloadMatches: false,
-      kid,
-      alg,
+      kid: receiptSignature.kid,
+      alg: receiptSignature.alg,
       reason: error instanceof Error ? error.message : 'signature_verification_failed'
     };
   }

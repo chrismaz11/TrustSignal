@@ -93,4 +93,46 @@ describe('receipt signing', () => {
     expect(tampered.keyResolved).toBe(true);
     expect(tampered.payloadMatches).toBe(false);
   });
+
+  it('returns a structured invalid result for malformed receipt signatures', async () => {
+    const { registry, notaryWallets } = createSyntheticRegistry(1);
+    const notary = registry.notaries[0];
+    const docHash = '0x9999999999999999999999999999999999999999999999999999999999999999';
+    const bundle = {
+      bundleId: 'BUNDLE-RECEIPT-3',
+      transactionType: 'warranty',
+      ron: {
+        provider: 'RON-1',
+        notaryId: notary.id,
+        commissionState: notary.commissionState,
+        sealPayload: await signDocHash(notaryWallets[notary.id], docHash),
+        sealScheme: 'SIM-ECDSA-v1' as const
+      },
+      doc: { docHash },
+      property: {
+        parcelId: 'PARCEL-12345',
+        county: 'Demo County',
+        state: notary.commissionState
+      },
+      policy: { profile: `STANDARD_${notary.commissionState}` },
+      timestamp: new Date().toISOString()
+    };
+    const verification = await verifyBundle(bundle, registry);
+    const receipt = buildReceipt(bundle, verification, 'deed-shield');
+    const unsignedPayload = toUnsignedReceiptPayload(receipt);
+
+    const malformed = await verifyReceiptSignature(
+      unsignedPayload,
+      {
+        signature: 'not-a-jws',
+        alg: 'EdDSA',
+        kid: 'dev-test-receipt-signer-v1'
+      },
+      {}
+    );
+
+    expect(malformed.verified).toBe(false);
+    expect(malformed.keyResolved).toBe(false);
+    expect(malformed.payloadMatches).toBe(false);
+  });
 });

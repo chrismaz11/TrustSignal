@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 
 import { getAddress, verifyMessage } from 'ethers';
 import { FastifyReply, FastifyRequest } from 'fastify';
@@ -13,17 +13,13 @@ const DEFAULT_DEV_CORS_ORIGINS = [
   'http://127.0.0.1:5173'
 ];
 const DEV_RECEIPT_SIGNING_KID = 'dev-local-receipt-signer-v1';
-const DEV_RECEIPT_SIGNING_PRIVATE_JWK: JWK = {
-  kty: 'OKP',
-  crv: 'Ed25519',
-  x: 'P_CGPHP2k8l4_NYQwIoWm-6Ot0zms-OiPKjBfP6IuV4',
-  d: 'EOlw6ytRltr6Zd-c4zExUIWFJwkfavYS__HzEbQJpCo'
-};
-const DEV_RECEIPT_SIGNING_PUBLIC_JWK: JWK = {
-  kty: 'OKP',
-  crv: 'Ed25519',
-  x: 'P_CGPHP2k8l4_NYQwIoWm-6Ot0zms-OiPKjBfP6IuV4'
-};
+const DEV_RECEIPT_SIGNING_KEYS = (() => {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  return {
+    privateJwk: privateKey.export({ format: 'jwk' }) as JWK,
+    publicJwk: publicKey.export({ format: 'jwk' }) as JWK
+  };
+})();
 
 export type AuthScope = 'verify' | 'read' | 'anchor' | 'revoke';
 
@@ -200,13 +196,13 @@ export function buildReceiptSigningConfig(env: NodeJS.ProcessEnv = process.env):
   }
 
   const devVerificationKeys = verificationKeys.size > 0 ? verificationKeys : new Map<string, JWK>();
-  devVerificationKeys.set(DEV_RECEIPT_SIGNING_KID, DEV_RECEIPT_SIGNING_PUBLIC_JWK);
+  devVerificationKeys.set(DEV_RECEIPT_SIGNING_KID, DEV_RECEIPT_SIGNING_KEYS.publicJwk);
 
   return {
     mode: 'dev-only',
     current: {
-      privateJwk: DEV_RECEIPT_SIGNING_PRIVATE_JWK,
-      publicJwk: DEV_RECEIPT_SIGNING_PUBLIC_JWK,
+      privateJwk: DEV_RECEIPT_SIGNING_KEYS.privateJwk,
+      publicJwk: DEV_RECEIPT_SIGNING_KEYS.publicJwk,
       kid: DEV_RECEIPT_SIGNING_KID,
       alg: 'EdDSA'
     },
