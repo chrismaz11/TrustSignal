@@ -34,3 +34,7 @@ tmp/
 **/.DS_Store
 fossa.debug.zip
 output/
+.playwright-cli/
+m1/
+coverage/
+node_modules/

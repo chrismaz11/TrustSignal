@@ -33,8 +33,6 @@ This folder is organized into active, canonical documents and archived historica
 - `legal/pilot-agreement.md`
 
 ## Forms
-- `forms/Quitclaim Deed.pdf`
-- `forms/Warranty Deed.pdf`
 
 ## Archive
 Historical planning, synthesized source-of-truth drafts, and early notebook logs are retained under:

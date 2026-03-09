@@ -1,3 +1,10 @@
-windsurf-project
+TrustSignal Repository Notice
 
-Copyright (c) Contributors
+Copyright (c) 2026 TrustSignal.
+All rights reserved.
+
+This repository contains proprietary TrustSignal software and documentation, except where third-party components, dependencies, or separately licensed files are identified by their own license terms, file headers, or attribution notices.
+
+Third-party software and dependencies remain subject to their own license terms as documented in package manifests, lockfiles, generated attribution materials, and file-level notices.
+
+Generated build artifacts, dependency trees, vendor-managed files, sample documents, secrets, and output folders are not part of the TrustSignal initial copyright registration candidate set unless explicitly identified otherwise in a provenance ledger or written legal review.
