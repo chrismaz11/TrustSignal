@@ -64,7 +64,13 @@ export type VerificationResult = {
   checks: CheckResult[];
 };
 
-export type Receipt = {
+export type ReceiptSignature = {
+  signature: string;
+  alg: 'EdDSA';
+  kid: string;
+};
+
+export type UnsignedReceiptPayload = {
   receiptVersion: string;
   receiptId: string;
   createdAt: string;
@@ -75,9 +81,13 @@ export type Receipt = {
   reasons: string[];
   riskScore: number;
   verifierId: string;
-  receiptHash: string;
   fraudRisk?: DocumentRisk;
   zkpAttestation?: ZKPAttestation;
+};
+
+export type Receipt = UnsignedReceiptPayload & {
+  receiptHash: string;
+  receiptSignature?: ReceiptSignature;
 };
 
 export type TrustRegistry = {

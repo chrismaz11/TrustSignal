@@ -17,6 +17,11 @@ export function toV2VerifyResponse(input: {
     reasons?: string[];
     receiptId: string;
     receiptHash: string;
+    receiptSignature?: {
+        signature: string;
+        alg: 'EdDSA';
+        kid: string;
+    };
     proofVerified?: boolean;
     anchor?: {
         status?: string;
@@ -42,6 +47,7 @@ export function toV2VerifyResponse(input: {
         reasons: input.reasons ?? [],
         receiptId: input.receiptId,
         receiptHash: input.receiptHash,
+        ...(input.receiptSignature ? { receiptSignature: input.receiptSignature } : {}),
         ...(typeof input.proofVerified === "boolean" ? { proofVerified: input.proofVerified } : {}),
         anchor: {
             status: input.anchor?.status ?? "PENDING",

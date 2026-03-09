@@ -28,6 +28,9 @@ model Receipt {
   anchorAnchoredAt     DateTime?
   fraudRisk        String?  // JSON
   zkpAttestation   String?  // JSON
+  receiptSignature String?  // Compact JWS
+  receiptSignatureAlg String?
+  receiptSignatureKid String?
   revoked          Boolean  @default(false)
 }
 

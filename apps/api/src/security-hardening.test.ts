@@ -4,6 +4,7 @@ import { FastifyInstance } from 'fastify';
 import { Wallet } from 'ethers';
 
 import { buildServer } from './server.js';
+import { buildReceiptSigningConfig } from './security.js';
 
 const apiKeyRead = 'test-read-key';
 const apiKeyRate = 'test-rate-key';
@@ -153,6 +154,9 @@ describeWithDatabase('Security hardening: auth, scopes, and per-key throttling',
     expect(body.result.zkpAttestation?.proofArtifact?.encoding).toBeUndefined();
     expect(body.result.zkpAttestation?.proofArtifact?.proof).toBeUndefined();
     expect(body.controls.anchored).toBe(false);
+    expect(body.controls.receiptSignaturePresent).toBe(true);
+    expect(body.controls.receiptSignatureAlg).toBe('EdDSA');
+    expect(typeof body.controls.receiptSignatureKid).toBe('string');
     expect(typeof body.controls.anchorSubjectDigest).toBe('string');
     expect(body.controls.anchorSubjectVersion).toBe('trustsignal.anchor_subject.v1');
   });
@@ -317,5 +321,35 @@ describe.sequential('Security hardening: production verifier configuration', () 
 
   it('fails fast if required verifier env vars are missing', async () => {
     await expect(buildServer()).rejects.toThrow('Missing required production env vars');
+  });
+});
+
+describe.sequential('Security hardening: production receipt-signing configuration', () => {
+  let envSnapshot: EnvSnapshot;
+
+  beforeAll(() => {
+    const keysToSnapshot = [
+      'NODE_ENV',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS',
+      'TRUSTSIGNAL_RECEIPT_SIGNING_KID'
+    ];
+    envSnapshot = snapshotEnv(keysToSnapshot);
+    process.env.NODE_ENV = 'production';
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK;
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK;
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS;
+    delete process.env.TRUSTSIGNAL_RECEIPT_SIGNING_KID;
+  });
+
+  afterAll(() => {
+    restoreEnv(envSnapshot);
+  });
+
+  it('fails fast if receipt-signing env vars are missing', () => {
+    expect(() => buildReceiptSigningConfig(process.env)).toThrow(
+      'Missing required production receipt-signing env vars'
+    );
   });
 });

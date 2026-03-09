@@ -97,6 +97,40 @@ jobs:
       - name: Run unit/integration tests with coverage
         run: npx vitest run --coverage
 
+  signed-receipt-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: trustsignal_signed_receipt_smoke
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trustsignal_signed_receipt_smoke"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/trustsignal_signed_receipt_smoke?sslmode=disable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run signed-receipt smoke test
+        run: cd apps/api && npx vitest run --config vitest.config.ts src/v2-integration.test.ts
+
   rust-build:
     runs-on: ubuntu-latest
     env:

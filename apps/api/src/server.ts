@@ -20,11 +20,15 @@ import {
   computeInputsCommitment,
   deriveNotaryWallet,
   signDocHash,
+  signReceiptPayload,
+  toUnsignedReceiptPayload,
   verifyBundle,
+  verifyReceiptSignature,
   RiskEngine,
   generateComplianceProof,
   verifyComplianceProof,
   DocumentRisk,
+  Receipt,
   ZKPAttestation,
   NotaryVerifier,
   PropertyVerifier,
@@ -52,6 +56,7 @@ import {
   getApiRateLimitKey,
   isCorsOriginAllowed,
   requireApiKeyScope,
+  type SecurityConfig,
   verifyRevocationHeaders
 } from './security.js';
 
@@ -220,6 +225,10 @@ const vantaVerificationResultSchema = z.object({
     revoked: z.boolean(),
     anchorStatus: z.string(),
     anchored: z.boolean(),
+    receiptSignaturePresent: z.boolean(),
+    receiptSignatureAlg: z.string().nullable(),
+    receiptSignatureKid: z.string().nullable(),
+    signatureVerified: z.boolean(),
     anchorSubjectDigest: z.string().optional(),
     anchorSubjectVersion: z.string().optional(),
     anchoredAt: z.string().datetime().optional()
@@ -348,11 +357,15 @@ const vantaVerificationResultJsonSchema = {
     controls: {
       type: 'object',
       additionalProperties: false,
-      required: ['revoked', 'anchorStatus', 'anchored'],
+      required: ['revoked', 'anchorStatus', 'anchored', 'receiptSignaturePresent', 'receiptSignatureAlg', 'receiptSignatureKid', 'signatureVerified'],
       properties: {
         revoked: { type: 'boolean' },
         anchorStatus: { type: 'string' },
         anchored: { type: 'boolean' },
+        receiptSignaturePresent: { type: 'boolean' },
+        receiptSignatureAlg: { type: ['string', 'null'] },
+        receiptSignatureKid: { type: ['string', 'null'] },
+        signatureVerified: { type: 'boolean' },
         anchorSubjectDigest: { type: 'string' },
         anchorSubjectVersion: { type: 'string' },
         anchoredAt: { type: 'string', format: 'date-time' }
@@ -430,6 +443,14 @@ function resolvePropertyApiKey(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 function receiptFromDb(record: ReceiptRecord) {
+  const hasReceiptSignature =
+    typeof record.receiptSignature === 'string' &&
+    record.receiptSignature.length > 0 &&
+    typeof record.receiptSignatureAlg === 'string' &&
+    record.receiptSignatureAlg.length > 0 &&
+    typeof record.receiptSignatureKid === 'string' &&
+    record.receiptSignatureKid.length > 0;
+
   return {
     receiptVersion: '1.0',
     receiptId: record.id,
@@ -444,6 +465,13 @@ function receiptFromDb(record: ReceiptRecord) {
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
     zkpAttestation: record.zkpAttestation ? JSON.parse(record.zkpAttestation) as ZKPAttestation : undefined,
+    receiptSignature: hasReceiptSignature
+      ? {
+        signature: record.receiptSignature!,
+        alg: record.receiptSignatureAlg as 'EdDSA',
+        kid: record.receiptSignatureKid!
+      }
+      : undefined,
     // Revocation is returned in the envelope, but not part of the core signed receipt structure so far
     // unless v2 schema changes that. We'll return it in the API.
   };
@@ -493,8 +521,53 @@ function buildAnchorState(record: ReceiptRecord, attestation?: ZKPAttestation) {
   };
 }
 
-function toVantaVerificationResult(record: ReceiptRecord) {
+async function verifyStoredReceipt(
+  receipt: Receipt,
+  record: ReceiptRecord,
+  securityConfig: SecurityConfig
+) {
+  const unsignedPayload = toUnsignedReceiptPayload(receipt);
+  const recomputedHash = computeReceiptHash(unsignedPayload);
+  const integrityVerified = recomputedHash === receipt.receiptHash && record.inputsCommitment === receipt.inputsCommitment;
+  const proofVerified = receipt.zkpAttestation ? await verifyComplianceProof(receipt.zkpAttestation) : false;
+
+  if (!receipt.receiptSignature) {
+    return {
+      verified: false,
+      integrityVerified,
+      signatureVerified: false,
+      signatureStatus: 'legacy-unsigned' as const,
+      signatureReason: 'receipt_signature_missing',
+      proofVerified,
+      recomputedHash
+    };
+  }
+
+  const signatureCheck = await verifyReceiptSignature(
+    unsignedPayload,
+    receipt.receiptSignature,
+    securityConfig.receiptSigning.verificationKeys
+  );
+  const signatureStatus = signatureCheck.verified
+    ? 'verified'
+    : signatureCheck.keyResolved
+      ? 'invalid'
+      : 'unknown-kid';
+
+  return {
+    verified: integrityVerified && signatureCheck.verified,
+    integrityVerified,
+    signatureVerified: signatureCheck.verified,
+    signatureStatus,
+    signatureReason: signatureCheck.reason,
+    proofVerified,
+    recomputedHash
+  };
+}
+
+async function toVantaVerificationResult(record: ReceiptRecord, securityConfig: SecurityConfig) {
   const receipt = receiptFromDb(record);
+  const receiptVerification = await verifyStoredReceipt(receipt, record, securityConfig);
   const fraudRiskRaw = receipt.fraudRisk as Record<string, unknown> | undefined;
   const zkpRaw = receipt.zkpAttestation as Record<string, unknown> | undefined;
 
@@ -572,9 +645,13 @@ function toVantaVerificationResult(record: ReceiptRecord) {
       revoked: record.revoked,
       anchorStatus: record.anchorStatus,
       anchored: record.anchorStatus === 'ANCHORED',
+      receiptSignaturePresent: Boolean(receipt.receiptSignature),
+      receiptSignatureAlg: receipt.receiptSignature?.alg ?? null,
+      receiptSignatureKid: receipt.receiptSignature?.kid ?? null,
       anchorSubjectDigest: buildAnchorState(record, receipt.zkpAttestation).subjectDigest,
       anchorSubjectVersion: buildAnchorState(record, receipt.zkpAttestation).subjectVersion,
-      anchoredAt: buildAnchorState(record, receipt.zkpAttestation).anchoredAt
+      anchoredAt: buildAnchorState(record, receipt.zkpAttestation).anchoredAt,
+      signatureVerified: receiptVerification.signatureVerified
     }
   };
 
@@ -906,7 +983,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
-    return reply.send(toVantaVerificationResult(record));
+    return reply.send(await toVantaVerificationResult(record, securityConfig));
   });
 
   app.get('/api/v1/registry/sources', {
@@ -1126,37 +1203,49 @@ export async function buildServer(options: BuildServerOptions = {}) {
       fraudRisk,
       zkpAttestation
     });
+    const receiptSignature = await signReceiptPayload(
+      toUnsignedReceiptPayload(receipt),
+      securityConfig.receiptSigning.current
+    );
+    const signedReceipt: Receipt = {
+      ...receipt,
+      receiptSignature
+    };
 
     const record = await prisma.receipt.create({
       data: {
-        id: receipt.receiptId,
-        receiptHash: receipt.receiptHash,
-        inputsCommitment: receipt.inputsCommitment,
+        id: signedReceipt.receiptId,
+        receiptHash: signedReceipt.receiptHash,
+        inputsCommitment: signedReceipt.inputsCommitment,
         parcelId: input.property.parcelId,
-        policyProfile: receipt.policyProfile,
-        decision: receipt.decision,
-        reasons: JSON.stringify(receipt.reasons),
-        riskScore: receipt.riskScore,
-        checks: JSON.stringify(receipt.checks),
-        rawInputsHash: receipt.inputsCommitment,
-        createdAt: new Date(receipt.createdAt),
-        fraudRisk: receipt.fraudRisk ? JSON.stringify(receipt.fraudRisk) : undefined,
-        zkpAttestation: receipt.zkpAttestation ? JSON.stringify(receipt.zkpAttestation) : undefined,
+        policyProfile: signedReceipt.policyProfile,
+        decision: signedReceipt.decision,
+        reasons: JSON.stringify(signedReceipt.reasons),
+        riskScore: signedReceipt.riskScore,
+        checks: JSON.stringify(signedReceipt.checks),
+        rawInputsHash: signedReceipt.inputsCommitment,
+        createdAt: new Date(signedReceipt.createdAt),
+        fraudRisk: signedReceipt.fraudRisk ? JSON.stringify(signedReceipt.fraudRisk) : undefined,
+        zkpAttestation: signedReceipt.zkpAttestation ? JSON.stringify(signedReceipt.zkpAttestation) : undefined,
+        receiptSignature: signedReceipt.receiptSignature?.signature,
+        receiptSignatureAlg: signedReceipt.receiptSignature?.alg,
+        receiptSignatureKid: signedReceipt.receiptSignature?.kid,
         revoked: false
       }
     });
 
     const body = toV2VerifyResponse({
-      decision: receipt.decision,
-      reasons: receipt.reasons,
+      decision: signedReceipt.decision,
+      reasons: signedReceipt.reasons,
       receiptId: record.id,
-      receiptHash: receipt.receiptHash,
-      proofVerified: receipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
-      anchor: buildAnchorState(record, receipt.zkpAttestation),
-      fraudRisk: receipt.fraudRisk,
-      zkpAttestation: receipt.zkpAttestation,
+      receiptHash: signedReceipt.receiptHash,
+      receiptSignature: signedReceipt.receiptSignature,
+      proofVerified: signedReceipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
+      anchor: buildAnchorState(record, signedReceipt.zkpAttestation),
+      fraudRisk: signedReceipt.fraudRisk,
+      zkpAttestation: signedReceipt.zkpAttestation,
       revoked: record.revoked,
-      riskScore: receipt.riskScore
+      riskScore: signedReceipt.riskScore
     });
 
     return reply.send(body);
@@ -1212,20 +1301,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return reply.code(500).send({ error: 'Receipt reconstruction failed' });
     }
 
-    const canonicalReceipt = canonicalizeJson({
-      receiptVersion: receipt.receiptVersion,
-      receiptId: receipt.receiptId,
-      createdAt: receipt.createdAt,
-      policyProfile: receipt.policyProfile,
-      inputsCommitment: receipt.inputsCommitment,
-      checks: receipt.checks,
-      decision: receipt.decision,
-      reasons: receipt.reasons,
-      riskScore: receipt.riskScore,
-      verifierId: receipt.verifierId,
-      fraudRisk: receipt.fraudRisk,
-      zkpAttestation: receipt.zkpAttestation
-    });
+    const canonicalReceipt = canonicalizeJson(toUnsignedReceiptPayload(receipt));
 
     // We use the mapper for consistency in basic fields, though GET usually adds PDF links
     const v2Body = toV2VerifyResponse({
@@ -1233,6 +1309,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       reasons: receipt.reasons,
       receiptId: receipt.receiptId,
       receiptHash: receipt.receiptHash,
+      receiptSignature: receipt.receiptSignature,
       proofVerified: receipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
       anchor: buildAnchorState(record, receipt.zkpAttestation),
       fraudRisk: receipt.fraudRisk,
@@ -1283,38 +1360,28 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
 
-    const inputsCommitment = record.inputsCommitment;
     const receipt = receiptFromDb(record);
     if (!receipt) {
       return reply.code(500).send({ error: 'Receipt reconstruction failed' });
     }
-
-    const recomputedHash = computeReceiptHash({
-      receiptVersion: receipt.receiptVersion,
-      receiptId: receipt.receiptId,
-      createdAt: receipt.createdAt,
-      policyProfile: receipt.policyProfile,
-      inputsCommitment,
-      checks: receipt.checks,
-      decision: receipt.decision,
-      reasons: receipt.reasons,
-      riskScore: receipt.riskScore,
-      verifierId: receipt.verifierId,
-      fraudRisk: receipt.fraudRisk,
-      zkpAttestation: receipt.zkpAttestation
-    });
-
-    const integrityVerified = recomputedHash === receipt.receiptHash && inputsCommitment === record.inputsCommitment;
-    const proofVerified = receipt.zkpAttestation ? await verifyComplianceProof(receipt.zkpAttestation) : false;
-    const ok = integrityVerified && proofVerified;
+    const verificationResult = await verifyStoredReceipt(receipt, record, securityConfig);
 
     return reply.send({
-      verified: ok,
-      integrityVerified,
-      proofVerified,
-      recomputedHash,
+      verified: verificationResult.verified,
+      integrityVerified: verificationResult.integrityVerified,
+      signatureVerified: verificationResult.signatureVerified,
+      signatureStatus: verificationResult.signatureStatus,
+      signatureReason: verificationResult.signatureReason,
+      proofVerified: verificationResult.proofVerified,
+      recomputedHash: verificationResult.recomputedHash,
       storedHash: receipt.receiptHash,
-      inputsCommitment,
+      inputsCommitment: record.inputsCommitment,
+      receiptSignature: receipt.receiptSignature
+        ? {
+          alg: receipt.receiptSignature.alg,
+          kid: receipt.receiptSignature.kid
+        }
+        : null,
       revoked: record.revoked
     });
   });
