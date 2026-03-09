@@ -28,7 +28,9 @@ This repository is the main TrustSignal project. It contains:
 - Configure API keys with `API_KEYS` and optional `API_KEY_SCOPES`.
 - CORS is deny-by-default in production unless `CORS_ALLOWLIST` is set.
 - In production, startup fails if `NOTARY_API_KEY`, `PROPERTY_API_KEY`, or `TRUST_REGISTRY_SOURCE` are missing.
+- In production, startup also fails if `TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK`, `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK`, or `TRUSTSIGNAL_RECEIPT_SIGNING_KID` are missing.
 - Receipt and Vanta responses expose `anchor.subjectDigest` / `anchorSubjectDigest` plus `anchorSubjectVersion` so proof provenance can be audited independently of the raw receipt JSON.
+- Receipt responses now include additive `receiptSignature` metadata (`signature`, `alg`, `kid`) when the receipt is issuer-signed.
 - Revocation requires issuer signature headers:
   - `x-issuer-id`
   - `x-signature-timestamp`
@@ -39,6 +41,29 @@ This repository is the main TrustSignal project. It contains:
 - Receipts persist `inputsCommitment` and `rawInputsHash` (commitment hash), not full raw input payloads.
 
 ## Local Demo
+
+### Terminal demo for partner conversations
+
+Use the terminal-first Vanta demo when you need to show TrustSignal as backend evidence-integrity infrastructure rather than a UI product.
+
+```bash
+npm run demo:vanta-terminal
+```
+
+What it shows:
+
+- baseline artifact intake
+- signed receipt issuance
+- persisted receipt verification
+- tampered artifact intake using the same declared hash with changed bytes
+- the recorded mismatch between declared hash and observed document digest
+
+This demo is intentionally conservative:
+
+- it presents receipt signing and receipt verification as real
+- it presents the evidence chain as tamper-evident
+- it does not claim production-grade blockchain or ZK enforcement
+- it uses dev-only proof status exactly as returned by the API today
 
 ### 2) Configure environment
 
@@ -52,6 +77,10 @@ Set real values in `.env.local` for:
 - `TRUSTSIGNAL_ZKP_BACKEND`
 - `TRUSTSIGNAL_ZKP_PROVER_BIN` and `TRUSTSIGNAL_ZKP_VERIFIER_BIN` when `TRUSTSIGNAL_ZKP_BACKEND=external`
   - Current bootstrap prover binary: `circuits/non_mem_gadget/target/release/zkp_service`
+- `TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK`
+- `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK`
+- `TRUSTSIGNAL_RECEIPT_SIGNING_KID`
+- optional `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS` for multi-key verification by `kid`
 - `POLYGON_MUMBAI_RPC_URL`
 - `POLYGON_MUMBAI_PRIVATE_KEY`
 - `DATABASE_URL` (or `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` / `SUPABASE_DIRECT_URL`; or set `SUPABASE_DB_PASSWORD` and use Supabase CLI pooler metadata)
@@ -75,6 +104,27 @@ npm run lint
 npm run typecheck
 npm test
 ```
+
+### 3a) Run the signed-receipt DB smoke harness
+
+This boots a temporary local PostgreSQL instance, points the API integration test at it, validates signed receipt issuance and verification, validates legacy unsigned receipt behavior, and then tears the database down.
+
+```bash
+npm run smoke:signed-receipt
+```
+
+Local requirements for this harness:
+
+- `initdb`
+- `pg_ctl`
+- `createdb`
+- `psql`
+
+Optional overrides:
+
+- `TRUSTSIGNAL_SMOKE_PG_PORT`
+- `TRUSTSIGNAL_SMOKE_DB_USER`
+- `TRUSTSIGNAL_SMOKE_DB_NAME`
 
 ### 4) Run DeedShield API/Web (workspace apps)
 

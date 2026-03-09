@@ -1,7 +1,8 @@
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 
 import { getAddress, verifyMessage } from 'ethers';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { type JWK } from 'jose';
 
 const DEFAULT_API_KEY = 'example_local_key_id';
 const DEFAULT_SCOPES = ['verify', 'read', 'anchor', 'revoke'];
@@ -11,6 +12,14 @@ const DEFAULT_DEV_CORS_ORIGINS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173'
 ];
+const DEV_RECEIPT_SIGNING_KID = 'dev-local-receipt-signer-v1';
+const DEV_RECEIPT_SIGNING_KEYS = (() => {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  return {
+    privateJwk: privateKey.export({ format: 'jwk' }) as JWK,
+    publicJwk: publicKey.export({ format: 'jwk' }) as JWK
+  };
+})();
 
 export type AuthScope = 'verify' | 'read' | 'anchor' | 'revoke';
 
@@ -28,6 +37,18 @@ export type SecurityConfig = {
   perApiKeyRateLimitMax: number;
   rateLimitWindow: string;
   corsAllowlist: Set<string>;
+  receiptSigning: ReceiptSigningConfig;
+};
+
+export type ReceiptSigningConfig = {
+  mode: 'configured' | 'dev-only';
+  current: {
+    privateJwk: JWK;
+    publicJwk: JWK;
+    kid: string;
+    alg: 'EdDSA';
+  };
+  verificationKeys: Map<string, JWK>;
 };
 
 declare module 'fastify' {
@@ -106,6 +127,89 @@ function buildCorsAllowlist(nodeEnv: string, configured: string | undefined): Se
   return nodeEnv === 'production' ? new Set() : new Set(DEFAULT_DEV_CORS_ORIGINS);
 }
 
+function parseJsonJwk(value: string | undefined, envName: string): JWK | null {
+  const raw = (value || '').trim();
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as JWK;
+    if (typeof parsed !== 'object' || parsed === null || typeof parsed.kty !== 'string') {
+      throw new Error('invalid_jwk_shape');
+    }
+    return parsed;
+  } catch (error) {
+    throw new Error(`${envName} must be valid JSON JWK: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function parsePublicJwkMap(value: string | undefined): Map<string, JWK> {
+  const raw = (value || '').trim();
+  if (!raw) return new Map();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS must be a JSON object keyed by kid');
+  }
+
+  const keyMap = new Map<string, JWK>();
+  for (const [kid, jwk] of Object.entries(parsed)) {
+    if (!kid || typeof jwk !== 'object' || jwk === null || Array.isArray(jwk) || typeof (jwk as JWK).kty !== 'string') {
+      throw new Error(`TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS contains invalid JWK for kid "${kid}"`);
+    }
+    keyMap.set(kid, jwk as JWK);
+  }
+
+  return keyMap;
+}
+
+export function buildReceiptSigningConfig(env: NodeJS.ProcessEnv = process.env): ReceiptSigningConfig {
+  const nodeEnv = (env.NODE_ENV || 'development').toLowerCase();
+  const privateJwk = parseJsonJwk(env.TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK, 'TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK');
+  const publicJwk = parseJsonJwk(env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK, 'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK');
+  const kid = (env.TRUSTSIGNAL_RECEIPT_SIGNING_KID || '').trim();
+  const verificationKeys = parsePublicJwkMap(env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS);
+
+  if (privateJwk && publicJwk && kid) {
+    verificationKeys.set(kid, publicJwk);
+    return {
+      mode: 'configured',
+      current: {
+        privateJwk,
+        publicJwk,
+        kid,
+        alg: 'EdDSA'
+      },
+      verificationKeys
+    };
+  }
+
+  if (nodeEnv === 'production') {
+    throw new Error(
+      'Missing required production receipt-signing env vars: TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK, TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK, TRUSTSIGNAL_RECEIPT_SIGNING_KID'
+    );
+  }
+
+  const devVerificationKeys = verificationKeys.size > 0 ? verificationKeys : new Map<string, JWK>();
+  devVerificationKeys.set(DEV_RECEIPT_SIGNING_KID, DEV_RECEIPT_SIGNING_KEYS.publicJwk);
+
+  return {
+    mode: 'dev-only',
+    current: {
+      privateJwk: DEV_RECEIPT_SIGNING_KEYS.privateJwk,
+      publicJwk: DEV_RECEIPT_SIGNING_KEYS.publicJwk,
+      kid: DEV_RECEIPT_SIGNING_KID,
+      alg: 'EdDSA'
+    },
+    verificationKeys: devVerificationKeys
+  };
+}
+
 export function buildSecurityConfig(env: NodeJS.ProcessEnv = process.env): SecurityConfig {
   const nodeEnv = env.NODE_ENV || 'development';
   const defaultScopes = parseScopes(env.API_KEY_DEFAULT_SCOPES);
@@ -130,7 +234,8 @@ export function buildSecurityConfig(env: NodeJS.ProcessEnv = process.env): Secur
     globalRateLimitMax: parseInteger(env.RATE_LIMIT_GLOBAL_MAX, 600),
     perApiKeyRateLimitMax: parseInteger(env.RATE_LIMIT_API_KEY_MAX, 120),
     rateLimitWindow: env.RATE_LIMIT_WINDOW || '1 minute',
-    corsAllowlist: buildCorsAllowlist(nodeEnv, env.CORS_ALLOWLIST)
+    corsAllowlist: buildCorsAllowlist(nodeEnv, env.CORS_ALLOWLIST),
+    receiptSigning: buildReceiptSigningConfig(env)
   };
 }
 

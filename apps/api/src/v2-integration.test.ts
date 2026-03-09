@@ -3,6 +3,7 @@ import { buildServer } from './server.js';
 import { Buffer } from 'node:buffer';
 import { FastifyInstance } from 'fastify';
 import { Wallet } from 'ethers';
+import { PrismaClient } from '@prisma/client';
 
 const hasDatabaseUrl =
   Boolean(process.env.DATABASE_URL) ||
@@ -13,6 +14,7 @@ const describeWithDatabase = hasDatabaseUrl ? describe : describe.skip;
 
 describeWithDatabase('V2 Feature Integration', () => {
     let app: FastifyInstance;
+    let prisma: PrismaClient;
     const apiKey = 'test-api-key';
     const revocationSigner = Wallet.createRandom();
 
@@ -20,11 +22,13 @@ describeWithDatabase('V2 Feature Integration', () => {
         process.env.API_KEYS = apiKey;
         process.env.API_KEY_SCOPES = `${apiKey}=verify|read|anchor|revoke`;
         process.env.REVOCATION_ISSUERS = `issuer-test=${revocationSigner.address}`;
+        prisma = new PrismaClient();
         app = await buildServer();
     });
 
     afterAll(async () => {
         await app.close();
+        await prisma.$disconnect();
         delete process.env.API_KEYS;
         delete process.env.API_KEY_SCOPES;
         delete process.env.REVOCATION_ISSUERS;
@@ -57,6 +61,10 @@ describeWithDatabase('V2 Feature Integration', () => {
         const receipt = verifyRes.json();
 
         expect(receipt.receiptVersion).toBe("2.0");
+        expect(receipt.receiptSignature).toBeTruthy();
+        expect(receipt.receiptSignature.alg).toBe('EdDSA');
+        expect(typeof receipt.receiptSignature.kid).toBe('string');
+        expect(typeof receipt.receiptSignature.signature).toBe('string');
 
         expect(receipt.fraudRisk).toBeTruthy();
         expect(receipt.fraudRisk.score).toBeGreaterThanOrEqual(0);
@@ -113,10 +121,14 @@ describeWithDatabase('V2 Feature Integration', () => {
             headers: { 'x-api-key': apiKey }
         });
         const check = checkRes.json();
-        expect(check.verified).toBe(false);
+        expect(check.verified).toBe(true);
         expect(check.integrityVerified).toBe(true);
+        expect(check.signatureVerified).toBe(true);
+        expect(check.signatureStatus).toBe('verified');
         expect(check.proofVerified).toBe(false);
         expect(check.recomputedHash).toBe(receipt.receiptHash);
+        expect(check.receiptSignature.alg).toBe('EdDSA');
+        expect(typeof check.receiptSignature.kid).toBe('string');
 
         // 5. Revoke
         const revocationTimestamp = Date.now().toString();
@@ -141,5 +153,48 @@ describeWithDatabase('V2 Feature Integration', () => {
             headers: { 'x-api-key': apiKey }
         });
         expect(revokedCheckRes.json().revocation.status).toBe("REVOKED");
+    });
+
+    it('verifies a persisted legacy unsigned receipt without crashing', async () => {
+        const syntheticRes = await app.inject({
+            method: 'GET',
+            url: '/api/v1/synthetic',
+            headers: { 'x-api-key': apiKey }
+        });
+        expect(syntheticRes.statusCode).toBe(200);
+        const bundle = syntheticRes.json();
+        bundle.doc.pdfBase64 = Buffer.from('%PDF-1.4\nlegacy-unsigned', 'utf8').toString('base64');
+
+        const verifyRes = await app.inject({
+            method: 'POST',
+            url: '/api/v1/verify',
+            headers: { 'x-api-key': apiKey },
+            payload: bundle
+        });
+        expect(verifyRes.statusCode).toBe(200);
+        const receipt = verifyRes.json();
+
+        await prisma.receipt.update({
+            where: { id: receipt.receiptId },
+            data: {
+                receiptSignature: null,
+                receiptSignatureAlg: null,
+                receiptSignatureKid: null
+            }
+        });
+
+        const legacyVerifyRes = await app.inject({
+            method: 'POST',
+            url: `/api/v1/receipt/${receipt.receiptId}/verify`,
+            headers: { 'x-api-key': apiKey }
+        });
+
+        expect(legacyVerifyRes.statusCode).toBe(200);
+        const legacyCheck = legacyVerifyRes.json();
+        expect(legacyCheck.integrityVerified).toBe(true);
+        expect(legacyCheck.signatureVerified).toBe(false);
+        expect(legacyCheck.signatureStatus).toBe('legacy-unsigned');
+        expect(legacyCheck.signatureReason).toBe('receipt_signature_missing');
+        expect(legacyCheck.receiptSignature).toBeNull();
     });
 });
