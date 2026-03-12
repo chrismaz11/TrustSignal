@@ -1,134 +1,109 @@
 # TrustSignal
 
-Universal verification engine with a DeedShield property-record module and a forward path to healthcare credentialing.
+[![CI](https://img.shields.io/github/actions/workflow/status/trustsignal-dev/trustsignal/ci.yml?branch=master&label=CI)](https://github.com/trustsignal-dev/trustsignal/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-supported-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Coverage](https://img.shields.io/badge/coverage-threshold%2090%25-0A7F5A)](vitest.config.ts)
+[![Security Checklist](https://img.shields.io/badge/security-checklist-informational)](SECURITY_CHECKLIST.md)
 
-## Release Status (Session 7 Final)
+Website: https://trustsignal.dev
 
-- Fastify v5 verification API contract: `/v1/verify-bundle`, `/v1/revoke`, `/v1/status/:bundleId`
-- Halo2 circuits (non-membership + revocation): `gate_count=1024`, `k=10`
-- ZKML artifact: `ml/zkml/deed_cnn.compiled` + benchmark (`proof_gen_ms=1506.46`, `auc=0.998`)
-- JavaScript SDK (`sdk/`): `verify()`, `revoke()`, `status()` with ESM + CJS builds and zero runtime dependencies
-- Test and quality posture: 64/64 tests passing, strict TypeScript clean, scoped coverage `99.34%`
-- Security posture: OWASP audit + threat model published, JWT rotation support, rate limiting, structured log redaction
-- CI posture: GitHub Actions jobs for lint, typecheck, tests+coverage, and Rust build/tests
+TrustSignal is evidence integrity infrastructure for existing workflows. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability without replacing the upstream system of record.
 
-## Repository Scope
+## Problem
 
-This repository is the main TrustSignal project. It contains:
+High-stakes document and evidence workflows create an attack surface after collection, not just at intake. Once an artifact has been uploaded, reviewed, or approved, downstream teams still face risks such as tampered evidence, provenance loss, artifact substitution, and stale evidence that can no longer be verified later.
 
-- Product-facing docs and governance artifacts under `docs/`
-- TrustSignal verification runtime under `src/`
-- DeedShield API/Web implementation in `apps/`
-- Shared verification logic and contract code in `packages/`
-- Halo2 and ZKML proof artifacts in `circuits/` and `ml/`
+Those risks matter in audit, compliance, partner-review, and trust-sensitive workflows because the evidence is often challenged after collection rather than at the moment it first entered the system. TrustSignal is designed for workflows where later auditability matters because the artifact, its provenance, or the surrounding workflow record may be questioned later.
 
-## Quickstart
+## Verification Lifecycle
 
-- All `/api/v1/*` endpoints except `/api/v1/health` require `x-api-key`.
-- Configure API keys with `API_KEYS` and optional `API_KEY_SCOPES`.
-- CORS is deny-by-default in production unless `CORS_ALLOWLIST` is set.
-- In production, startup fails if `NOTARY_API_KEY`, `PROPERTY_API_KEY`, or `TRUST_REGISTRY_SOURCE` are missing.
-- In production, startup also fails if `TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK`, `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK`, or `TRUSTSIGNAL_RECEIPT_SIGNING_KID` are missing.
-- Receipt and Vanta responses expose `anchor.subjectDigest` / `anchorSubjectDigest` plus `anchorSubjectVersion` so proof provenance can be audited independently of the raw receipt JSON.
-- Receipt responses now include additive `receiptSignature` metadata (`signature`, `alg`, `kid`) when the receipt is issuer-signed.
-- Revocation requires issuer signature headers:
-  - `x-issuer-id`
-  - `x-signature-timestamp`
-  - `x-issuer-signature` (signature over `revoke:<receiptId>:<timestamp>`)
+The canonical lifecycle diagram and trust-boundary view are documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
-## Data Minimization Defaults
+TrustSignal accepts a verification request, returns verification signals, issues a signed verification receipt, and supports later verification against stored receipt state so downstream teams can detect artifact tampering, evidence provenance loss, or stale records during audit review.
 
-- Receipts persist `inputsCommitment` and `rawInputsHash` (commitment hash), not full raw input payloads.
+## Demo
 
-## Local Demo
+The fastest evaluator path is the local 5-minute developer trial:
 
-### Terminal demo for partner conversations
+TrustSignal provides:
 
-Use the terminal-first Vanta demo when you need to show TrustSignal as backend evidence-integrity infrastructure rather than a UI product.
+- signed verification receipts
+- verification signals
+- verifiable provenance metadata
+- later verification capability
+- existing workflow integration through the public API boundary
 
 ```bash
-npm run demo:vanta-terminal
+npm install
+npm run demo
 ```
 
-What it shows:
+It shows the full lifecycle in one run:
 
-- baseline artifact intake
-- signed receipt issuance
-- persisted receipt verification
-- tampered artifact intake using the same declared hash with changed bytes
-- the recorded mismatch between declared hash and observed document digest
+1. artifact intake
+2. verification result
+3. signed receipt issuance
+4. later verification
+5. tampered artifact mismatch detection
 
-This demo is intentionally conservative:
+See [demo/README.md](/Users/christopher/Projects/trustsignal/demo/README.md).
 
-- it presents receipt signing and receipt verification as real
-- it presents the evidence chain as tamper-evident
-- it does not claim production-grade blockchain or ZK enforcement
-- it uses dev-only proof status exactly as returned by the API today
+## Integration Model
 
-### 2) Configure environment
+Start here if you are evaluating the public verification lifecycle:
+
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+
+Golden path:
+
+1. submit a verification request
+2. receive verification signals plus a signed verification receipt
+3. retrieve the stored receipt
+4. run later verification
+
+## Technical Details
+
+The fastest path in this repository is the public `/api/v1/*` evaluator flow. It is a deliberate evaluator path, not a shortcut around production controls.
+
+The current partner-facing lifecycle in this repository is:
+
+- `POST /api/v1/verify`
+- `GET /api/v1/receipt/:receiptId`
+- `GET /api/v1/receipt/:receiptId/pdf`
+- `POST /api/v1/receipt/:receiptId/verify`
+- `POST /api/v1/receipt/:receiptId/revoke`
+- `POST /api/v1/anchor/:receiptId`
+- `GET /api/v1/receipts`
+
+## What You Will See
+
+The evaluator path is designed to show the core value before full production integration work:
+
+- artifact intake through the public API
+- signed verification receipt issuance
+- verification signals that can be stored in an existing workflow
+- later verification against the stored receipt state
+- visible handling for tampered evidence or stale evidence through the later verification lifecycle
+
+## Local API Development Setup
+
+Prerequisites:
+
+- Node.js `>= 18`
+- npm `>= 9`
+- PostgreSQL `>= 14` for `apps/api`
+
+Minimal setup:
 
 ```bash
+npm install
 cp .env.example .env.local
-```
-
-Set real values in `.env.local` for:
-
-- `TRUSTSIGNAL_JWT_SECRETS` (or `TRUSTSIGNAL_JWT_SECRET`)
-- `TRUSTSIGNAL_ZKP_BACKEND`
-- `TRUSTSIGNAL_ZKP_PROVER_BIN` and `TRUSTSIGNAL_ZKP_VERIFIER_BIN` when `TRUSTSIGNAL_ZKP_BACKEND=external`
-  - Current bootstrap prover binary: `circuits/non_mem_gadget/target/release/zkp_service`
-- `TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK`
-- `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK`
-- `TRUSTSIGNAL_RECEIPT_SIGNING_KID`
-- optional `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS` for multi-key verification by `kid`
-- `POLYGON_MUMBAI_RPC_URL`
-- `POLYGON_MUMBAI_PRIVATE_KEY`
-- `DATABASE_URL` (or `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` / `SUPABASE_DIRECT_URL`; or set `SUPABASE_DB_PASSWORD` and use Supabase CLI pooler metadata)
-
-Never commit real secrets.
-
-ZKP status note:
-
-- `dev-only` remains the default local mode.
-- `external` now supports a real Halo2 proof round-trip through `circuits/non_mem_gadget/src/bin/zkp_service.rs`, but that binary currently proves a bootstrap attestation circuit over public proof inputs, not the final document-hash statement.
-- Do not describe the current bootstrap circuit as full document authenticity or PII-preserving document hashing.
-
-Contract note:
-
-- `packages/contracts` uses Hardhat 3 and needs Node 22+ for local compile/smoke runs.
-
-### 3) Run validation gates
-
-```bash
-npm run lint
-npm run typecheck
-npm test
-```
-
-### 3a) Run the signed-receipt DB smoke harness
-
-This boots a temporary local PostgreSQL instance, points the API integration test at it, validates signed receipt issuance and verification, validates legacy unsigned receipt behavior, and then tears the database down.
-
-```bash
-npm run smoke:signed-receipt
-```
-
-Local requirements for this harness:
-
-- `initdb`
-- `pg_ctl`
-- `createdb`
-- `psql`
-
-Optional overrides:
-
-- `TRUSTSIGNAL_SMOKE_PG_PORT`
-- `TRUSTSIGNAL_SMOKE_DB_USER`
-- `TRUSTSIGNAL_SMOKE_DB_NAME`
-
-### 4) Run DeedShield API/Web (workspace apps)
-
-```bash
+cp apps/api/.env.example apps/api/.env
 npm -w apps/api run db:generate
 npm -w apps/api run db:push
 npm -w apps/api run dev
@@ -140,99 +115,134 @@ In a second terminal:
 npm -w apps/web run dev
 ```
 
-## TrustSignal API Contract (`src/routes`)
+Default local ports:
 
-All TrustSignal `/v1/*` endpoints require `Authorization: Bearer <jwt>`.
+- web app: `http://localhost:3000`
+- API: `http://localhost:3001`
+
+## Run The API Evaluation Flow
+
+Once the local API is running, use the evaluator quickstart or the public examples directly:
+
+```bash
+curl -X POST "http://localhost:3001/api/v1/verify" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $TRUSTSIGNAL_API_KEY" \
+  --data @examples/verification-request.json
+```
+
+Then retrieve the stored receipt and run later verification:
+
+```bash
+curl "http://localhost:3001/api/v1/receipt/$RECEIPT_ID" \
+  -H "x-api-key: $TRUSTSIGNAL_API_KEY"
+
+curl -X POST "http://localhost:3001/api/v1/receipt/$RECEIPT_ID/verify" \
+  -H "x-api-key: $TRUSTSIGNAL_API_KEY"
+```
+
+## What The Developer Trial Proves
+
+The evaluator flow demonstrates that:
+
+- TrustSignal can fit behind an existing workflow without replacing the system of record
+- the API returns signed verification receipts and verification signals in one flow
+- later verification is explicit and separate from initial receipt issuance
+- the system is built for attack surfaces such as tampered evidence, provenance loss, and artifact substitution in later review paths
+
+## Integration Fit
+
+TrustSignal is designed to sit behind an existing workflow such as:
+
+- a compliance evidence pipeline
+- a partner portal
+- an intake or case-management system
+- a deed or property-record workflow
+
+The upstream platform remains the system of record. TrustSignal adds an integrity layer at the boundary and returns technical verification artifacts that the upstream workflow can store and use later.
+
+## Integration Boundary Notes
+
+The local evaluator path is intentionally constrained. Local development defaults are a deliberate evaluator and development path, and they fail closed where production trust assumptions are not satisfied.
+
+Authentication is `x-api-key` with scoped access. Revocation additionally requires issuer authorization headers: `x-issuer-id`, `x-signature-timestamp`, and `x-issuer-signature`.
+
+The repository also still includes a legacy JWT-authenticated `/v1/*` surface used by the current JavaScript SDK:
 
 - `POST /v1/verify-bundle`
-  - Validates request with Zod.
-  - Runs non-membership proof, revocation proof, and ZKML verification.
-  - Persists result to `VerificationRecord`.
-- `POST /v1/revoke`
-  - Requires admin JWT claim (`role=admin` or equivalent claim form).
-  - Anchors nullifier on Polygon Mumbai and marks record revoked.
 - `GET /v1/status/:bundleId`
-  - Returns latest persisted verification state for a bundle hash.
-- `GET /api/v1/integrations/vanta/schema`
-  - Returns JSON Schema for Vanta-ingestable verification payloads.
-- `GET /api/v1/integrations/vanta/verification/:receiptId`
-  - Returns structured verification evidence payload (`trustsignal.vanta.verification_result.v1`).
-- `GET /api/v1/registry/sources`
-  - Returns configured primary-source registry adapters (OFAC/OIG/SAM/UK/BIS/CSL/NPPES/SEC/FDIC), freshness metadata, and circuit mapping.
-- `POST /api/v1/registry/verify`
-  - Runs a source-specific check with cached results and returns normalized match evidence (`MATCH`, `NO_MATCH`, `COMPLIANCE_GAP`).
-- `POST /api/v1/registry/verify-batch`
-  - Screens one subject across multiple registry sources and returns an aggregate summary including `complianceGapSources`.
-- `GET /api/v1/registry/jobs` and `GET /api/v1/registry/jobs/:jobId`
-  - Exposes ZK oracle dispatch job state for registry checks (`QUEUED`, `DISPATCHED`, `SKIPPED`, `FAILED`).
+- `POST /v1/revoke`
 
-Reference implementation: `tests/api/routes.test.ts`.
+## Production Deployment Requirements
 
-## Security Defaults
+Production deployment requires explicit authentication, signing configuration, and environment setup. Public documentation should be read as architecturally mature and bounded, not as a claim that every deployment control is satisfied automatically.
 
-- Input validation at API boundaries (Zod)
-- JWT verification with key rotation (`TRUSTSIGNAL_JWT_SECRETS`)
-- Rate limiting using `@fastify/rate-limit`
-- Structured request logging with authorization redaction
-- Fail-closed behavior on proof verification errors
-- Production requires an explicit external ZKP backend; the built-in dev attestation path is blocked when `NODE_ENV=production`
-- No stack traces or raw internals in API responses
-- Primary-source registry guardrails with explicit `COMPLIANCE_GAP` outcomes when authoritative endpoints are unavailable or non-compliant
+For production use, plan for at least:
 
-Detailed reports:
+- explicit API-key and JWT configuration
+- signing configuration and key management through environment setup
+- receipt lifecycle checks before downstream reliance
+- database and network security controls appropriate for the deployment environment
+- environment-specific operational controls outside this repository
 
-- `security/audit_report.md`
-- `security/threat_model.md`
+Fail-closed defaults are part of the security posture. They are meant to prevent the system from silently assuming production trust conditions that have not been configured.
 
-## Data Model
+## Public API Contract And Examples
 
-Primary runtime persistence model:
+The public evaluation artifacts in this repo are:
 
-- Prisma `VerificationRecord` (`prisma/schema.prisma`)
-  - Bundle hash, proof outcomes, fraud score, proof latency
-  - Revocation state, reason, transaction hash, and revocation timestamp
+- [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
+- [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
+- [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
+- [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
+- [partner evaluation kit](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
 
-## SDK
+These artifacts document the public verification lifecycle only. They intentionally avoid proof internals, model outputs, circuit identifiers, signing infrastructure specifics, and internal service topology.
 
-The TrustSignal JavaScript SDK is under `sdk/` and exposes:
+## Security Posture
 
-- `verify(bundle)`
-- `revoke(bundleHash, reason)`
-- `status(bundleId)`
+Public-facing security properties for this repository are:
 
-See `sdk/README.md` for usage examples.
+- scoped API authentication for the integration-facing API
+- request validation and rate limiting at the gateway
+- signed verification receipts returned with verification responses
+- later verification of stored receipt integrity and status
+- explicit lifecycle boundaries for read, revoke, and provenance-state operations
+- fail-closed defaults where production trust assumptions are not satisfied
 
-## CI/CD
+See [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md), [SECURITY_CHECKLIST.md](/Users/christopher/Projects/trustsignal/SECURITY_CHECKLIST.md), and [docs/SECURITY.md](/Users/christopher/Projects/trustsignal/docs/SECURITY.md) for the current public-safe security summary and repository guardrails.
 
-GitHub Actions workflow: `.github/workflows/ci.yml`
+## What TrustSignal Does Not Claim
 
-- `lint`
-- `typecheck`
-- `test` (with coverage)
-- `rust-build` (Halo2 crate build + tests)
+TrustSignal does not provide:
 
-## Vercel Deployment
+- legal determinations
+- compliance certification
+- fraud adjudication
+- a replacement for the system of record
+- infrastructure claims that depend on environment-specific evidence outside this repository
 
-- API serverless entrypoint: `apps/api/api/[...path].ts`
-- Root deployment policy config: `vercel.json`
-- API-specific Vercel config (if deploying `apps/api` as project root): `apps/api/vercel.json`
-- Root `vercel.json` currently rewrites `/api/*` traffic to the API serverless entrypoint.
+## Current Repository Context
 
-For production, deploy with environment variables managed in Vercel project settings (never in repo files).
+DeedShield is the current application surface in this repository. The broader product framing remains TrustSignal as evidence integrity infrastructure and an integrity layer for existing workflows.
 
-## Canonical Documentation
+## Validation
 
-- `docs/README.md`
-- `docs/final/01_EXECUTIVE_SUMMARY.md`
-- `docs/final/11_NSF_GRANT_WHITEPAPER.md`
-- `docs/final/12_R_AND_D_LOG.md`
-- `docs/final/13_SOC2_READINESS_KICKOFF.md`
-- `docs/final/14_VANTA_INTEGRATION_USE_CASE.md`
-- `TASKS.md`
-- `CHANGELOG.md`
+Relevant repository checks include:
 
-## Compliance and Claims Boundaries
+```bash
+npm run messaging:check
+npm run typecheck
+npm run build
+```
 
-- TrustSignal provides technical verification signals, not legal determinations.
-- Avoid PII in logs and artifacts.
-- Do not represent HIPAA or equivalent compliance unless infra and controls are independently validated.
+## Documentation Map
+
+- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [docs/partner-eval/quickstart.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [docs/partner-eval/api-playground.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [wiki/What-is-TrustSignal.md](/Users/christopher/Projects/trustsignal/wiki/What-is-TrustSignal.md)
+- [wiki/API-Overview.md](/Users/christopher/Projects/trustsignal/wiki/API-Overview.md)
+- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [wiki/Verification-Receipts.md](/Users/christopher/Projects/trustsignal/wiki/Verification-Receipts.md)

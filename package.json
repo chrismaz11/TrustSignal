@@ -30,7 +30,7 @@
     "validate": "npm run lint && npm run typecheck && npm test && npm run build",
     "smoke:signed-receipt": "bash scripts/smoke-signed-receipt.sh",
     "security:audit": "npm audit --omit=dev --audit-level=high",
-    "demo": "tsx scripts/demo.ts",
+    "demo": "tsx demo/demo-script.ts",
     "demo:vanta-terminal": "bash scripts/demo-vanta-terminal.sh",
     "demo:playwright": "node scripts/playwright-vanta-command-center.mjs",
     "start:verify": "node src/api/verify.js",
