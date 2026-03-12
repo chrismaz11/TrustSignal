@@ -1,138 +1,75 @@
 # TrustSignal
 
-Universal verification engine with a DeedShield property-record module and a forward path to healthcare credentialing.
+[![CI](https://img.shields.io/github/actions/workflow/status/trustsignal-dev/trustsignal/ci.yml?branch=master&label=CI)](https://github.com/trustsignal-dev/trustsignal/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-supported-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Coverage](https://img.shields.io/badge/coverage-threshold%2090%25-0A7F5A)](vitest.config.ts)
+[![Security Checklist](https://img.shields.io/badge/security-checklist-informational)](SECURITY_CHECKLIST.md)
+[![Threat Model](https://img.shields.io/badge/threat_model-documented-informational)](security/threat_model.md)
+[![Audit Report](https://img.shields.io/badge/audit_report-available-informational)](security/audit_report.md)
 
-## Release Status (Session 7 Final)
+Website: https://trustsignal.dev
 
-- Fastify v5 verification API contract: `/v1/verify-bundle`, `/v1/revoke`, `/v1/status/:bundleId`
-- Halo2 circuits (non-membership + revocation): `gate_count=1024`, `k=10`
-- ZKML artifact: `ml/zkml/deed_cnn.compiled` + benchmark (`proof_gen_ms=1506.46`, `auc=0.998`)
-- JavaScript SDK (`sdk/`): `verify()`, `revoke()`, `status()` with ESM + CJS builds and zero runtime dependencies
-- Test and quality posture: 64/64 tests passing, strict TypeScript clean, scoped coverage `99.34%`
-- Security posture: OWASP audit + threat model published, JWT rotation support, rate limiting, structured log redaction
-- CI posture: GitHub Actions jobs for lint, typecheck, tests+coverage, and Rust build/tests
+TrustSignal provides signed receipts and verifiable provenance for compliance artifacts.
 
-## Repository Scope
+TrustSignal is an integrity layer, not a workflow replacement. It fits into existing compliance workflows without replacing the upstream system of record.
 
-This repository is the main TrustSignal project. It contains:
+## Why TrustSignal Exists
 
-- Product-facing docs and governance artifacts under `docs/`
-- TrustSignal verification runtime under `src/`
-- DeedShield API/Web implementation in `apps/`
-- Shared verification logic and contract code in `packages/`
-- Halo2 and ZKML proof artifacts in `circuits/` and `ml/`
+Many teams can show that a file was uploaded, reviewed, or approved. Fewer can later prove that the artifact under review is unchanged from the one originally collected.
 
-## Quickstart
+TrustSignal addresses that gap by issuing signed receipts and retaining verification state that make later drift detectable and auditable. The product is designed to sit behind an existing intake, evidence, or compliance platform, so the workflow owner keeps control of collection while TrustSignal supplies integrity evidence.
 
-- All `/api/v1/*` endpoints except `/api/v1/health` require `x-api-key`.
-- Configure API keys with `API_KEYS` and optional `API_KEY_SCOPES`.
-- CORS is deny-by-default in production unless `CORS_ALLOWLIST` is set.
-- In production, startup fails if `NOTARY_API_KEY`, `PROPERTY_API_KEY`, or `TRUST_REGISTRY_SOURCE` are missing.
-- In production, startup also fails if `TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK`, `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK`, or `TRUSTSIGNAL_RECEIPT_SIGNING_KID` are missing.
-- Receipt and Vanta responses expose `anchor.subjectDigest` / `anchorSubjectDigest` plus `anchorSubjectVersion` so proof provenance can be audited independently of the raw receipt JSON.
-- Receipt responses now include additive `receiptSignature` metadata (`signature`, `alg`, `kid`) when the receipt is issuer-signed.
-- Revocation requires issuer signature headers:
-  - `x-issuer-id`
-  - `x-signature-timestamp`
-  - `x-issuer-signature` (signature over `revoke:<receiptId>:<timestamp>`)
+## Evidence Integrity Architecture
 
-## Data Minimization Defaults
-
-- Receipts persist `inputsCommitment` and `rawInputsHash` (commitment hash), not full raw input payloads.
-
-## Local Demo
-
-### Terminal demo for partner conversations
-
-Use the terminal-first Vanta demo when you need to show TrustSignal as backend evidence-integrity infrastructure rather than a UI product.
-
-```bash
-npm run demo:vanta-terminal
+```mermaid
+flowchart LR
+  A[Evidence Sources] --> B[Compliance Platform]
+  B --> C[TrustSignal]
+  C --> D[Signed Receipt]
+  D --> E[Verifiable Audit Evidence]
 ```
 
-What it shows:
+## Key Capabilities
 
-- baseline artifact intake
-- signed receipt issuance
-- persisted receipt verification
-- tampered artifact intake using the same declared hash with changed bytes
-- the recorded mismatch between declared hash and observed document digest
+- signed receipt issuance and later receipt verification
+- tamper-evident digest comparison and receipt reconstruction
+- receipt lifecycle operations for retrieval, revocation, status, and anchoring
+- versioned API surfaces for workflow integrations and partner-facing evidence payloads
+- registry screening and normalized evidence outcomes for configured sources
+- scoped authentication, request validation, rate limiting, and structured logging
 
-This demo is intentionally conservative:
+DeedShield is the current application surface in this repository. The broader product framing is evidence integrity infrastructure for compliance artifacts.
 
-- it presents receipt signing and receipt verification as real
-- it presents the evidence chain as tamper-evident
-- it does not claim production-grade blockchain or ZK enforcement
-- it uses dev-only proof status exactly as returned by the API today
+## Example Use Cases
 
-### 2) Configure environment
+- issuing signed receipts for compliance artifacts at the point of collection
+- re-verifying stored evidence before audit, review, or partner submission
+- attaching verifiable provenance to partner-facing evidence payloads
+- adding integrity checks to deed and property-record verification workflows without replacing the originating platform
+
+## Quickstart / 5-Minute Demo
+
+The lowest-risk local path is to run the API and web workspaces and try the product through the existing application surface.
+
+Prerequisites:
+
+- Node.js `>= 18`
+- npm `>= 9`
+- PostgreSQL `>= 14` for `apps/api`
+
+Quickstart:
 
 ```bash
+npm install
 cp .env.example .env.local
-```
-
-Set real values in `.env.local` for:
-
-- `TRUSTSIGNAL_JWT_SECRETS` (or `TRUSTSIGNAL_JWT_SECRET`)
-- `TRUSTSIGNAL_ZKP_BACKEND`
-- `TRUSTSIGNAL_ZKP_PROVER_BIN` and `TRUSTSIGNAL_ZKP_VERIFIER_BIN` when `TRUSTSIGNAL_ZKP_BACKEND=external`
-  - Current bootstrap prover binary: `circuits/non_mem_gadget/target/release/zkp_service`
-- `TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK`
-- `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK`
-- `TRUSTSIGNAL_RECEIPT_SIGNING_KID`
-- optional `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS` for multi-key verification by `kid`
-- `POLYGON_MUMBAI_RPC_URL`
-- `POLYGON_MUMBAI_PRIVATE_KEY`
-- `DATABASE_URL` (or `SUPABASE_DB_URL` / `SUPABASE_POOLER_URL` / `SUPABASE_DIRECT_URL`; or set `SUPABASE_DB_PASSWORD` and use Supabase CLI pooler metadata)
-
-Never commit real secrets.
-
-ZKP status note:
-
-- `dev-only` remains the default local mode.
-- `external` now supports a real Halo2 proof round-trip through `circuits/non_mem_gadget/src/bin/zkp_service.rs`, but that binary currently proves a bootstrap attestation circuit over public proof inputs, not the final document-hash statement.
-- Do not describe the current bootstrap circuit as full document authenticity or PII-preserving document hashing.
-
-Contract note:
-
-- `packages/contracts` uses Hardhat 3 and needs Node 22+ for local compile/smoke runs.
-
-### 3) Run validation gates
-
-```bash
-npm run lint
-npm run typecheck
-npm test
-```
-
-### 3a) Run the signed-receipt DB smoke harness
-
-This boots a temporary local PostgreSQL instance, points the API integration test at it, validates signed receipt issuance and verification, validates legacy unsigned receipt behavior, and then tears the database down.
-
-```bash
-npm run smoke:signed-receipt
-```
-
-Local requirements for this harness:
-
-- `initdb`
-- `pg_ctl`
-- `createdb`
-- `psql`
-
-Optional overrides:
-
-- `TRUSTSIGNAL_SMOKE_PG_PORT`
-- `TRUSTSIGNAL_SMOKE_DB_USER`
-- `TRUSTSIGNAL_SMOKE_DB_NAME`
-
-### 4) Run DeedShield API/Web (workspace apps)
-
-```bash
+cp apps/api/.env.example apps/api/.env
 npm -w apps/api run db:generate
 npm -w apps/api run db:push
 npm -w apps/api run dev
 ```
+
+Before running `db:push`, set at minimum a valid `DATABASE_URL` in `apps/api/.env`. The API template also includes scoped API-key settings and provider variables for the integration paths you want to exercise.
 
 In a second terminal:
 
@@ -140,99 +77,151 @@ In a second terminal:
 npm -w apps/web run dev
 ```
 
-## TrustSignal API Contract (`src/routes`)
+Default local ports:
 
-All TrustSignal `/v1/*` endpoints require `Authorization: Bearer <jwt>`.
+- web app: `http://localhost:3000`
+- API: `http://localhost:3001`
+
+What this local path proves:
+
+- TrustSignal fits behind an existing workflow rather than replacing it
+- verification requests produce signed receipts and stored verification state
+- receipts can be retrieved and re-verified through the API surface
+
+For fuller local setup details, including PostgreSQL configuration and workspace-specific environment guidance, see `apps/api/SETUP.md`. For partnership demo materials, see `docs/partnership/vanta-2026-03-06/README.md`.
+
+## API Overview
+
+TrustSignal exposes two main API surfaces in this repository.
+
+Core TrustSignal `/v1/*` routes use JWT authentication:
 
 - `POST /v1/verify-bundle`
-  - Validates request with Zod.
-  - Runs non-membership proof, revocation proof, and ZKML verification.
-  - Persists result to `VerificationRecord`.
 - `POST /v1/revoke`
-  - Requires admin JWT claim (`role=admin` or equivalent claim form).
-  - Anchors nullifier on Polygon Mumbai and marks record revoked.
 - `GET /v1/status/:bundleId`
-  - Returns latest persisted verification state for a bundle hash.
-- `GET /api/v1/integrations/vanta/schema`
-  - Returns JSON Schema for Vanta-ingestable verification payloads.
-- `GET /api/v1/integrations/vanta/verification/:receiptId`
-  - Returns structured verification evidence payload (`trustsignal.vanta.verification_result.v1`).
-- `GET /api/v1/registry/sources`
-  - Returns configured primary-source registry adapters (OFAC/OIG/SAM/UK/BIS/CSL/NPPES/SEC/FDIC), freshness metadata, and circuit mapping.
-- `POST /api/v1/registry/verify`
-  - Runs a source-specific check with cached results and returns normalized match evidence (`MATCH`, `NO_MATCH`, `COMPLIANCE_GAP`).
-- `POST /api/v1/registry/verify-batch`
-  - Screens one subject across multiple registry sources and returns an aggregate summary including `complianceGapSources`.
-- `GET /api/v1/registry/jobs` and `GET /api/v1/registry/jobs/:jobId`
-  - Exposes ZK oracle dispatch job state for registry checks (`QUEUED`, `DISPATCHED`, `SKIPPED`, `FAILED`).
 
-Reference implementation: `tests/api/routes.test.ts`.
+Integration-oriented `/api/v1/*` routes use scoped `x-api-key` access:
 
-## Security Defaults
+- service and status: `GET /api/v1/health`, `GET /api/v1/status`, `GET /api/v1/metrics`
+- verification: `POST /api/v1/verify`, `POST /api/v1/verify/attom`, `GET /api/v1/synthetic`
+- receipt lifecycle: `GET /api/v1/receipt/:receiptId`, `GET /api/v1/receipt/:receiptId/pdf`, `POST /api/v1/receipt/:receiptId/verify`, `POST /api/v1/receipt/:receiptId/revoke`, `POST /api/v1/anchor/:receiptId`, `GET /api/v1/receipts`
+- partner integrations: `GET /api/v1/integrations/vanta/schema`, `GET /api/v1/integrations/vanta/verification/:receiptId`
+- registry services: `GET /api/v1/registry/sources`, `POST /api/v1/registry/verify`, `POST /api/v1/registry/verify-batch`, `GET /api/v1/registry/jobs`, `GET /api/v1/registry/jobs/:jobId`
 
-- Input validation at API boundaries (Zod)
-- JWT verification with key rotation (`TRUSTSIGNAL_JWT_SECRETS`)
-- Rate limiting using `@fastify/rate-limit`
-- Structured request logging with authorization redaction
-- Fail-closed behavior on proof verification errors
-- Production requires an explicit external ZKP backend; the built-in dev attestation path is blocked when `NODE_ENV=production`
-- No stack traces or raw internals in API responses
-- Primary-source registry guardrails with explicit `COMPLIANCE_GAP` outcomes when authoritative endpoints are unavailable or non-compliant
+`POST /api/v1/receipt/:receiptId/revoke` also expects signed issuer headers: `x-issuer-id`, `x-signature-timestamp`, and `x-issuer-signature`.
 
-Detailed reports:
+The integration model is intentionally narrow: upstream platforms retain workflow ownership, while TrustSignal provides receipt, verification, status, and evidence services at the boundary.
 
-- `security/audit_report.md`
-- `security/threat_model.md`
+## Security Posture
 
-## Data Model
+This repository is operated with a security-first posture and explicit claim boundaries.
 
-Primary runtime persistence model:
+Implemented controls include:
 
-- Prisma `VerificationRecord` (`prisma/schema.prisma`)
-  - Bundle hash, proof outcomes, fraud score, proof latency
-  - Revocation state, reason, transaction hash, and revocation timestamp
+- API authentication for both JWT (`/v1/*`) and scoped API-key (`/api/v1/*`) surfaces
+- signed receipts returned with verification results
+- receipt lifecycle validation for retrieval, verification, status, and revocation state
+- revocation controls with issuer authorization requirements
+- rate limiting and abuse protection controls
+- fail-closed dependency handling on critical verification and startup guardrail paths
+- input validation at API boundaries and structured log redaction for selected sensitive fields
+- database TLS enforcement checks for production API startup
+- primary-source registry guardrails with explicit compliance-gap outcomes
 
-## SDK
+Environment and auth requirements are real and enforced. Important variables include:
 
-The TrustSignal JavaScript SDK is under `sdk/` and exposes:
+- `API_KEYS` and `API_KEY_SCOPES`
+- `TRUSTSIGNAL_JWT_SECRETS` or `TRUSTSIGNAL_JWT_SECRET`
+- `TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK`
+- `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK`
+- `TRUSTSIGNAL_RECEIPT_SIGNING_KID`
+- optional `TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS`
+- `DATABASE_URL`
+- `NOTARY_API_KEY`, `PROPERTY_API_KEY`, and `TRUST_REGISTRY_SOURCE` for production verifier configuration
+- `TRUSTSIGNAL_ZKP_BACKEND`, `TRUSTSIGNAL_ZKP_PROVER_BIN`, and `TRUSTSIGNAL_ZKP_VERIFIER_BIN` when using external proof infrastructure
 
-- `verify(bundle)`
-- `revoke(bundleHash, reason)`
-- `status(bundleId)`
+Never commit real secrets, API keys, private keys, or local env files. Infrastructure claims such as encrypted-at-rest storage, TLS termination, and key custody require environment-specific evidence outside this repo.
 
-See `sdk/README.md` for usage examples.
+See `SECURITY_CHECKLIST.md`, `security/audit_report.md`, and `security/threat_model.md` for current evidence and open gaps.
 
-## CI/CD
+## Repository Structure
 
-GitHub Actions workflow: `.github/workflows/ci.yml`
+- `apps/api/`: DeedShield API and integration-facing routes
+- `apps/web/`: DeedShield web app
+- `src/`: TrustSignal runtime and `/v1/*` API surface
+- `packages/core/`: shared receipt, integrity, and verification logic
+- `packages/contracts/`: anchoring contract code and related tooling
+- `sdk/`: JavaScript SDK for TrustSignal APIs
+- `docs/`: canonical product, architecture, operations, and partnership documentation
+- `security/`: audit and threat-model artifacts
+- `tests/`: API, integration, middleware, and end-to-end coverage
+- `circuits/` and `ml/`: supporting implementation and R&D artifacts, not the primary product interface
 
-- `lint`
-- `typecheck`
-- `test` (with coverage)
-- `rust-build` (Halo2 crate build + tests)
+## Development Workflow
 
-## Vercel Deployment
+Primary validation commands:
 
-- API serverless entrypoint: `apps/api/api/[...path].ts`
-- Root deployment policy config: `vercel.json`
-- API-specific Vercel config (if deploying `apps/api` as project root): `apps/api/vercel.json`
-- Root `vercel.json` currently rewrites `/api/*` traffic to the API serverless entrypoint.
+```bash
+npm run lint
+npm run typecheck
+npm test
+```
 
-For production, deploy with environment variables managed in Vercel project settings (never in repo files).
+Full validation:
 
-## Canonical Documentation
+```bash
+npm run validate
+```
+
+Signed-receipt smoke validation:
+
+```bash
+npm run smoke:signed-receipt
+```
+
+Development notes:
+
+- `apps/api/.env.example` is the main local template for API work
+- `.env.example` at the repo root supports repo-level scripts and local placeholders
+- contract-focused work in `packages/contracts` currently uses Hardhat 3 tooling and should be validated on Node 22+
+- when behavior or posture changes, update the relevant docs and checklists in the same change
+
+## Documentation
+
+Start with:
 
 - `docs/README.md`
-- `docs/final/01_EXECUTIVE_SUMMARY.md`
-- `docs/final/11_NSF_GRANT_WHITEPAPER.md`
-- `docs/final/12_R_AND_D_LOG.md`
-- `docs/final/13_SOC2_READINESS_KICKOFF.md`
-- `docs/final/14_VANTA_INTEGRATION_USE_CASE.md`
+- `docs/CANONICAL_MESSAGING.md`
+- `PROJECT_PLAN.md`
+- `SECURITY_CHECKLIST.md`
+- `apps/api/SETUP.md`
+- `sdk/README.md`
 - `TASKS.md`
 - `CHANGELOG.md`
 
-## Compliance and Claims Boundaries
+Canonical architecture, API, and operations guidance also lives under `docs/final/`, including:
 
-- TrustSignal provides technical verification signals, not legal determinations.
-- Avoid PII in logs and artifacts.
-- Do not represent HIPAA or equivalent compliance unless infra and controls are independently validated.
+- `docs/final/02_ARCHITECTURE_AND_BOUNDARIES.md`
+- `docs/final/03_SECURITY_AND_COMPLIANCE_BASELINE.md`
+- `docs/final/05_API_AND_INTEGRATION_GUIDE.md`
+- `docs/final/06_PILOT_AND_MARKETPLACE_READINESS.md`
+- `docs/final/14_VANTA_INTEGRATION_USE_CASE.md`
+
+## Claims / Compliance Boundaries
+
+TrustSignal provides technical verification signals, not legal determinations.
+
+TrustSignal should not currently be described as:
+
+- a replacement for compliance, audit, or workflow systems
+- a finished production-grade document-authenticity proof platform across all surfaces
+- a completed compliance certification or a substitute for independent control validation
+- a system that should log, expose, or anchor raw PII without explicit need and supporting controls
+
+Public messaging must not imply:
+
+- completed production readiness without infrastructure evidence
+- final cryptographic or proof guarantees where the implementation is still partial or environment-gated
+- compliance certifications that are not independently validated
+
+This repository includes roadmap and supporting implementation material. Those elements must remain clearly separated from current implemented behavior in any public-facing material.
