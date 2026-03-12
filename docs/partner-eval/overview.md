@@ -27,6 +27,13 @@ TrustSignal fits behind an existing workflow such as:
 
 The upstream platform remains the system of record. TrustSignal adds an integrity layer and returns technical verification artifacts that can be stored alongside the workflow record.
 
+Start with these evaluator assets:
+
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+
 ## Technical Detail
 
 The public evaluation path in this repository is the `/api/v1/*` surface:

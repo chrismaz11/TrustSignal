@@ -21,6 +21,13 @@ The example uses the current integration-facing lifecycle to create a verificati
 
 ## Integration Fit
 
+Start here for the full evaluator path:
+
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+
 ```mermaid
 sequenceDiagram
   participant C as Client

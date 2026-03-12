@@ -2,6 +2,24 @@
 
 This folder is organized into active, canonical documents and archived historical material.
 
+## Evaluator Quickstart
+
+Start here if you want to evaluate the public verification lifecycle quickly:
+
+- [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+
+Golden path:
+
+1. submit a verification request
+2. receive verification signals plus a signed verification receipt
+3. retrieve the stored receipt
+4. run later verification
+
 ## Canonical Documentation
 - `final/01_EXECUTIVE_SUMMARY.md`
 - `final/02_ARCHITECTURE_AND_BOUNDARIES.md`
@@ -21,6 +39,7 @@ This folder is organized into active, canonical documents and archived historica
 ## Governance and Security Tracking
 - `PRODUCTION_GOVERNANCE_TRACKER.md`
 - `SECURITY.md`
+- `security-summary.md`
 - `verification.md`
 - `ops/monitoring/README.md`
 - `../PROJECT_PLAN.md`
@@ -31,8 +50,6 @@ This folder is organized into active, canonical documents and archived historica
 - `legal/terms-of-service.md`
 - `legal/cookie-policy.md`
 - `legal/pilot-agreement.md`
-
-## Forms
 
 ## Archive
 Historical planning, synthesized source-of-truth drafts, and early notebook logs are retained under:

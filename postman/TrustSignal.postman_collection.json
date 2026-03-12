@@ -1,0 +1,186 @@
+{
+  "info": {
+    "name": "TrustSignal Evaluator Trial Path",
+    "description": "Public evaluator collection for the TrustSignal verification lifecycle. This collection demonstrates how to submit a verification request, receive signed verification receipts and verification signals, retrieve the stored receipt, run later verification, and review authorized lifecycle actions using the public contract only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "{{base_url}}"
+    },
+    {
+      "key": "api_key",
+      "value": "{{api_key}}"
+    },
+    {
+      "key": "receipt_id",
+      "value": "{{receipt_id}}"
+    },
+    {
+      "key": "issuer_id",
+      "value": "{{issuer_id}}"
+    },
+    {
+      "key": "signature_timestamp",
+      "value": "{{signature_timestamp}}"
+    },
+    {
+      "key": "issuer_signature",
+      "value": "{{issuer_signature}}"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Verification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bundleId\": \"verification-2026-03-12-001\",\n  \"transactionType\": \"deed_transfer\",\n  \"ron\": {\n    \"provider\": \"source-system\",\n    \"notaryId\": \"NOTARY-EXAMPLE-01\",\n    \"commissionState\": \"IL\",\n    \"sealPayload\": \"simulated-seal-payload\"\n  },\n  \"doc\": {\n    \"docHash\": \"0x8b7b2f52f2a2e19f8f3fe0d815d1c1d8d1e0d120e8cc60d1baf5e7a6f9d211aa\"\n  },\n  \"policy\": {\n    \"profile\": \"CONTROL_CC_001\"\n  },\n  \"property\": {\n    \"parcelId\": \"PARCEL-EXAMPLE-1001\",\n    \"county\": \"Cook\",\n    \"state\": \"IL\"\n  },\n  \"timestamp\": \"2026-03-12T15:24:00.000Z\"\n}"
+        },
+        "description": "Submit a public verification request from an existing workflow. The response should include verification signals, a signed verification receipt, and public-safe verifiable provenance metadata for later verification.",
+        "url": {
+          "raw": "{{base_url}}/api/v1/verify",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "verify"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Retrieve Receipt",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "description": "Retrieve the stored receipt view using the receipt identifier returned by the verification request. This is the main read path for evaluators who want to inspect the signed verification receipt and receipt metadata.",
+        "url": {
+          "raw": "{{base_url}}/api/v1/receipt/{{receipt_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "receipt",
+            "{{receipt_id}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Run Later Verification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "description": "Run later verification on the stored receipt. This public lifecycle step confirms current receipt integrity and status before audit, partner handoff, or downstream reliance.",
+        "url": {
+          "raw": "{{base_url}}/api/v1/receipt/{{receipt_id}}/verify",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "receipt",
+            "{{receipt_id}}",
+            "verify"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Revoke Receipt",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          },
+          {
+            "key": "x-issuer-id",
+            "value": "{{issuer_id}}"
+          },
+          {
+            "key": "x-signature-timestamp",
+            "value": "{{signature_timestamp}}"
+          },
+          {
+            "key": "x-issuer-signature",
+            "value": "{{issuer_signature}}"
+          }
+        ],
+        "description": "Revoke a receipt when the caller is authorized. This public lifecycle action is included for evaluator completeness, but it requires issuer authorization headers in addition to the API key.",
+        "url": {
+          "raw": "{{base_url}}/api/v1/receipt/{{receipt_id}}/revoke",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "receipt",
+            "{{receipt_id}}",
+            "revoke"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Review Provenance State",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "description": "Return verifiable provenance metadata for a receipt when enabled. This request is optional in the evaluator path and is included because the public contract documents the provenance-state route.",
+        "url": {
+          "raw": "{{base_url}}/api/v1/anchor/{{receipt_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "anchor",
+            "{{receipt_id}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

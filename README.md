@@ -59,6 +59,23 @@ The repository also still includes a legacy JWT-authenticated `/v1/*` surface us
 - `GET /v1/status/:bundleId`
 - `POST /v1/revoke`
 
+## Evaluate The API
+
+Start here if you are evaluating the public verification lifecycle:
+
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+
+Golden path:
+
+1. submit a verification request
+2. receive verification signals plus a signed verification receipt
+3. retrieve the stored receipt
+4. run later verification
+
 ## Public API Contract And Examples
 
 The public evaluation artifacts added in this repo are:
@@ -141,6 +158,8 @@ npm run build
 ## Documentation Map
 
 - [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [docs/partner-eval/quickstart.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [docs/partner-eval/api-playground.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
 - [wiki/What-is-TrustSignal.md](/Users/christopher/Projects/trustsignal/wiki/What-is-TrustSignal.md)
 - [wiki/API-Overview.md](/Users/christopher/Projects/trustsignal/wiki/API-Overview.md)
 - [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)

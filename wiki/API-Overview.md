@@ -25,6 +25,22 @@ The integration-facing `/api/v1/*` surface is the main public partner API in thi
 
 The legacy `/v1/*` surface is still present for the current JavaScript SDK and uses bearer JWT authentication.
 
+### Evaluator Quickstart
+
+Start here to try the public lifecycle:
+
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+
+Golden path:
+
+1. submit a verification request
+2. receive verification signals plus a signed verification receipt
+3. retrieve the stored receipt
+4. run later verification
+
 ## Technical Detail
 
 ### Integration-Facing Verification Lifecycle
