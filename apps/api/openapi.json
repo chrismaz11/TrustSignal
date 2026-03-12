@@ -1,141 +1,380 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "TrustSignal API",
-    "version": "1.0.0"
+    "title": "TrustSignal Public Verification API",
+    "version": "1.0.0",
+    "description": "TrustSignal is evidence integrity infrastructure for existing workflows.\nThis contract documents the public verification lifecycle for creating signed verification receipts,\nretrieving receipt state, checking later verification status, and managing authorized lifecycle actions.\n"
   },
-  "paths": {
-    "/api/v1/health": {
-      "get": {
-        "summary": "Health check",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
+  "servers": [
+    {
+      "url": "https://api.trustsignal.dev",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": [
+
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "Verification",
+      "description": "Create signed verification receipts and return verification signals."
     },
+    {
+      "name": "Receipts",
+      "description": "Retrieve stored receipts and receipt-ready artifacts."
+    },
+    {
+      "name": "Lifecycle",
+      "description": "Check later verification status and manage authorized receipt lifecycle actions."
+    }
+  ],
+  "paths": {
     "/api/v1/verify": {
       "post": {
-        "summary": "Verify a notarized bundle",
+        "tags": [
+          "Verification"
+        ],
+        "summary": "Create a verification and receive a signed verification receipt",
+        "description": "Submit a verification request from an existing workflow. TrustSignal returns verification signals,\na signed verification receipt, and verifiable provenance metadata that can be used for later verification.\n",
+        "security": [
+          {
+            "ApiKeyAuth": [
+
+            ]
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VerifyInput"
+                "$ref": "#/components/schemas/VerificationRequest"
+              },
+              "examples": {
+                "default": {
+                  "summary": "Verification request",
+                  "value": {
+                    "bundleId": "verification-2026-03-12-001",
+                    "transactionType": "deed_transfer",
+                    "ron": {
+                      "provider": "source-system",
+                      "notaryId": "NOTARY-EXAMPLE-01",
+                      "commissionState": "IL",
+                      "sealPayload": "simulated-seal-payload"
+                    },
+                    "doc": {
+                      "docHash": "0x8b7b2f52f2a2e19f8f3fe0d815d1c1d8d1e0d120e8cc60d1baf5e7a6f9d211aa"
+                    },
+                    "policy": {
+                      "profile": "CONTROL_CC_001"
+                    },
+                    "property": {
+                      "parcelId": "PARCEL-EXAMPLE-1001",
+                      "county": "Cook",
+                      "state": "IL"
+                    },
+                    "timestamp": "2026-03-12T15:24:00.000Z"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Verification receipt summary",
+            "description": "Verification completed and a signed verification receipt was issued.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VerifyResponse"
+                  "$ref": "#/components/schemas/VerificationResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Verification response",
+                    "value": {
+                      "receiptVersion": "2.0",
+                      "decision": "ALLOW",
+                      "reasons": [
+                        "receipt issued"
+                      ],
+                      "receiptId": "2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a",
+                      "receiptHash": "0x4e7f2ce9d3f7a8d3b0e4c9f2aa17fd59d6b4fda2d7b7b7d1cce8124d7ee39d04",
+                      "receiptSignature": {
+                        "alg": "EdDSA",
+                        "kid": "trustsignal-current",
+                        "signature": "eyJleGFtcGxlIjoic2lnbmVkLXJlY2VpcHQifQ"
+                      },
+                      "anchor": {
+                        "status": "PENDING",
+                        "subjectDigest": "0x8c0f95cda31274e7b61adfd1dd1e0c03a4b96f78d90da52d42fd93d9a38fc112",
+                        "subjectVersion": "trustsignal.anchor_subject.v1"
+                      },
+                      "revocation": {
+                        "status": "ACTIVE"
+                      }
+                    }
+                  }
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
     },
     "/api/v1/receipt/{receiptId}": {
       "get": {
-        "summary": "Fetch receipt details",
+        "tags": [
+          "Receipts"
+        ],
+        "summary": "Retrieve a stored verification receipt",
+        "description": "Return the stored receipt view for a previously created verification,\nincluding receipt metadata, the canonical receipt payload, and a PDF URL.\n",
+        "security": [
+          {
+            "ApiKeyAuth": [
+
+            ]
+          }
+        ],
         "parameters": [
           {
-            "name": "receiptId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+            "$ref": "#/components/parameters/ReceiptId"
           }
         ],
         "responses": {
           "200": {
-            "description": "Receipt details",
+            "description": "Stored receipt returned.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReceiptResponse"
+                  "$ref": "#/components/schemas/VerificationReceipt"
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
     },
     "/api/v1/receipt/{receiptId}/pdf": {
       "get": {
-        "summary": "Download receipt PDF",
+        "tags": [
+          "Receipts"
+        ],
+        "summary": "Download a PDF rendering of a stored verification receipt",
+        "security": [
+          {
+            "ApiKeyAuth": [
+
+            ]
+          }
+        ],
         "parameters": [
           {
-            "name": "receiptId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+            "$ref": "#/components/parameters/ReceiptId"
           }
         ],
         "responses": {
           "200": {
-            "description": "PDF"
+            "description": "PDF returned.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
     },
     "/api/v1/receipt/{receiptId}/verify": {
       "post": {
-        "summary": "Verify stored receipt integrity and proof validity",
+        "tags": [
+          "Lifecycle"
+        ],
+        "summary": "Check later verification status for a stored receipt",
+        "description": "Recompute receipt integrity and return the current verification status for later verification.\nThis endpoint does not accept a request body.\n",
+        "security": [
+          {
+            "ApiKeyAuth": [
+
+            ]
+          }
+        ],
         "parameters": [
           {
-            "name": "receiptId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+            "$ref": "#/components/parameters/ReceiptId"
           }
         ],
         "responses": {
           "200": {
-            "description": "Receipt integrity and proof verification status",
+            "description": "Receipt verification status returned.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReceiptVerifyResponse"
+                  "$ref": "#/components/schemas/VerificationStatus"
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/receipt/{receiptId}/revoke": {
+      "post": {
+        "tags": [
+          "Lifecycle"
+        ],
+        "summary": "Revoke a receipt when the caller is authorized",
+        "description": "Mark a stored receipt as revoked. This endpoint does not accept a request body.\nIn addition to the API key, issuer authorization headers are required.\n",
+        "security": [
+          {
+            "ApiKeyAuth": [
+
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReceiptId"
+          },
+          {
+            "$ref": "#/components/parameters/IssuerId"
+          },
+          {
+            "$ref": "#/components/parameters/SignatureTimestamp"
+          },
+          {
+            "$ref": "#/components/parameters/IssuerSignature"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Receipt revocation state returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
     },
     "/api/v1/anchor/{receiptId}": {
       "post": {
-        "summary": "Anchor a receipt hash and proof provenance subject on-chain",
+        "tags": [
+          "Lifecycle"
+        ],
+        "summary": "Record verifiable provenance metadata for a receipt when enabled",
+        "description": "Return the current provenance state for a receipt. This endpoint does not accept a request body.\nIt is intended for workflows that use later verification with anchor subject metadata.\n",
+        "security": [
+          {
+            "ApiKeyAuth": [
+
+            ]
+          }
+        ],
         "parameters": [
           {
-            "name": "receiptId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+            "$ref": "#/components/parameters/ReceiptId"
           }
         ],
         "responses": {
           "200": {
-            "description": "Anchor status",
+            "description": "Provenance state returned.",
             "content": {
               "application/json": {
                 "schema": {
@@ -144,98 +383,227 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "409": {
-            "description": "Proof artifact digest required before anchoring",
+            "description": "The receipt is not yet in a state that can expose provenance metadata.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "proof_artifact_required_for_anchor"
                 }
               }
             }
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
     },
     "/api/v1/receipts": {
       "get": {
-        "summary": "List receipts",
-        "responses": {
-          "200": {
-            "description": "Receipt list"
-          }
-        }
-      }
-    },
-    "/api/v1/synthetic": {
-      "get": {
-        "summary": "Get a synthetic sample bundle",
-        "responses": {
-          "200": {
-            "description": "Sample bundle"
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/vanta/schema": {
-      "get": {
-        "summary": "Get the TrustSignal Vanta verification-result schema",
-        "responses": {
-          "200": {
-            "description": "Vanta schema metadata",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VantaSchemaResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/vanta/verification/{receiptId}": {
-      "get": {
-        "summary": "Get Vanta evidence for a receipt",
-        "parameters": [
+        "tags": [
+          "Receipts"
+        ],
+        "summary": "List recent verification receipts",
+        "description": "Return a compact list of recent receipts for read-scoped integrations.",
+        "security": [
           {
-            "name": "receiptId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+            "ApiKeyAuth": [
+
+            ]
           }
         ],
         "responses": {
           "200": {
-            "description": "Vanta verification evidence",
+            "description": "Receipt list returned.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VantaVerificationResult"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceiptListItem"
+                  }
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API key authentication. TrustSignal uses scoped API keys for the public `/api/v1/*` surface.\nTypical scopes are `verify`, `read`, `anchor`, and `revoke`.\n"
+      }
+    },
+    "parameters": {
+      "ReceiptId": {
+        "name": "receiptId",
+        "in": "path",
+        "required": true,
+        "description": "Receipt identifier returned by `POST /api/v1/verify`.",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "IssuerId": {
+        "name": "x-issuer-id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Authorized issuer identifier for receipt revocation."
+      },
+      "SignatureTimestamp": {
+        "name": "x-signature-timestamp",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": "Timestamp used for issuer revocation authorization."
+      },
+      "IssuerSignature": {
+        "name": "x-issuer-signature",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Issuer authorization signature for receipt revocation."
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Request validation failed.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid authentication material.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The caller is authenticated but not authorized for this operation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Requested verification receipt was not found.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit exceeded.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "A required service dependency is unavailable.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "schemas": {
-      "VerifyInput": {
+      "VerificationRequest": {
         "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bundleId",
+          "transactionType",
+          "ron",
+          "doc",
+          "policy",
+          "property"
+        ],
         "properties": {
           "bundleId": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "description": "Caller-controlled verification identifier."
           },
           "transactionType": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "description": "Existing workflow transaction category."
           },
           "ron": {
             "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider",
+              "notaryId",
+              "commissionState",
+              "sealPayload"
+            ],
             "properties": {
               "provider": {
                 "type": "string"
@@ -244,379 +612,145 @@
                 "type": "string"
               },
               "commissionState": {
-                "type": "string"
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 2
               },
               "sealPayload": {
                 "type": "string"
+              },
+              "sealScheme": {
+                "type": "string",
+                "enum": [
+                  "SIM-ECDSA-v1"
+                ]
               }
-            },
-            "required": [
-              "provider",
-              "notaryId",
-              "commissionState",
-              "sealPayload"
-            ]
+            }
           },
           "doc": {
             "type": "object",
-            "properties": {
-              "docHash": {
-                "type": "string"
-              }
-            },
+            "additionalProperties": false,
             "required": [
               "docHash"
-            ]
+            ],
+            "properties": {
+              "docHash": {
+                "type": "string",
+                "description": "Artifact hash supplied by the caller."
+              },
+              "pdfBase64": {
+                "type": "string",
+                "description": "Optional artifact payload when the integration sends the full document."
+              }
+            }
           },
           "policy": {
             "type": "object",
-            "properties": {
-              "profile": {
-                "type": "string"
-              }
-            },
+            "additionalProperties": false,
             "required": [
               "profile"
-            ]
-          }
-        },
-        "required": [
-          "bundleId",
-          "transactionType",
-          "ron",
-          "doc",
-          "policy"
-        ]
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "additionalProperties": true,
-        "properties": {
-          "error": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "error"
-        ]
-      },
-      "FraudSignal": {
-        "type": "object",
-        "additionalProperties": true
-      },
-      "FraudRisk": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "score": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          },
-          "band": {
-            "type": "string",
-            "enum": [
-              "LOW",
-              "MEDIUM",
-              "HIGH"
-            ]
-          },
-          "signals": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FraudSignal"
+            ],
+            "properties": {
+              "profile": {
+                "type": "string",
+                "description": "Policy or control identifier for the verification."
+              }
             }
-          }
-        },
-        "required": [
-          "score",
-          "band",
-          "signals"
-        ]
-      },
-      "RevocationState": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ACTIVE",
-              "REVOKED"
-            ]
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
-      "AnchorState": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Anchoring lifecycle only. This does not imply the proof is cryptographically verifiable."
           },
-          "backend": {
-            "type": "string",
-            "description": "Present on mapped receipt/verify responses. The direct anchor route currently omits this field."
+          "property": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parcelId",
+              "county",
+              "state"
+            ],
+            "properties": {
+              "parcelId": {
+                "type": "string"
+              },
+              "county": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 2
+              }
+            }
           },
-          "txHash": {
-            "type": "string"
+          "ocrData": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "notaryName": {
+                "type": "string"
+              },
+              "notaryCommissionId": {
+                "type": "string"
+              },
+              "propertyAddress": {
+                "type": "string"
+              },
+              "grantorName": {
+                "type": "string"
+              }
+            }
           },
-          "chainId": {
-            "type": "string"
-          },
-          "anchorId": {
-            "type": "string"
-          },
-          "anchoredAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "subjectDigest": {
-            "type": "string",
-            "description": "Digest of the anchor provenance subject derived from receipt hash and attestation metadata."
-          },
-          "subjectVersion": {
-            "type": "string",
-            "enum": [
-              "trustsignal.anchor_subject.v1"
-            ]
-          }
-        },
-        "required": [
-          "status",
-          "subjectDigest",
-          "subjectVersion"
-        ]
-      },
-      "ZkpPublicInputs": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "policyHash": {
-            "type": "string"
+          "registryScreening": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "subjectName": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 256
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 50
+              },
+              "forceRefresh": {
+                "type": "boolean"
+              }
+            }
           },
           "timestamp": {
             "type": "string",
-            "format": "date-time"
-          },
-          "inputsCommitment": {
-            "type": "string"
-          },
-          "conformance": {
-            "type": "boolean",
-            "description": "Policy conformance result only. No raw witness or PII-bearing fields are exposed."
-          },
-          "declaredDocHash": {
-            "type": "string"
-          },
-          "documentDigest": {
-            "type": "string"
-          },
-          "documentCommitment": {
-            "type": "string"
-          },
-          "schemaVersion": {
-            "type": "string"
-          },
-          "documentWitnessMode": {
-            "type": "string",
-            "enum": [
-              "canonical-document-bytes-v1",
-              "declared-doc-hash-v1"
-            ]
-          }
-        },
-        "required": [
-          "policyHash",
-          "timestamp",
-          "inputsCommitment",
-          "conformance",
-          "declaredDocHash",
-          "documentDigest",
-          "documentCommitment",
-          "schemaVersion",
-          "documentWitnessMode"
-        ]
-      },
-      "DevOnlyProofArtifact": {
-        "type": "object",
-        "additionalProperties": false,
-        "description": "Digest of the dev-only document attestation artifact. This is not a serialized proof.",
-        "properties": {
-          "format": {
-            "type": "string"
-          },
-          "digest": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "format",
-          "digest"
-        ]
-      },
-      "VerifiableProofArtifact": {
-        "type": "object",
-        "additionalProperties": false,
-        "description": "Serialized proof artifact for a verifiable Halo2 attestation.",
-        "properties": {
-          "format": {
-            "type": "string"
-          },
-          "digest": {
-            "type": "string"
-          },
-          "encoding": {
-            "type": "string",
-            "enum": [
-              "base64"
-            ]
-          },
-          "proof": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "format",
-          "digest",
-          "encoding",
-          "proof"
-        ]
-      },
-      "DevOnlyZkpAttestation": {
-        "type": "object",
-        "additionalProperties": false,
-        "description": "Development-only document attestation metadata. Presence of this object does not mean the proof is cryptographically verifiable.",
-        "properties": {
-          "proofId": {
-            "type": "string"
-          },
-          "scheme": {
-            "type": "string",
-            "enum": [
-              "HALO2-DEV-v0"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "dev-only"
-            ]
-          },
-          "backend": {
-            "type": "string",
-            "enum": [
-              "halo2-dev"
-            ]
-          },
-          "circuitId": {
-            "type": "string"
-          },
-          "publicInputs": {
-            "$ref": "#/components/schemas/ZkpPublicInputs"
-          },
-          "proofArtifact": {
-            "$ref": "#/components/schemas/DevOnlyProofArtifact"
-          }
-        },
-        "required": [
-          "proofId",
-          "scheme",
-          "status",
-          "backend",
-          "circuitId",
-          "publicInputs",
-          "proofArtifact"
-        ]
-      },
-      "VerifiableZkpAttestation": {
-        "type": "object",
-        "additionalProperties": false,
-        "description": "Cryptographically verifiable Halo2 document attestation.",
-        "properties": {
-          "proofId": {
-            "type": "string"
-          },
-          "scheme": {
-            "type": "string",
-            "enum": [
-              "HALO2-v1"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "verifiable"
-            ]
-          },
-          "backend": {
-            "type": "string",
-            "enum": [
-              "halo2"
-            ]
-          },
-          "circuitId": {
-            "type": "string"
-          },
-          "verificationKeyId": {
-            "type": "string"
-          },
-          "verifiedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "publicInputs": {
-            "$ref": "#/components/schemas/ZkpPublicInputs"
-          },
-          "proofArtifact": {
-            "$ref": "#/components/schemas/VerifiableProofArtifact"
-          }
-        },
-        "required": [
-          "proofId",
-          "scheme",
-          "status",
-          "backend",
-          "circuitId",
-          "verificationKeyId",
-          "verifiedAt",
-          "publicInputs",
-          "proofArtifact"
-        ]
-      },
-      "ZkpAttestation": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/DevOnlyZkpAttestation"
-          },
-          {
-            "$ref": "#/components/schemas/VerifiableZkpAttestation"
-          }
-        ],
-        "discriminator": {
-          "propertyName": "status",
-          "mapping": {
-            "dev-only": "#/components/schemas/DevOnlyZkpAttestation",
-            "verifiable": "#/components/schemas/VerifiableZkpAttestation"
+            "format": "date-time",
+            "description": "Caller-provided event timestamp."
           }
         }
       },
-      "VerifyResponse": {
+      "VerificationResponse": {
         "type": "object",
-        "additionalProperties": false,
+        "additionalProperties": true,
+        "required": [
+          "receiptVersion",
+          "decision",
+          "reasons",
+          "receiptId",
+          "receiptHash",
+          "anchor",
+          "revocation"
+        ],
         "properties": {
           "receiptVersion": {
             "type": "string",
-            "enum": [
-              "2.0"
-            ]
+            "example": "2.0"
           },
           "decision": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ALLOW",
+              "FLAG",
+              "BLOCK"
+            ],
+            "description": "Verification signal for the submitted request."
           },
           "reasons": {
             "type": "array",
@@ -631,93 +765,151 @@
           "receiptHash": {
             "type": "string"
           },
-          "proofVerified": {
-            "type": "boolean",
-            "description": "Present when the API can truthfully report proof verification status without a separate verifier round-trip. Dev-only or missing attestations return false."
+          "receiptSignature": {
+            "$ref": "#/components/schemas/ReceiptSignature"
           },
           "anchor": {
             "$ref": "#/components/schemas/AnchorState"
           },
-          "fraudRisk": {
-            "$ref": "#/components/schemas/FraudRisk"
-          },
-          "zkpAttestation": {
-            "nullable": true,
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ZkpAttestation"
-              }
-            ]
-          },
           "revocation": {
             "$ref": "#/components/schemas/RevocationState"
-          },
-          "deprecated": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "riskScore": {
-                "type": "integer"
-              },
-              "revoked": {
-                "type": "boolean"
-              }
-            }
           }
         },
-        "required": [
-          "receiptVersion",
-          "decision",
-          "reasons",
-          "receiptId",
-          "receiptHash",
-          "anchor",
-          "fraudRisk",
-          "zkpAttestation",
-          "revocation"
-        ]
+        "description": "Public response fields for receipt issuance. Additional implementation-specific fields may also be present.\n"
       },
-      "ReceiptResponse": {
+      "VerificationReceipt": {
         "allOf": [
           {
-            "$ref": "#/components/schemas/VerifyResponse"
+            "$ref": "#/components/schemas/VerificationResponse"
           },
           {
             "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "receipt": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "canonicalReceipt": {
-                "type": "string"
-              },
-              "pdfUrl": {
-                "type": "string"
-              }
-            },
+            "additionalProperties": true,
             "required": [
               "receipt",
               "canonicalReceipt",
               "pdfUrl"
-            ]
+            ],
+            "properties": {
+              "receipt": {
+                "$ref": "#/components/schemas/StoredReceipt"
+              },
+              "canonicalReceipt": {
+                "type": "string",
+                "description": "Canonical receipt payload used for later verification."
+              },
+              "pdfUrl": {
+                "type": "string",
+                "description": "Relative URL for the PDF rendering of the receipt."
+              }
+            }
           }
         ]
       },
-      "ReceiptVerifyResponse": {
+      "StoredReceipt": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "receiptVersion",
+          "receiptId",
+          "createdAt",
+          "policyProfile",
+          "inputsCommitment",
+          "checks",
+          "decision",
+          "reasons",
+          "receiptHash"
+        ],
+        "properties": {
+          "receiptVersion": {
+            "type": "string"
+          },
+          "receiptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "policyProfile": {
+            "type": "string"
+          },
+          "inputsCommitment": {
+            "type": "string"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckResult"
+            }
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ALLOW",
+              "FLAG",
+              "BLOCK"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "receiptHash": {
+            "type": "string"
+          },
+          "receiptSignature": {
+            "$ref": "#/components/schemas/ReceiptSignature"
+          }
+        },
+        "description": "Stored receipt representation returned by the gateway. Integrations should rely on the documented receipt fields\nand should not infer internal engine behavior from optional fields.\n"
+      },
+      "VerificationStatus": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Integrity verification is distinct from proof verification. A dev-only attestation yields proofVerified=false.",
+        "required": [
+          "verified",
+          "integrityVerified",
+          "signatureVerified",
+          "signatureStatus",
+          "proofVerified",
+          "recomputedHash",
+          "storedHash",
+          "inputsCommitment",
+          "receiptSignature",
+          "revoked"
+        ],
         "properties": {
           "verified": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Overall later verification result."
           },
           "integrityVerified": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the stored receipt still matches its canonical hash."
+          },
+          "signatureVerified": {
+            "type": "boolean",
+            "description": "Whether the stored receipt signature verified."
+          },
+          "signatureStatus": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "invalid",
+              "unknown-kid",
+              "legacy-unsigned"
+            ]
+          },
+          "signatureReason": {
+            "type": "string"
           },
           "proofVerified": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Public verification status flag returned by the API."
           },
           "recomputedHash": {
             "type": "string"
@@ -728,262 +920,203 @@
           "inputsCommitment": {
             "type": "string"
           },
+          "receiptSignature": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptSignatureSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "revoked": {
             "type": "boolean"
           }
-        },
-        "required": [
-          "verified",
-          "integrityVerified",
-          "proofVerified",
-          "recomputedHash",
-          "storedHash",
-          "inputsCommitment",
-          "revoked"
-        ]
+        }
       },
-      "VantaCheck": {
+      "AnchorState": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Current provenance state for the receipt."
+          },
+          "anchoredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subjectDigest": {
+            "type": "string",
+            "description": "Verifiable provenance digest for later verification."
+          },
+          "subjectVersion": {
+            "type": "string",
+            "description": "Version label for the provenance digest format."
+          }
+        },
+        "description": "Public-safe provenance metadata. Implementations may return additional fields, but integrations should treat\nthis object as provenance state rather than infrastructure detail.\n"
+      },
+      "ReceiptListItem": {
         "type": "object",
         "additionalProperties": false,
+        "required": [
+          "receiptId",
+          "decision",
+          "createdAt",
+          "anchorStatus",
+          "revoked"
+        ],
+        "properties": {
+          "receiptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ALLOW",
+              "FLAG",
+              "BLOCK"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "anchorStatus": {
+            "type": "string"
+          },
+          "revoked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RevocationState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "REVOKED",
+              "ALREADY_REVOKED"
+            ]
+          }
+        }
+      },
+      "RevocationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "REVOKED",
+              "ALREADY_REVOKED"
+            ]
+          },
+          "issuerId": {
+            "type": "string",
+            "description": "Authorized issuer identifier returned when the receipt is revoked."
+          }
+        }
+      },
+      "ReceiptSignature": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alg",
+          "kid",
+          "signature"
+        ],
+        "properties": {
+          "alg": {
+            "type": "string",
+            "enum": [
+              "EdDSA"
+            ]
+          },
+          "kid": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string",
+            "description": "Signed receipt artifact returned by the API."
+          }
+        }
+      },
+      "ReceiptSignatureSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alg",
+          "kid"
+        ],
+        "properties": {
+          "alg": {
+            "type": "string",
+            "enum": [
+              "EdDSA"
+            ]
+          },
+          "kid": {
+            "type": "string"
+          }
+        }
+      },
+      "CheckResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "checkId",
+          "status"
+        ],
         "properties": {
           "checkId": {
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "WARN"
+            ]
           },
           "details": {
             "type": "string"
-          },
-          "source_name": {
-            "type": "string"
           }
-        },
-        "required": [
-          "checkId",
-          "status"
-        ]
+        }
       },
-      "VantaFraudRisk": {
+      "ErrorResponse": {
         "type": "object",
-        "nullable": true,
-        "additionalProperties": false,
+        "additionalProperties": true,
+        "required": [
+          "error"
+        ],
         "properties": {
-          "score": {
-            "type": "number"
-          },
-          "band": {
+          "error": {
             "type": "string"
           },
-          "reasons": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "score",
-          "band",
-          "reasons"
-        ]
-      },
-      "VantaControls": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "revoked": {
-            "type": "boolean"
-          },
-          "anchorStatus": {
+          "message": {
             "type": "string"
           },
-          "anchored": {
-            "type": "boolean"
-          },
-          "anchorSubjectDigest": {
-            "type": "string"
-          },
-          "anchorSubjectVersion": {
-            "type": "string",
-            "enum": [
-              "trustsignal.anchor_subject.v1"
-            ]
-          },
-          "anchoredAt": {
-            "type": "string",
-            "format": "date-time"
+          "details": {
+            "description": "Optional validation or request context."
           }
-        },
-        "required": [
-          "revoked",
-          "anchorStatus",
-          "anchored"
-        ]
-      },
-      "VantaVerificationResult": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "schemaVersion": {
-            "type": "string",
-            "enum": [
-              "trustsignal.vanta.verification_result.v1"
-            ]
-          },
-          "generatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "vendor": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-                "enum": [
-                  "TrustSignal"
-                ]
-              },
-              "module": {
-                "type": "string",
-                "enum": [
-                  "DeedShield"
-                ]
-              },
-              "environment": {
-                "type": "string"
-              },
-              "apiVersion": {
-                "type": "string",
-                "enum": [
-                  "v1"
-                ]
-              }
-            },
-            "required": [
-              "name",
-              "module",
-              "environment",
-              "apiVersion"
-            ]
-          },
-          "subject": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "receiptId": {
-                "type": "string"
-              },
-              "receiptHash": {
-                "type": "string"
-              },
-              "policyProfile": {
-                "type": "string"
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time"
-              }
-            },
-            "required": [
-              "receiptId",
-              "receiptHash",
-              "policyProfile",
-              "createdAt"
-            ]
-          },
-          "result": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "decision": {
-                "type": "string",
-                "enum": [
-                  "ALLOW",
-                  "FLAG",
-                  "BLOCK"
-                ]
-              },
-              "normalizedStatus": {
-                "type": "string",
-                "enum": [
-                  "PASS",
-                  "REVIEW",
-                  "FAIL"
-                ]
-              },
-              "riskScore": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 100
-              },
-              "reasons": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "checks": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/VantaCheck"
-                }
-              },
-              "fraudRisk": {
-                "$ref": "#/components/schemas/VantaFraudRisk"
-              },
-              "zkpAttestation": {
-                "nullable": true,
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/ZkpAttestation"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "decision",
-              "normalizedStatus",
-              "riskScore",
-              "reasons",
-              "checks",
-              "fraudRisk",
-              "zkpAttestation"
-            ]
-          },
-          "controls": {
-            "$ref": "#/components/schemas/VantaControls"
-          }
-        },
-        "required": [
-          "schemaVersion",
-          "generatedAt",
-          "vendor",
-          "subject",
-          "result",
-          "controls"
-        ]
-      },
-      "VantaSchemaResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "schemaVersion": {
-            "type": "string",
-            "enum": [
-              "trustsignal.vanta.verification_result.v1"
-            ]
-          },
-          "schema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "required": [
-          "schemaVersion",
-          "schema"
-        ]
+        }
       }
     }
   }

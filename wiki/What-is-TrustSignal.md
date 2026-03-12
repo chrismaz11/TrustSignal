@@ -11,18 +11,15 @@
 
 # What Is TrustSignal
 
-TrustSignal is evidence integrity infrastructure for compliance artifacts. It issues signed verification receipts and preserves the information needed to later confirm that a verification result still corresponds to the artifact and policy context originally evaluated.
+## Problem
 
-## What It Does
+Many workflow systems can show that an artifact was collected or reviewed. Fewer can later verify that the same artifact is still the one tied to the recorded decision.
 
-TrustSignal helps teams:
+## Integrity Model
 
-- create signed receipts when evidence is evaluated
-- retrieve those receipts later for audit, review, or partner workflows
-- re-verify stored receipts without depending on screenshots or manual notes
-- export normalized evidence payloads for downstream systems
+TrustSignal is evidence integrity infrastructure. It provides signed verification receipts, verification signals, verifiable provenance metadata, and later verification for existing workflows.
 
-## Where It Fits
+## Integration Fit
 
 TrustSignal fits behind an existing platform such as:
 
@@ -31,35 +28,26 @@ TrustSignal fits behind an existing platform such as:
 - a partner portal
 - a vertical workflow such as deed verification
 
-The upstream platform remains the system of record. TrustSignal adds integrity evidence at the boundary.
+The upstream platform remains the system of record. TrustSignal adds an integrity layer at the workflow boundary.
 
-## Verification Model
+## Technical Detail
 
-At a product level, the model is straightforward:
+At a high level, the public verification lifecycle is:
 
-1. An upstream system submits a verification request or artifact reference.
-2. TrustSignal evaluates the request against the configured policy and data dependencies.
-3. TrustSignal returns a decision plus a signed verification receipt.
-4. Downstream systems use the receipt as a stable audit artifact.
-5. Later checks can confirm receipt integrity, status, and lifecycle state.
+1. An upstream system submits a verification request.
+2. TrustSignal evaluates the request against configured checks.
+3. TrustSignal returns verification signals and a signed verification receipt.
+4. Downstream systems store the receipt with the workflow record.
+5. Later verification confirms receipt integrity, status, and provenance state when needed.
 
-In the current codebase, the integration-facing `/api/v1/*` routes implement that model by validating requests in the gateway and delegating the major lifecycle actions to the engine interface.
+In the current codebase, the integration-facing `/api/v1/*` routes implement that lifecycle. The legacy `/v1/*` surface remains present for the current SDK.
 
 ## What TrustSignal Is Not
 
 TrustSignal is not:
 
-- a replacement for compliance workflow software
+- a replacement for workflow software
 - a legal decision engine
-- a guarantee that an upstream source system is correct
-- a substitute for environment-specific security evidence or control validation
-
-## Current Repository Context
-
-This repository currently exposes:
-
-- the integration-facing `/api/v1/*` API surface
-- the legacy `/v1/*` API surface used by the JavaScript SDK
-- the DeedShield application module as the current product surface in-repo
-
-The product framing remains broader than a single module: TrustSignal is the integrity layer that sits behind workflow-specific applications.
+- a compliance certification service
+- a fraud adjudication service
+- a substitute for environment-specific security evidence

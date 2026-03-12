@@ -1,0 +1,22 @@
+{
+  "bundleId": "verification-2026-03-12-001",
+  "transactionType": "deed_transfer",
+  "ron": {
+    "provider": "source-system",
+    "notaryId": "NOTARY-EXAMPLE-01",
+    "commissionState": "IL",
+    "sealPayload": "simulated-seal-payload"
+  },
+  "doc": {
+    "docHash": "0x8b7b2f52f2a2e19f8f3fe0d815d1c1d8d1e0d120e8cc60d1baf5e7a6f9d211aa"
+  },
+  "policy": {
+    "profile": "CONTROL_CC_001"
+  },
+  "property": {
+    "parcelId": "PARCEL-EXAMPLE-1001",
+    "county": "Cook",
+    "state": "IL"
+  },
+  "timestamp": "2026-03-12T15:24:00.000Z"
+}

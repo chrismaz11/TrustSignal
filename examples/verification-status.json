@@ -1,0 +1,15 @@
+{
+  "verified": true,
+  "integrityVerified": true,
+  "signatureVerified": true,
+  "signatureStatus": "verified",
+  "proofVerified": false,
+  "recomputedHash": "0x4e7f2ce9d3f7a8d3b0e4c9f2aa17fd59d6b4fda2d7b7b7d1cce8124d7ee39d04",
+  "storedHash": "0x4e7f2ce9d3f7a8d3b0e4c9f2aa17fd59d6b4fda2d7b7b7d1cce8124d7ee39d04",
+  "inputsCommitment": "0x2dded9c1b5c4c6d91df58a1b1793cb527f2b0cf5ddaf447f5b7d9839f7ab7d01",
+  "receiptSignature": {
+    "alg": "EdDSA",
+    "kid": "trustsignal-current"
+  },
+  "revoked": false
+}

@@ -11,26 +11,32 @@
 
 # Claims Boundary
 
-## What TrustSignal Provides
+## Problem
 
-TrustSignal is evidence integrity infrastructure for compliance artifacts. It provides:
+Public integrations need a clear technical boundary so partner engineers and reviewers know what the TrustSignal response means and what it does not mean.
+
+## Integrity Model
+
+TrustSignal is evidence integrity infrastructure. It acts as an integrity layer for existing workflows and provides:
 
 - signed verification receipts
 - verification signals
-- receipt lifecycle state
-- verifiable provenance for artifacts
-- API-accessible verification results
+- verifiable provenance metadata
+- later verification capability
+- API-accessible receipt lifecycle state
 
-## What TrustSignal Does Not Provide
+## Integration Fit
+
+TrustSignal is designed to sit behind an upstream workflow that remains the system of record. The partner or workflow owner keeps control of collection, review, and business decisions.
+
+## Technical Detail
 
 TrustSignal does not provide:
 
 - legal determinations
 - compliance certification
 - fraud adjudication
-- replacement for system-of-record workflows
-- guarantees that depend on private infrastructure evidence
+- a replacement for system-of-record workflows
+- guarantees that depend on environment-specific infrastructure evidence outside this repository
 
-## Why This Boundary Exists
-
-TrustSignal operates as an integrity layer within existing workflows. It produces verification artifacts that downstream systems can use for audit, investigation, or compliance evidence validation, while preserving workflow ownership in the upstream system of record.
+The TrustSignal response should be treated as a technical verification artifact that supports audit-ready evidence and later verification.

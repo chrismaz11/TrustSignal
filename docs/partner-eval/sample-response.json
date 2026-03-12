@@ -1,0 +1,22 @@
+{
+  "receiptVersion": "2.0",
+  "decision": "ALLOW",
+  "reasons": [
+    "receipt issued"
+  ],
+  "receiptId": "2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a",
+  "receiptHash": "0x4e7f2ce9d3f7a8d3b0e4c9f2aa17fd59d6b4fda2d7b7b7d1cce8124d7ee39d04",
+  "receiptSignature": {
+    "alg": "EdDSA",
+    "kid": "trustsignal-current",
+    "signature": "eyJleGFtcGxlIjoic2lnbmVkLXJlY2VpcHQifQ"
+  },
+  "anchor": {
+    "status": "PENDING",
+    "subjectDigest": "0x8c0f95cda31274e7b61adfd1dd1e0c03a4b96f78d90da52d42fd93d9a38fc112",
+    "subjectVersion": "trustsignal.anchor_subject.v1"
+  },
+  "revocation": {
+    "status": "ACTIVE"
+  }
+}
