@@ -2,13 +2,13 @@
 
 ## Problem
 
-A partner engineer evaluating TrustSignal needs a fast path to see what goes in, what comes back, and how later verification works without reading the entire repository first.
+A partner engineer evaluating TrustSignal needs a fast path to see what goes in, what comes back, and how later verification works. The relevant attack surface is not only bad input at intake, but also tampered evidence, provenance loss, artifact substitution, and stale evidence that becomes hard to defend later.
 
 ## Integrity Model
 
 TrustSignal is evidence integrity infrastructure. It acts as an integrity layer for existing workflows by accepting a verification request, returning verification signals, issuing signed verification receipts, and exposing verifiable provenance metadata for later verification.
 
-## Integration Fit
+## Evaluator Path
 
 Start with these evaluator assets:
 
@@ -32,7 +32,15 @@ sequenceDiagram
   T-->>C: later verification status
 ```
 
-Use this path when you want to confirm that TrustSignal can fit behind an existing workflow and produce an audit-ready verification artifact.
+Use this path when you want to confirm that TrustSignal can fit behind an existing workflow and produce an audit-ready verification artifact before production integration work begins.
+
+## Integration Fit
+
+The evaluator path is a deliberate evaluator path. It shows the verification lifecycle safely before production authentication, signing, and environment requirements are fully configured.
+
+## Production Deployment Requirements
+
+Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
 ## Technical Detail
 
@@ -95,6 +103,7 @@ These operations are part of the public lifecycle, but they are not required to 
 - stored receipts can be retrieved later
 - later verification is a distinct lifecycle step
 - verifiable provenance metadata is available through the public contract where supported
+- the system is built for workflows where tampered evidence and provenance loss matter after collection
 
 ## Claims Boundary
 

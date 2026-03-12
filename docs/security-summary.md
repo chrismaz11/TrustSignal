@@ -2,11 +2,11 @@
 
 ## Problem
 
-Partners and evaluators need a public-safe summary of the TrustSignal security boundary without exposing internal implementation details that are not required for integration.
+Partners and evaluators need a public-safe security summary that explains the attack surface without exposing internal implementation details. In high-stakes workflows, evidence can be challenged after collection through tampered evidence, provenance loss, artifact substitution, or stale records that are no longer independently verifiable.
 
 ## Integrity Model
 
-TrustSignal provides signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflows.
+TrustSignal provides signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflow integration.
 
 ## Integration Fit
 
@@ -17,6 +17,12 @@ For the public `/api/v1/*` surface in this repository:
 - request validation and rate limiting are enforced at the API boundary
 - receipt revocation requires additional issuer authorization headers
 - later verification is available through a dedicated receipt verification route
+
+Evaluator and demo flows are deliberate evaluator paths. They are designed to show the verification lifecycle safely before production integration.
+
+## Production Deployment Requirements
+
+Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
 ## Technical Detail
 

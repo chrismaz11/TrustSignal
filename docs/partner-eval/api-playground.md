@@ -2,13 +2,13 @@
 
 ## Problem
 
-Evaluators often want a single page that shows the public API lifecycle, the exact artifacts to use, and the smallest realistic set of commands for testing.
+Evaluators often want a single page that shows the public API lifecycle, the exact artifacts to use, and the smallest realistic set of commands for testing. The key attack surface is later, not just at intake: tampered evidence, provenance loss, artifact substitution, and stale records in later review paths.
 
 ## Integrity Model
 
 TrustSignal provides verification signals, signed verification receipts, verifiable provenance metadata, and later verification through the public `/api/v1/*` surface.
 
-## Integration Fit
+## Evaluator Path
 
 Use this playground when you want to test the golden path quickly:
 
@@ -26,6 +26,14 @@ Canonical assets:
 - [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
 - [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
 - [TrustSignal.postman_collection.json](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+
+## Integration Fit
+
+The playground is a deliberate evaluator path. It is designed to show the verification lifecycle safely before production integration requirements are fully configured.
+
+## Production Deployment Requirements
+
+Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
 ## Technical Detail
 
@@ -114,6 +122,7 @@ Focus the evaluation on:
 - whether signed verification receipts are easy to retrieve later
 - whether later verification is explicit and easy to re-run
 - whether the public contract exposes verifiable provenance without exposing internal implementation details
+- whether the lifecycle is credible for workflows vulnerable to tampered evidence and provenance loss after collection
 
 ## Claims Boundary
 

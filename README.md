@@ -12,13 +12,13 @@ TrustSignal is evidence integrity infrastructure for existing workflows. It acts
 
 ## Problem
 
-Many teams can show that a file was uploaded, reviewed, or approved. Fewer can later verify that the same artifact is still the one tied to the decision they recorded.
+High-stakes document and evidence workflows create an attack surface after collection, not just at intake. Once an artifact has been uploaded, reviewed, or approved, downstream teams still face risks such as tampered evidence, provenance loss, artifact substitution, and stale evidence that can no longer be verified later.
 
-That gap creates audit friction, partner review friction, and avoidable evidence disputes. Workflow systems remain important, but they often need a durable verification artifact that can be retrieved and checked later.
+Those risks matter in audit, compliance, partner-review, and trust-sensitive workflows because the evidence is often challenged after collection rather than at the moment it first entered the system. TrustSignal is designed for workflows where later auditability matters because the artifact, its provenance, or the surrounding workflow record may be questioned later.
 
 ## Integrity Model
 
-TrustSignal addresses that gap by accepting a verification request, evaluating it against configured checks, and issuing a signed verification receipt. The receipt gives downstream systems a stable handle for later verification, receipt retrieval, lifecycle checks, and verifiable provenance.
+TrustSignal addresses that problem class by accepting a verification request, evaluating it against configured checks, and issuing a signed verification receipt. The receipt gives downstream systems a stable handle for later verification, receipt retrieval, lifecycle checks, and verifiable provenance.
 
 TrustSignal provides:
 
@@ -27,37 +27,6 @@ TrustSignal provides:
 - verifiable provenance metadata
 - later verification capability
 - existing workflow integration through the public API boundary
-
-## Integration Fit
-
-TrustSignal is designed to sit behind an existing workflow such as:
-
-- a compliance evidence pipeline
-- a partner portal
-- an intake or case-management system
-- a deed or property-record workflow
-
-The upstream platform remains the system of record. TrustSignal adds an integrity layer at the boundary and returns technical verification artifacts that the upstream workflow can store and use later.
-
-## Technical Detail
-
-The current partner-facing lifecycle in this repository is the `/api/v1/*` surface:
-
-- `POST /api/v1/verify`
-- `GET /api/v1/receipt/:receiptId`
-- `GET /api/v1/receipt/:receiptId/pdf`
-- `POST /api/v1/receipt/:receiptId/verify`
-- `POST /api/v1/receipt/:receiptId/revoke`
-- `POST /api/v1/anchor/:receiptId`
-- `GET /api/v1/receipts`
-
-Authentication is `x-api-key` with scoped access. Revocation additionally requires issuer authorization headers: `x-issuer-id`, `x-signature-timestamp`, and `x-issuer-signature`.
-
-The repository also still includes a legacy JWT-authenticated `/v1/*` surface used by the current JavaScript SDK:
-
-- `POST /v1/verify-bundle`
-- `GET /v1/status/:bundleId`
-- `POST /v1/revoke`
 
 ## Evaluate The API
 
@@ -76,46 +45,31 @@ Golden path:
 3. retrieve the stored receipt
 4. run later verification
 
-## Public API Contract And Examples
+## What You Will See
 
-The public evaluation artifacts added in this repo are:
+The evaluator path is designed to show the core value before full production integration work:
 
-- [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
-- [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
-- [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
-- [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
-- [partner evaluation kit](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- artifact intake through the public API
+- signed verification receipt issuance
+- verification signals that can be stored in an existing workflow
+- later verification against the stored receipt state
+- visible handling for tampered evidence or stale evidence through the later verification lifecycle
 
-These artifacts document the public verification lifecycle only. They intentionally avoid proof internals, model outputs, circuit identifiers, signing infrastructure specifics, and internal service topology.
+## Quick Evaluator Path
 
-## Security Posture
+The fastest path in this repository is the public `/api/v1/*` evaluator flow. It is a deliberate evaluator path, not a shortcut around production controls.
 
-Public-facing security properties for this repository are:
+The current partner-facing lifecycle in this repository is:
 
-- scoped API authentication for the integration-facing API
-- request validation and rate limiting at the gateway
-- signed verification receipts returned with verification responses
-- later verification of stored receipt integrity and status
-- explicit lifecycle boundaries for read, revoke, and provenance-state operations
+- `POST /api/v1/verify`
+- `GET /api/v1/receipt/:receiptId`
+- `GET /api/v1/receipt/:receiptId/pdf`
+- `POST /api/v1/receipt/:receiptId/verify`
+- `POST /api/v1/receipt/:receiptId/revoke`
+- `POST /api/v1/anchor/:receiptId`
+- `GET /api/v1/receipts`
 
-See [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md), [SECURITY_CHECKLIST.md](/Users/christopher/Projects/trustsignal/SECURITY_CHECKLIST.md), and [docs/SECURITY.md](/Users/christopher/Projects/trustsignal/docs/SECURITY.md) for the current public-safe security summary and repository guardrails.
-
-## What TrustSignal Does Not Claim
-
-TrustSignal does not provide:
-
-- legal determinations
-- compliance certification
-- fraud adjudication
-- a replacement for the system of record
-- infrastructure claims that depend on environment-specific evidence outside this repository
-
-## Current Repository Context
-
-DeedShield is the current application surface in this repository. The broader product framing remains TrustSignal as evidence integrity infrastructure and an integrity layer for existing workflows.
-
-## Local Development
+## Minimal Local Setup
 
 Prerequisites:
 
@@ -123,7 +77,7 @@ Prerequisites:
 - npm `>= 9`
 - PostgreSQL `>= 14` for `apps/api`
 
-Quickstart:
+Minimal setup:
 
 ```bash
 npm install
@@ -144,6 +98,113 @@ Default local ports:
 
 - web app: `http://localhost:3000`
 - API: `http://localhost:3001`
+
+## Run The Demo
+
+Once the local API is running, use the evaluator quickstart or the public examples directly:
+
+```bash
+curl -X POST "http://localhost:3001/api/v1/verify" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $TRUSTSIGNAL_API_KEY" \
+  --data @examples/verification-request.json
+```
+
+Then retrieve the stored receipt and run later verification:
+
+```bash
+curl "http://localhost:3001/api/v1/receipt/$RECEIPT_ID" \
+  -H "x-api-key: $TRUSTSIGNAL_API_KEY"
+
+curl -X POST "http://localhost:3001/api/v1/receipt/$RECEIPT_ID/verify" \
+  -H "x-api-key: $TRUSTSIGNAL_API_KEY"
+```
+
+## What The Demo Proves
+
+The evaluator flow demonstrates that:
+
+- TrustSignal can fit behind an existing workflow without replacing the system of record
+- the API returns signed verification receipts and verification signals in one flow
+- later verification is explicit and separate from initial receipt issuance
+- the system is built for attack surfaces such as tampered evidence, provenance loss, and artifact substitution in later review paths
+
+## Integration Fit
+
+TrustSignal is designed to sit behind an existing workflow such as:
+
+- a compliance evidence pipeline
+- a partner portal
+- an intake or case-management system
+- a deed or property-record workflow
+
+The upstream platform remains the system of record. TrustSignal adds an integrity layer at the boundary and returns technical verification artifacts that the upstream workflow can store and use later.
+
+## Full Local Development Setup
+
+The local evaluator path is intentionally constrained. Local development defaults are a deliberate evaluator and development path, and they fail closed where production trust assumptions are not satisfied.
+
+Authentication is `x-api-key` with scoped access. Revocation additionally requires issuer authorization headers: `x-issuer-id`, `x-signature-timestamp`, and `x-issuer-signature`.
+
+The repository also still includes a legacy JWT-authenticated `/v1/*` surface used by the current JavaScript SDK:
+
+- `POST /v1/verify-bundle`
+- `GET /v1/status/:bundleId`
+- `POST /v1/revoke`
+
+## Production Deployment Requirements
+
+Production deployment requires explicit authentication, signing configuration, and environment setup. Public documentation should be read as architecturally mature and bounded, not as a claim that every deployment control is satisfied automatically.
+
+For production use, plan for at least:
+
+- explicit API-key and JWT configuration
+- signing configuration and key management through environment setup
+- receipt lifecycle checks before downstream reliance
+- database and network security controls appropriate for the deployment environment
+- environment-specific operational controls outside this repository
+
+Fail-closed defaults are part of the security posture. They are meant to prevent the system from silently assuming production trust conditions that have not been configured.
+
+## Public API Contract And Examples
+
+The public evaluation artifacts in this repo are:
+
+- [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
+- [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
+- [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
+- [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
+- [partner evaluation kit](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+
+These artifacts document the public verification lifecycle only. They intentionally avoid proof internals, model outputs, circuit identifiers, signing infrastructure specifics, and internal service topology.
+
+## Security Posture
+
+Public-facing security properties for this repository are:
+
+- scoped API authentication for the integration-facing API
+- request validation and rate limiting at the gateway
+- signed verification receipts returned with verification responses
+- later verification of stored receipt integrity and status
+- explicit lifecycle boundaries for read, revoke, and provenance-state operations
+- fail-closed defaults where production trust assumptions are not satisfied
+
+See [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md), [SECURITY_CHECKLIST.md](/Users/christopher/Projects/trustsignal/SECURITY_CHECKLIST.md), and [docs/SECURITY.md](/Users/christopher/Projects/trustsignal/docs/SECURITY.md) for the current public-safe security summary and repository guardrails.
+
+## What TrustSignal Does Not Claim
+
+TrustSignal does not provide:
+
+- legal determinations
+- compliance certification
+- fraud adjudication
+- a replacement for the system of record
+- infrastructure claims that depend on environment-specific evidence outside this repository
+
+## Current Repository Context
+
+DeedShield is the current application surface in this repository. The broader product framing remains TrustSignal as evidence integrity infrastructure and an integrity layer for existing workflows.
 
 ## Validation
 

@@ -2,7 +2,7 @@
 
 ## Problem
 
-Teams often have a workflow record that says an artifact was reviewed, approved, or submitted, but they cannot easily prove later that the same artifact is still the one tied to that decision.
+Teams often have a workflow record that says an artifact was reviewed, approved, or submitted, but they cannot easily prove later that the same artifact is still the one tied to that decision. In high-loss and highly scrutinized workflows, that creates an attack surface around tampered evidence, provenance loss, artifact substitution, and stale evidence in later review paths.
 
 ## Integrity Model
 
@@ -16,6 +16,17 @@ TrustSignal is designed to support:
 - audit-ready evidence
 - later verification without replacing the upstream workflow owner
 
+## Evaluator Path
+
+Start with these evaluator assets:
+
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+
+The evaluator flow is designed to show the verification lifecycle safely before production integration requirements are introduced.
+
 ## Integration Fit
 
 TrustSignal fits behind an existing workflow such as:
@@ -27,12 +38,9 @@ TrustSignal fits behind an existing workflow such as:
 
 The upstream platform remains the system of record. TrustSignal adds an integrity layer and returns technical verification artifacts that can be stored alongside the workflow record.
 
-Start with these evaluator assets:
+## Production Deployment Requirements
 
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+Local and evaluator paths are deliberate evaluator paths. Production deployment requires explicit authentication, signing configuration, and environment setup. Fail-closed defaults are part of the security posture and are intended to stop unsafe production assumptions from being applied implicitly.
 
 ## Technical Detail
 

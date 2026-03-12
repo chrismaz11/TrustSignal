@@ -2,6 +2,14 @@
 
 This folder is organized into active, canonical documents and archived historical material.
 
+## Problem
+
+TrustSignal documentation is written for evaluators and implementers working in workflows where later auditability matters. The main attack surface is not only bad data at intake, but also tampered evidence, provenance loss, artifact substitution, and stale evidence that cannot be verified later.
+
+## Integrity Model
+
+TrustSignal is evidence integrity infrastructure. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflow integration.
+
 ## Evaluator Quickstart
 
 Start here if you want to evaluate the public verification lifecycle quickly:
@@ -19,6 +27,14 @@ Golden path:
 2. receive verification signals plus a signed verification receipt
 3. retrieve the stored receipt
 4. run later verification
+
+## Integration Fit
+
+The evaluator and demo paths are deliberate evaluator paths. They show the verification lifecycle safely before production integration and do not remove production security requirements.
+
+## Production Deployment Requirements
+
+Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
 ## Canonical Documentation
 - `final/01_EXECUTIVE_SUMMARY.md`

@@ -13,19 +13,13 @@
 
 ## Problem
 
-Partners need a stable public contract that explains how TrustSignal fits into an existing workflow without requiring them to understand internal implementation details.
+Partners need a stable public contract that explains how TrustSignal fits into an existing workflow without requiring them to understand internal implementation details. The relevant attack surface includes tampered evidence, provenance loss, artifact substitution, and stale evidence in later review paths.
 
 ## Integrity Model
 
 TrustSignal exposes a public verification lifecycle centered on signed verification receipts, verification signals, verifiable provenance metadata, and later verification.
 
-## Integration Fit
-
-The integration-facing `/api/v1/*` surface is the main public partner API in this repository. It uses `x-api-key` authentication with scoped access such as `verify`, `read`, `anchor`, and `revoke`.
-
-The legacy `/v1/*` surface is still present for the current JavaScript SDK and uses bearer JWT authentication.
-
-### Evaluator Quickstart
+## Evaluator Path
 
 Start here to try the public lifecycle:
 
@@ -40,6 +34,16 @@ Golden path:
 2. receive verification signals plus a signed verification receipt
 3. retrieve the stored receipt
 4. run later verification
+
+## Integration Fit
+
+The integration-facing `/api/v1/*` surface is the main public partner API in this repository. It uses `x-api-key` authentication with scoped access such as `verify`, `read`, `anchor`, and `revoke`.
+
+The legacy `/v1/*` surface is still present for the current JavaScript SDK and uses bearer JWT authentication.
+
+## Production Deployment Requirements
+
+Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
 ## Technical Detail
 
