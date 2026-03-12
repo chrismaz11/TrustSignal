@@ -237,6 +237,19 @@ npm run typecheck
 npm run build
 ```
 
+## Current Evaluator Metrics
+
+Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:22:06.846Z`:
+
+- clean verification request latency: mean `5.06 ms`, median `3.78 ms`, p95 `19.57 ms`
+- signed receipt generation latency: mean `0.38 ms`, median `0.32 ms`, p95 `0.90 ms`
+- receipt lookup latency: mean `0.60 ms`, median `0.57 ms`, p95 `0.71 ms`
+- later verification latency: mean `0.76 ms`, median `0.72 ms`, p95 `1.07 ms`
+- tampered artifact detection latency: mean `8.02 ms`, median `5.01 ms`, p95 `42.84 ms`
+- repeated-run stability for the same artifact payload: mean `3.24 ms`, median `3.21 ms`, p95 `4.04 ms`
+
+This is a recent local evaluator run against the current `/api/v1/*` lifecycle with a temporary local PostgreSQL instance. It is a benchmark snapshot for evaluation and regression tracking, not a production guarantee or SLA.
+
 ## Documentation Map
 
 - [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)

@@ -119,6 +119,18 @@ curl -X POST -H "x-api-key: $TRUSTSIGNAL_API_KEY" \
   https://api.trustsignal.example/api/v1/receipt/2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a/verify
 ```
 
+### Recent Verification Timing
+
+Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:22:06.846Z`:
+
+- clean verification request latency: mean `5.06 ms`, median `3.78 ms`, p95 `19.57 ms`
+- signed receipt generation latency: mean `0.38 ms`, median `0.32 ms`, p95 `0.90 ms`
+- receipt lookup latency: mean `0.60 ms`, median `0.57 ms`, p95 `0.71 ms`
+- later verification latency: mean `0.76 ms`, median `0.72 ms`, p95 `1.07 ms`
+- tampered artifact detection latency: mean `8.02 ms`, median `5.01 ms`, p95 `42.84 ms`
+
+This is a recent local evaluator benchmark snapshot, not a production guarantee. The tampered path is most useful as a behavior check for mismatch handling rather than a parser-completeness claim.
+
 ### What This Does Not Expose
 
 This public example does not expose:

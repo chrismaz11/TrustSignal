@@ -67,6 +67,18 @@ curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/anchor/$RECEIPT_ID" \
 
 Revocation is part of the public contract, but it requires issuer authorization headers in addition to the API key. Use the Postman collection for the full request template.
 
+## Recent Verification Timing
+
+Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:22:06.846Z`:
+
+- `POST /api/v1/verify` clean-path latency: mean `5.06 ms`, median `3.78 ms`, p95 `19.57 ms`
+- signed receipt generation latency: mean `0.38 ms`, median `0.32 ms`, p95 `0.90 ms`
+- `GET /api/v1/receipt/:receiptId` lookup latency: mean `0.60 ms`, median `0.57 ms`, p95 `0.71 ms`
+- `POST /api/v1/receipt/:receiptId/verify` later verification latency: mean `0.76 ms`, median `0.72 ms`, p95 `1.07 ms`
+- tampered artifact detection path: mean `8.02 ms`, median `5.01 ms`, p95 `42.84 ms`
+
+These numbers come from a recent local benchmark harness run against the current evaluator path. They are current validation data, not guaranteed service latency.
+
 ## Production Readiness
 
 - Authentication: use `x-api-key` with the scopes required for verify, read, anchor, or revoke operations.

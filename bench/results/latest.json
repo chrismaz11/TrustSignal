@@ -1,0 +1,500 @@
+{
+  "generatedAt": "2026-03-12T22:22:06.846Z",
+  "command": "npx tsx bench/run-bench.ts --scenario all --runs 15 --batch-size 10",
+  "environment": {
+    "node": "v22.14.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "hostname": "Christophers-Mac-mini.local",
+    "tempDatabase": {
+      "engine": "postgresql",
+      "port": 63688,
+      "dbName": "trustsignal_bench"
+    }
+  },
+  "harness": {
+    "scenario": "all",
+    "runs": 15,
+    "batchSize": 10
+  },
+  "metrics": {
+    "verificationRequestLatency": {
+      "count": 15,
+      "minMs": 3.19,
+      "maxMs": 19.57,
+      "meanMs": 5.06,
+      "medianMs": 3.78,
+      "p95Ms": 19.57
+    },
+    "signedReceiptGenerationLatency": {
+      "count": 15,
+      "minMs": 0.28,
+      "maxMs": 0.9,
+      "meanMs": 0.38,
+      "medianMs": 0.32,
+      "p95Ms": 0.9
+    },
+    "laterVerificationLatency": {
+      "count": 15,
+      "minMs": 0.7,
+      "maxMs": 1.07,
+      "meanMs": 0.76,
+      "medianMs": 0.72,
+      "p95Ms": 1.07
+    },
+    "statusLookupLatency": {
+      "count": 15,
+      "minMs": 0.56,
+      "maxMs": 0.71,
+      "meanMs": 0.6,
+      "medianMs": 0.57,
+      "p95Ms": 0.71
+    },
+    "tamperedArtifactDetectionLatency": {
+      "count": 15,
+      "minMs": 4.69,
+      "maxMs": 42.84,
+      "meanMs": 8.02,
+      "medianMs": 5.01,
+      "p95Ms": 42.84
+    },
+    "repeatedRunStability": {
+      "count": 15,
+      "minMs": 3,
+      "maxMs": 4.04,
+      "meanMs": 3.24,
+      "medianMs": 3.21,
+      "p95Ms": 4.04
+    }
+  },
+  "scenarios": [
+    {
+      "scenario": "clean",
+      "purpose": "Measure end-to-end clean artifact verification through POST /api/v1/verify.",
+      "command": "npx tsx bench/run-bench.ts --scenario clean --runs 15",
+      "metricsCaptured": [
+        "verification request latency",
+        "signed receipt generation latency"
+      ],
+      "expectedOutcome": "HTTP 200 with receiptId, receiptHash, and receiptSignature present.",
+      "timingsMs": [
+        19.57,
+        5.58,
+        4.46,
+        4.2,
+        5.58,
+        3.9,
+        3.55,
+        3.51,
+        4.4,
+        3.78,
+        3.74,
+        3.48,
+        3.37,
+        3.19,
+        3.53
+      ],
+      "statusCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "successCount": 15,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "15/15 clean verification requests returned signed receipts."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 15,
+        "minMs": 3.19,
+        "maxMs": 19.57,
+        "meanMs": 5.06,
+        "medianMs": 3.78,
+        "p95Ms": 19.57
+      }
+    },
+    {
+      "scenario": "tampered",
+      "purpose": "Measure latency for a tampered artifact submission where the declared hash does not match the supplied bytes.",
+      "command": "npx tsx bench/run-bench.ts --scenario tampered --runs 15",
+      "metricsCaptured": [
+        "tampered artifact detection latency"
+      ],
+      "expectedOutcome": "HTTP 200 with mismatch visible in zkpAttestation.publicInputs declaredDocHash vs documentDigest.",
+      "timingsMs": [
+        42.84,
+        11.13,
+        6.03,
+        4.93,
+        5.01,
+        4.84,
+        5.01,
+        4.99,
+        5.61,
+        5.52,
+        4.85,
+        4.69,
+        4.72,
+        5.19,
+        5.01
+      ],
+      "statusCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "successCount": 15,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "15/15 tampered runs surfaced a declared hash vs observed digest mismatch."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 15,
+        "minMs": 4.69,
+        "maxMs": 42.84,
+        "meanMs": 8.02,
+        "medianMs": 5.01,
+        "p95Ms": 42.84
+      }
+    },
+    {
+      "scenario": "repeat",
+      "purpose": "Measure stability when the same artifact payload is verified repeatedly.",
+      "command": "npx tsx bench/run-bench.ts --scenario repeat --runs 15",
+      "metricsCaptured": [
+        "repeated-run stability"
+      ],
+      "expectedOutcome": "Repeated requests continue returning HTTP 200 and signed receipts without contract drift.",
+      "timingsMs": [
+        3.48,
+        3.21,
+        4.04,
+        3.42,
+        3.25,
+        3.24,
+        3.23,
+        3.09,
+        3.05,
+        3.09,
+        3.37,
+        3.11,
+        3.04,
+        3,
+        3.03
+      ],
+      "statusCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "successCount": 15,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "15/15 repeated submissions of the same payload returned HTTP 200."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 15,
+        "minMs": 3,
+        "maxMs": 4.04,
+        "meanMs": 3.24,
+        "medianMs": 3.21,
+        "p95Ms": 4.04
+      }
+    },
+    {
+      "scenario": "lookup",
+      "purpose": "Measure receipt retrieval latency through GET /api/v1/receipt/:receiptId.",
+      "command": "npx tsx bench/run-bench.ts --scenario lookup --runs 15",
+      "metricsCaptured": [
+        "status lookup latency"
+      ],
+      "expectedOutcome": "HTTP 200 with persisted receipt payload.",
+      "timingsMs": [
+        0.64,
+        0.71,
+        0.62,
+        0.59,
+        0.58,
+        0.57,
+        0.56,
+        0.56,
+        0.71,
+        0.57,
+        0.56,
+        0.56,
+        0.57,
+        0.57,
+        0.56
+      ],
+      "statusCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "successCount": 15,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "15/15 receipt lookup requests returned the stored receipt."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 15,
+        "minMs": 0.56,
+        "maxMs": 0.71,
+        "meanMs": 0.6,
+        "medianMs": 0.57,
+        "p95Ms": 0.71
+      }
+    },
+    {
+      "scenario": "later-verification",
+      "purpose": "Measure later verification latency through POST /api/v1/receipt/:receiptId/verify.",
+      "command": "npx tsx bench/run-bench.ts --scenario lookup --runs 15",
+      "metricsCaptured": [
+        "later verification latency"
+      ],
+      "expectedOutcome": "HTTP 200 with verified=true, integrityVerified=true, and signatureVerified=true.",
+      "timingsMs": [
+        1.07,
+        0.78,
+        0.76,
+        0.74,
+        0.71,
+        0.71,
+        0.71,
+        0.71,
+        0.86,
+        0.72,
+        0.79,
+        0.71,
+        0.75,
+        0.7,
+        0.71
+      ],
+      "statusCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "successCount": 15,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "15/15 later verification requests returned verified=true."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 15,
+        "minMs": 0.7,
+        "maxMs": 1.07,
+        "meanMs": 0.76,
+        "medianMs": 0.72,
+        "p95Ms": 1.07
+      }
+    },
+    {
+      "scenario": "bad-auth",
+      "purpose": "Confirm evaluator-visible fail-closed behavior for missing or invalid API authentication.",
+      "command": "npx tsx bench/run-bench.ts --scenario bad-auth",
+      "metricsCaptured": [
+        "auth failure response latency"
+      ],
+      "expectedOutcome": "Missing auth returns 401 and invalid auth returns 403.",
+      "timingsMs": [
+        0.23,
+        0.15
+      ],
+      "statusCodes": [
+        401,
+        403
+      ],
+      "successCount": 2,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "2/2 auth-failure probes returned the expected 401 or 403 response."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 2,
+        "minMs": 0.15,
+        "maxMs": 0.23,
+        "meanMs": 0.19,
+        "medianMs": 0.19,
+        "p95Ms": 0.23
+      }
+    },
+    {
+      "scenario": "malformed",
+      "purpose": "Confirm malformed evaluator payloads fail early without entering the verification lifecycle.",
+      "command": "npx tsx bench/run-bench.ts --scenario malformed",
+      "metricsCaptured": [
+        "payload validation failure latency"
+      ],
+      "expectedOutcome": "HTTP 400 with Invalid payload error.",
+      "timingsMs": [
+        0.46,
+        0.39
+      ],
+      "statusCodes": [
+        400,
+        400
+      ],
+      "successCount": 2,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "2/2 malformed payload probes returned HTTP 400."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 2,
+        "minMs": 0.39,
+        "maxMs": 0.46,
+        "meanMs": 0.43,
+        "medianMs": 0.43,
+        "p95Ms": 0.46
+      }
+    },
+    {
+      "scenario": "dependency-failure",
+      "purpose": "Measure fail-closed behavior when an external registry dependency is unavailable without configured access.",
+      "command": "npx tsx bench/run-bench.ts --scenario dependency-failure",
+      "metricsCaptured": [
+        "dependency failure response latency"
+      ],
+      "expectedOutcome": "HTTP 200 with a non-ALLOW decision reflecting compliance-gap or fail-closed handling.",
+      "timingsMs": [
+        13.35
+      ],
+      "statusCodes": [
+        200
+      ],
+      "successCount": 1,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "Registry dependency failure produced a non-ALLOW decision without exposing internal dependency details."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 1,
+        "minMs": 13.35,
+        "maxMs": 13.35,
+        "meanMs": 13.35,
+        "medianMs": 13.35,
+        "p95Ms": 13.35
+      }
+    },
+    {
+      "scenario": "batch",
+      "purpose": "Measure sequential small-batch behavior over a short evaluator run.",
+      "command": "npx tsx bench/run-bench.ts --scenario batch --batch-size 10",
+      "metricsCaptured": [
+        "small batch latency distribution"
+      ],
+      "expectedOutcome": "All 10 sequential requests return HTTP 200 with signed receipts.",
+      "timingsMs": [
+        3.31,
+        3.09,
+        3.07,
+        3.26,
+        3.37,
+        3.35,
+        3.11,
+        3.57,
+        3.18,
+        3.09
+      ],
+      "statusCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "successCount": 10,
+      "failureCount": 0,
+      "reliabilityNotes": [
+        "10/10 batch requests returned HTTP 200."
+      ],
+      "caveats": [],
+      "summary": {
+        "count": 10,
+        "minMs": 3.07,
+        "maxMs": 3.57,
+        "meanMs": 3.24,
+        "medianMs": 3.22,
+        "p95Ms": 3.57
+      }
+    }
+  ],
+  "notableFailures": [],
+  "caveats": [
+    "tampered: The tampered scenario uses a local byte fixture to force a declared-hash mismatch. It is suitable for evaluator behavior checks, not for asserting document-parser completeness."
+  ]
+}

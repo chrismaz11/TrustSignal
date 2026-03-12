@@ -78,3 +78,15 @@ flowchart TD
 - The TrustSignal API Gateway is the public integration boundary for verification and later verification requests.
 - The private verification engine remains non-public.
 - The public outputs are verification signals, signed verification receipts, and verifiable provenance suitable for later verification.
+
+## Current Evaluator Metrics
+
+Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:22:06.846Z`:
+
+- clean verification request latency: mean `5.06 ms`, median `3.78 ms`, p95 `19.57 ms`
+- signed receipt generation latency: mean `0.38 ms`, median `0.32 ms`, p95 `0.90 ms`
+- receipt lookup latency: mean `0.60 ms`, median `0.57 ms`, p95 `0.71 ms`
+- later verification latency: mean `0.76 ms`, median `0.72 ms`, p95 `1.07 ms`
+- tampered artifact detection latency: mean `8.02 ms`, median `5.01 ms`, p95 `42.84 ms`
+
+This benchmark snapshot is from a recent local evaluator run using the current public lifecycle. It helps characterize the flow in this repository without making production-performance claims.
