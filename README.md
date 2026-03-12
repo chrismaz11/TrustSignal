@@ -16,9 +16,15 @@ High-stakes document and evidence workflows create an attack surface after colle
 
 Those risks matter in audit, compliance, partner-review, and trust-sensitive workflows because the evidence is often challenged after collection rather than at the moment it first entered the system. TrustSignal is designed for workflows where later auditability matters because the artifact, its provenance, or the surrounding workflow record may be questioned later.
 
-## Integrity Model
+## Verification Lifecycle
 
-TrustSignal addresses that problem class by accepting a verification request, evaluating it against configured checks, and issuing a signed verification receipt. The receipt gives downstream systems a stable handle for later verification, receipt retrieval, lifecycle checks, and verifiable provenance.
+The canonical lifecycle diagram and trust-boundary view are documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+
+TrustSignal accepts a verification request, returns verification signals, issues a signed verification receipt, and supports later verification against stored receipt state so downstream teams can detect artifact tampering, evidence provenance loss, or stale records during audit review.
+
+## Demo
+
+The fastest evaluator path is the local 5-minute developer trial:
 
 TrustSignal provides:
 
@@ -27,10 +33,6 @@ TrustSignal provides:
 - verifiable provenance metadata
 - later verification capability
 - existing workflow integration through the public API boundary
-
-## Demo
-
-The fastest evaluator path is the local 5-minute developer trial:
 
 ```bash
 npm install
@@ -47,7 +49,7 @@ It shows the full lifecycle in one run:
 
 See [demo/README.md](/Users/christopher/Projects/trustsignal/demo/README.md).
 
-## Integration
+## Integration Model
 
 Start here if you are evaluating the public verification lifecycle:
 

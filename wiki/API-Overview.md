@@ -15,7 +15,9 @@
 
 Partners need a stable public contract that explains how TrustSignal fits into an existing workflow without requiring them to understand internal implementation details. The relevant attack surface includes evidence tampering after collection, artifact substitution attacks, provenance loss in compliance workflows, stale evidence during audit review, and documentation chains that cannot be verified later.
 
-## Integrity Model
+## Verification Lifecycle
+
+The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
 TrustSignal exposes a public verification lifecycle centered on signed verification receipts, verification signals, verifiable provenance metadata, and later verification.
 
@@ -25,7 +27,7 @@ Start with the local developer trial for the fastest lifecycle walkthrough:
 
 - [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
 
-## Integration
+## Integration Model
 
 Start here to try the public lifecycle:
 

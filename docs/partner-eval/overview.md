@@ -4,9 +4,11 @@
 
 Teams often have a workflow record that says an artifact was reviewed, approved, or submitted, but they cannot easily prove later that the same artifact is still the one tied to that decision. In high-loss and highly scrutinized workflows, that creates an attack surface around tampered evidence, provenance loss, artifact substitution, and stale evidence in later review paths.
 
-## Integrity Model
+## Verification Lifecycle
 
-TrustSignal is evidence integrity infrastructure. It acts as an integrity layer for existing workflows by accepting a verification request, returning verification signals, and issuing signed verification receipts with verifiable provenance metadata for later verification.
+The canonical lifecycle diagram and trust-boundary diagram are documented in [../verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+
+TrustSignal is evidence integrity infrastructure. It acts as an integrity layer for existing workflows by accepting a verification request, returning verification signals, issuing signed verification receipts, and supporting later verification during audit review.
 
 TrustSignal is designed to support:
 
@@ -21,7 +23,7 @@ Start with the local developer trial when you want the shortest path to the veri
 
 - [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
 
-## Integration
+## Integration Model
 
 Start with these evaluator assets:
 

@@ -19,7 +19,9 @@ TrustSignal is built for workflows where evidence can be challenged after collec
 
 High-loss environments create incentives for these attack paths because downstream reviewers often must rely on artifacts long after the original collection event.
 
-## Integrity Model
+## Verification Lifecycle
+
+The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
 TrustSignal provides signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability as an integrity layer for an existing system of record.
 
@@ -35,7 +37,7 @@ TrustSignal provides signed verification receipts, verification signals, verifia
 
 - [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
 
-## Integration
+## Integration Model
 
 Use the evaluator docs when you want to see the verification lifecycle before production integration detail:
 

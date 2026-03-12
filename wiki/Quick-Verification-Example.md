@@ -15,11 +15,13 @@
 
 This example is for partner engineers who want the smallest realistic TrustSignal flow that shows what goes in, what comes back, and how later verification works. It is intended for workflows where tampered evidence, provenance loss, artifact substitution, and stale evidence matter after collection.
 
-## Integrity Model
+## Verification Lifecycle
 
-The example uses the current integration-facing lifecycle to create a verification, return verification signals plus a signed verification receipt, and later verify stored receipt state.
+The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
-## Evaluator Path
+This example uses the current integration-facing lifecycle to create a verification, return verification signals plus a signed verification receipt, store the receipt with the workflow record, and later verify stored receipt state during audit review.
+
+## Demo
 
 Start here for the full evaluator path:
 
@@ -28,7 +30,7 @@ Start here for the full evaluator path:
 - [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
 - [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
 
-## Integration Fit
+## Integration Model
 
 This example is a deliberate evaluator path. It is designed to show the verification lifecycle before production authentication, signing, and environment requirements are fully configured.
 
@@ -36,7 +38,7 @@ This example is a deliberate evaluator path. It is designed to show the verifica
 
 Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
-## Technical Detail
+## Technical Details
 
 ```mermaid
 sequenceDiagram

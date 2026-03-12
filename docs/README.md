@@ -6,7 +6,9 @@ This folder is organized into active, canonical documents and archived historica
 
 TrustSignal documentation is written for evaluators and implementers working in workflows where later auditability matters. The main attack surface is not only bad data at intake, but also tampered evidence, provenance loss, artifact substitution, and stale evidence that cannot be verified later.
 
-## Integrity Model
+## Verification Lifecycle
+
+The canonical lifecycle and trust-boundary diagrams are documented in [verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
 TrustSignal is evidence integrity infrastructure. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflow integration.
 
@@ -16,9 +18,9 @@ Start with the local developer trial if you want the fastest technical evaluatio
 
 - [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
 
-The demo shows artifact hashing, verification, signed receipt issuance, later verification, and tampered artifact mismatch detection without external services.
+The demo shows artifact hashing, verification, signed verification receipt issuance, later verification, and tampered artifact mismatch detection without external services.
 
-## Integration
+## Integration Model
 
 Start here if you want to evaluate the public verification lifecycle quickly:
 
@@ -35,8 +37,6 @@ Golden path:
 2. receive verification signals plus a signed verification receipt
 3. retrieve the stored receipt
 4. run later verification
-
-## Technical Details
 
 ## Integration Fit
 
