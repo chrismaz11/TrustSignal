@@ -14,6 +14,10 @@
       "value": "{{api_key}}"
     },
     {
+      "key": "verification_id",
+      "value": "{{verification_id}}"
+    },
+    {
       "key": "receipt_id",
       "value": "{{receipt_id}}"
     },
@@ -33,6 +37,21 @@
   "item": [
     {
       "name": "1. Create Verification",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const response = pm.response.json();",
+              "if (response.receiptId) {",
+              "  pm.environment.set('verification_id', response.receiptId);",
+              "  pm.environment.set('receipt_id', response.receiptId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [

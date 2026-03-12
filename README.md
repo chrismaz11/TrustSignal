@@ -28,7 +28,26 @@ TrustSignal provides:
 - later verification capability
 - existing workflow integration through the public API boundary
 
-## Evaluate The API
+## Demo
+
+The fastest evaluator path is the local 5-minute developer trial:
+
+```bash
+npm install
+npm run demo
+```
+
+It shows the full lifecycle in one run:
+
+1. artifact intake
+2. verification result
+3. signed receipt issuance
+4. later verification
+5. tampered artifact mismatch detection
+
+See [demo/README.md](/Users/christopher/Projects/trustsignal/demo/README.md).
+
+## Integration
 
 Start here if you are evaluating the public verification lifecycle:
 
@@ -45,17 +64,7 @@ Golden path:
 3. retrieve the stored receipt
 4. run later verification
 
-## What You Will See
-
-The evaluator path is designed to show the core value before full production integration work:
-
-- artifact intake through the public API
-- signed verification receipt issuance
-- verification signals that can be stored in an existing workflow
-- later verification against the stored receipt state
-- visible handling for tampered evidence or stale evidence through the later verification lifecycle
-
-## Quick Evaluator Path
+## Technical Details
 
 The fastest path in this repository is the public `/api/v1/*` evaluator flow. It is a deliberate evaluator path, not a shortcut around production controls.
 
@@ -69,7 +78,17 @@ The current partner-facing lifecycle in this repository is:
 - `POST /api/v1/anchor/:receiptId`
 - `GET /api/v1/receipts`
 
-## Minimal Local Setup
+## What You Will See
+
+The evaluator path is designed to show the core value before full production integration work:
+
+- artifact intake through the public API
+- signed verification receipt issuance
+- verification signals that can be stored in an existing workflow
+- later verification against the stored receipt state
+- visible handling for tampered evidence or stale evidence through the later verification lifecycle
+
+## Local API Development Setup
 
 Prerequisites:
 
@@ -99,7 +118,7 @@ Default local ports:
 - web app: `http://localhost:3000`
 - API: `http://localhost:3001`
 
-## Run The Demo
+## Run The API Evaluation Flow
 
 Once the local API is running, use the evaluator quickstart or the public examples directly:
 
@@ -120,7 +139,7 @@ curl -X POST "http://localhost:3001/api/v1/receipt/$RECEIPT_ID/verify" \
   -H "x-api-key: $TRUSTSIGNAL_API_KEY"
 ```
 
-## What The Demo Proves
+## What The Developer Trial Proves
 
 The evaluator flow demonstrates that:
 
@@ -140,7 +159,7 @@ TrustSignal is designed to sit behind an existing workflow such as:
 
 The upstream platform remains the system of record. TrustSignal adds an integrity layer at the boundary and returns technical verification artifacts that the upstream workflow can store and use later.
 
-## Full Local Development Setup
+## Integration Boundary Notes
 
 The local evaluator path is intentionally constrained. Local development defaults are a deliberate evaluator and development path, and they fail closed where production trust assumptions are not satisfied.
 

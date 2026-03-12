@@ -13,10 +13,15 @@ TrustSignal is designed to support:
 - signed verification receipts
 - verification signals
 - verifiable provenance
-- audit-ready evidence
 - later verification without replacing the upstream workflow owner
 
-## Evaluator Path
+## Demo
+
+Start with the local developer trial when you want the shortest path to the verification lifecycle:
+
+- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+
+## Integration
 
 Start with these evaluator assets:
 
@@ -26,6 +31,18 @@ Start with these evaluator assets:
 - [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
 
 The evaluator flow is designed to show the verification lifecycle safely before production integration requirements are introduced.
+
+## Technical Details
+
+The public evaluation path in this repository is the `/api/v1/*` surface:
+
+1. Submit a verification request to `POST /api/v1/verify`.
+2. Receive a decision, signed verification receipt, and provenance metadata.
+3. Retrieve the stored receipt at `GET /api/v1/receipt/{receiptId}`.
+4. Run later verification at `POST /api/v1/receipt/{receiptId}/verify`.
+5. Use authorized lifecycle actions such as revocation and provenance-state retrieval where needed.
+
+Canonical contract and payload examples live in [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml) and the [`examples/`](../../examples) directory.
 
 ## Integration Fit
 
@@ -41,15 +58,3 @@ The upstream platform remains the system of record. TrustSignal adds an integrit
 ## Production Deployment Requirements
 
 Local and evaluator paths are deliberate evaluator paths. Production deployment requires explicit authentication, signing configuration, and environment setup. Fail-closed defaults are part of the security posture and are intended to stop unsafe production assumptions from being applied implicitly.
-
-## Technical Detail
-
-The public evaluation path in this repository is the `/api/v1/*` surface:
-
-1. Submit a verification request to `POST /api/v1/verify`.
-2. Receive a decision, signed verification receipt, and provenance metadata.
-3. Retrieve the stored receipt at `GET /api/v1/receipt/{receiptId}`.
-4. Run later verification at `POST /api/v1/receipt/{receiptId}/verify`.
-5. Use authorized lifecycle actions such as revocation and provenance-state retrieval where needed.
-
-Canonical contract and payload examples live in [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml) and the [`examples/`](../../examples) directory.

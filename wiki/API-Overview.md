@@ -13,13 +13,19 @@
 
 ## Problem
 
-Partners need a stable public contract that explains how TrustSignal fits into an existing workflow without requiring them to understand internal implementation details. The relevant attack surface includes tampered evidence, provenance loss, artifact substitution, and stale evidence in later review paths.
+Partners need a stable public contract that explains how TrustSignal fits into an existing workflow without requiring them to understand internal implementation details. The relevant attack surface includes evidence tampering after collection, artifact substitution attacks, provenance loss in compliance workflows, stale evidence during audit review, and documentation chains that cannot be verified later.
 
 ## Integrity Model
 
 TrustSignal exposes a public verification lifecycle centered on signed verification receipts, verification signals, verifiable provenance metadata, and later verification.
 
-## Evaluator Path
+## Demo
+
+Start with the local developer trial for the fastest lifecycle walkthrough:
+
+- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+
+## Integration
 
 Start here to try the public lifecycle:
 
@@ -35,17 +41,7 @@ Golden path:
 3. retrieve the stored receipt
 4. run later verification
 
-## Integration Fit
-
-The integration-facing `/api/v1/*` surface is the main public partner API in this repository. It uses `x-api-key` authentication with scoped access such as `verify`, `read`, `anchor`, and `revoke`.
-
-The legacy `/v1/*` surface is still present for the current JavaScript SDK and uses bearer JWT authentication.
-
-## Production Deployment Requirements
-
-Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
-
-## Technical Detail
+## Technical Details
 
 ### Integration-Facing Verification Lifecycle
 
@@ -64,6 +60,16 @@ Local development defaults are intentionally constrained and fail closed where p
 - `x-issuer-id`
 - `x-signature-timestamp`
 - `x-issuer-signature`
+
+## Integration Fit
+
+The integration-facing `/api/v1/*` surface is the main public partner API in this repository. It uses `x-api-key` authentication with scoped access such as `verify`, `read`, `anchor`, and `revoke`.
+
+The legacy `/v1/*` surface is still present for the current JavaScript SDK and uses bearer JWT authentication.
+
+## Production Deployment Requirements
+
+Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
 ### Additional Integration Routes
 

@@ -1,0 +1,20 @@
+{
+  "artifactId": "artifact-2026-03-12-001",
+  "artifactType": "deed-transfer-evidence",
+  "sourceSystem": "county-intake-demo",
+  "collectedAt": "2026-03-12T15:24:00.000Z",
+  "subject": {
+    "parcelId": "PARCEL-EXAMPLE-1001",
+    "county": "Cook",
+    "state": "IL"
+  },
+  "document": {
+    "title": "Warranty Deed Packet",
+    "documentNumber": "2026-0001842",
+    "digestSource": "Simulated deed packet captured during evaluator demo"
+  },
+  "parties": {
+    "grantor": "Example Seller LLC",
+    "grantee": "Example Buyer Trust"
+  }
+}

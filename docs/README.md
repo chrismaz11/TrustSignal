@@ -10,7 +10,15 @@ TrustSignal documentation is written for evaluators and implementers working in 
 
 TrustSignal is evidence integrity infrastructure. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflow integration.
 
-## Evaluator Quickstart
+## Demo
+
+Start with the local developer trial if you want the fastest technical evaluation:
+
+- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+
+The demo shows artifact hashing, verification, signed receipt issuance, later verification, and tampered artifact mismatch detection without external services.
+
+## Integration
 
 Start here if you want to evaluate the public verification lifecycle quickly:
 
@@ -27,6 +35,8 @@ Golden path:
 2. receive verification signals plus a signed verification receipt
 3. retrieve the stored receipt
 4. run later verification
+
+## Technical Details
 
 ## Integration Fit
 

@@ -13,13 +13,21 @@
 
 ## Problem
 
-Many workflow systems can show that an artifact was collected or reviewed. Fewer can later verify that the same artifact is still the one tied to the recorded decision. In high-stakes workflows, that creates an attack surface around tampered evidence, provenance loss, artifact substitution, and stale evidence in later audit or review paths.
+Many workflow systems can show that an artifact was collected or reviewed. Fewer can later verify that the same artifact is still the one tied to the recorded decision. In high-stakes workflows, that creates attack surfaces around evidence tampering after collection, artifact substitution attacks, provenance loss in compliance workflows, stale evidence during audit review, and unverifiable documentation chains.
+
+High-loss environments create incentives for those attack paths because the challenge usually appears during downstream review, not at the original moment of collection.
 
 ## Integrity Model
 
 TrustSignal is evidence integrity infrastructure. It provides signed verification receipts, verification signals, verifiable provenance metadata, and later verification for existing workflows.
 
-## Evaluator Path
+## Demo
+
+The fastest local evaluator path is the 5-minute developer trial:
+
+- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+
+## Integration
 
 The evaluator and demo path in this repository is a deliberate evaluator path. It is designed to show the verification lifecycle safely before production integration requirements are fully configured.
 
@@ -38,7 +46,7 @@ The upstream platform remains the system of record. TrustSignal adds an integrit
 
 Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
-## Technical Detail
+## Technical Details
 
 At a high level, the public verification lifecycle is:
 
