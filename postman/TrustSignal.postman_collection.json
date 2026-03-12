@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "TrustSignal Evaluator Trial Path",
-    "description": "Public evaluator collection for the TrustSignal verification lifecycle. This collection demonstrates how to submit a verification request, receive signed verification receipts and verification signals, retrieve the stored receipt, run later verification, and review authorized lifecycle actions using the public contract only.",
+    "description": "Public evaluator collection for the TrustSignal verification lifecycle. Start with docs/partner-eval/start-here.md, then use this collection to submit a verification request, receive signed verification receipts and verification signals, retrieve the stored receipt, run later verification, and review authorized lifecycle actions using the public contract only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -20,6 +20,10 @@
     {
       "key": "receipt_id",
       "value": "{{receipt_id}}"
+    },
+    {
+      "key": "pdf_url",
+      "value": "{{pdf_url}}"
     },
     {
       "key": "issuer_id",
@@ -46,6 +50,9 @@
               "if (response.receiptId) {",
               "  pm.environment.set('verification_id', response.receiptId);",
               "  pm.environment.set('receipt_id', response.receiptId);",
+              "}",
+              "if (response.receiptVersion && response.receiptId) {",
+              "  pm.environment.set('pdf_url', pm.variables.get('base_url') + '/api/v1/receipt/' + response.receiptId + '/pdf');",
               "}"
             ],
             "type": "text/javascript"
@@ -66,7 +73,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"bundleId\": \"verification-2026-03-12-001\",\n  \"transactionType\": \"deed_transfer\",\n  \"ron\": {\n    \"provider\": \"source-system\",\n    \"notaryId\": \"NOTARY-EXAMPLE-01\",\n    \"commissionState\": \"IL\",\n    \"sealPayload\": \"simulated-seal-payload\"\n  },\n  \"doc\": {\n    \"docHash\": \"0x8b7b2f52f2a2e19f8f3fe0d815d1c1d8d1e0d120e8cc60d1baf5e7a6f9d211aa\"\n  },\n  \"policy\": {\n    \"profile\": \"CONTROL_CC_001\"\n  },\n  \"property\": {\n    \"parcelId\": \"PARCEL-EXAMPLE-1001\",\n    \"county\": \"Cook\",\n    \"state\": \"IL\"\n  },\n  \"timestamp\": \"2026-03-12T15:24:00.000Z\"\n}"
+          "raw": "{\n  \"bundleId\": \"verification-2026-03-12-start-here\",\n  \"transactionType\": \"deed_transfer\",\n  \"ron\": {\n    \"provider\": \"source-system\",\n    \"notaryId\": \"NOTARY-EXAMPLE-01\",\n    \"commissionState\": \"IL\",\n    \"sealPayload\": \"simulated-seal-payload\"\n  },\n  \"doc\": {\n    \"docHash\": \"0x8b7b2f52f2a2e19f8f3fe0d815d1c1d8d1e0d120e8cc60d1baf5e7a6f9d211aa\"\n  },\n  \"policy\": {\n    \"profile\": \"CONTROL_CC_001\"\n  },\n  \"property\": {\n    \"parcelId\": \"PARCEL-EVAL-1001\",\n    \"county\": \"Cook\",\n    \"state\": \"IL\"\n  },\n  \"timestamp\": \"2026-03-12T18:24:00.000Z\"\n}"
         },
         "description": "Submit a public verification request from an existing workflow. The response should include verification signals, a signed verification receipt, and public-safe verifiable provenance metadata for later verification.",
         "url": {
@@ -110,7 +117,34 @@
       "response": []
     },
     {
-      "name": "3. Run Later Verification",
+      "name": "3. Download Receipt PDF",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "description": "Download the PDF rendering of the stored verification receipt when the evaluator wants the receipt-ready artifact.",
+        "url": {
+          "raw": "{{base_url}}/api/v1/receipt/{{receipt_id}}/pdf",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "receipt",
+            "{{receipt_id}}",
+            "pdf"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Run Later Verification",
       "request": {
         "method": "POST",
         "header": [
@@ -137,7 +171,7 @@
       "response": []
     },
     {
-      "name": "4. Revoke Receipt",
+      "name": "5. Revoke Receipt",
       "request": {
         "method": "POST",
         "header": [
@@ -176,7 +210,7 @@
       "response": []
     },
     {
-      "name": "5. Review Provenance State",
+      "name": "6. Review Provenance State",
       "request": {
         "method": "POST",
         "header": [

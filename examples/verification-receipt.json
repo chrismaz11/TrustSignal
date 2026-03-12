@@ -4,7 +4,7 @@
   "reasons": [
     "receipt issued"
   ],
-  "receiptId": "2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a",
+  "receiptId": "623e0b54-87b3-42b7-bc89-65fae0ad8d5e",
   "receiptHash": "0x4e7f2ce9d3f7a8d3b0e4c9f2aa17fd59d6b4fda2d7b7b7d1cce8124d7ee39d04",
   "receiptSignature": {
     "alg": "EdDSA",
@@ -21,7 +21,7 @@
   },
   "receipt": {
     "receiptVersion": "2.0",
-    "receiptId": "2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a",
+    "receiptId": "623e0b54-87b3-42b7-bc89-65fae0ad8d5e",
     "createdAt": "2026-03-12T15:24:01.000Z",
     "policyProfile": "CONTROL_CC_001",
     "inputsCommitment": "0x2dded9c1b5c4c6d91df58a1b1793cb527f2b0cf5ddaf447f5b7d9839f7ab7d01",
@@ -43,6 +43,6 @@
       "signature": "eyJleGFtcGxlIjoic2lnbmVkLXJlY2VpcHQifQ"
     }
   },
-  "canonicalReceipt": "{\"checks\":[{\"checkId\":\"registry.status\",\"details\":\"Source responded with a current record\",\"status\":\"PASS\"}],\"createdAt\":\"2026-03-12T15:24:01.000Z\",\"decision\":\"ALLOW\",\"inputsCommitment\":\"0x2dded9c1b5c4c6d91df58a1b1793cb527f2b0cf5ddaf447f5b7d9839f7ab7d01\",\"policyProfile\":\"CONTROL_CC_001\",\"reasons\":[\"receipt issued\"],\"receiptId\":\"2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a\",\"receiptVersion\":\"2.0\"}",
-  "pdfUrl": "/api/v1/receipt/2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a/pdf"
+  "canonicalReceipt": "{\"checks\":[{\"checkId\":\"registry.status\",\"details\":\"Source responded with a current record\",\"status\":\"PASS\"}],\"createdAt\":\"2026-03-12T15:24:01.000Z\",\"decision\":\"ALLOW\",\"inputsCommitment\":\"0x2dded9c1b5c4c6d91df58a1b1793cb527f2b0cf5ddaf447f5b7d9839f7ab7d01\",\"policyProfile\":\"CONTROL_CC_001\",\"reasons\":[\"receipt issued\"],\"receiptId\":\"623e0b54-87b3-42b7-bc89-65fae0ad8d5e\",\"receiptVersion\":\"2.0\"}",
+  "pdfUrl": "/api/v1/receipt/623e0b54-87b3-42b7-bc89-65fae0ad8d5e/pdf"
 }

@@ -22,6 +22,8 @@ TrustSignal is designed to support:
 Start with the local developer trial when you want the shortest path to the verification lifecycle:
 
 - [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+- [Evaluator start here](/Users/christopher/Projects/trustsignal/docs/partner-eval/start-here.md)
+- [Try the API](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
 
 ## Integration Model
 
