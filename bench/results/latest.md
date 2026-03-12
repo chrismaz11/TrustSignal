@@ -1,14 +1,24 @@
 # TrustSignal Benchmark Snapshot
 
 ## Test Date/Time
-- 2026-03-12T22:22:06.846Z
+- 2026-03-12T22:30:04.260Z
 
 ## Environment Description
 - Node: v22.14.0
 - Platform: darwin (arm64)
 - Host: Christophers-Mac-mini.local
-- Temp database: postgresql on 127.0.0.1:63688
+- Temp database: postgresql on 127.0.0.1:64030
 - Harness command: `npx tsx bench/run-bench.ts --scenario all --runs 15 --batch-size 10`
+
+## Iteration / Sample Notes
+- Primary timing samples use 15 iterations per scenario when applicable.
+- The sequential batch scenario uses 10 requests.
+- First-run initialization effects may appear in max and p95 values, especially on scenarios that touch additional parsing or compliance paths.
+
+## Environment Notes
+- Local benchmark run on a developer workstation using a temporary PostgreSQL instance.
+- The harness exercises the public /api/v1/* evaluator lifecycle through Fastify injection rather than an external network hop.
+- No production load balancer, cross-service network latency, or remote datastore variance is included in these numbers.
 
 ## Scenarios Executed
 - clean: Measure end-to-end clean artifact verification through POST /api/v1/verify.
@@ -25,15 +35,15 @@
 
 | Scenario | Count | Min (ms) | Max (ms) | Mean (ms) | Median (ms) | p95 (ms) | Success / Total |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| clean | 15 | 3.19 | 19.57 | 5.06 | 3.78 | 19.57 | 15/15 |
-| tampered | 15 | 4.69 | 42.84 | 8.02 | 5.01 | 42.84 | 15/15 |
-| repeat | 15 | 3 | 4.04 | 3.24 | 3.21 | 4.04 | 15/15 |
-| lookup | 15 | 0.56 | 0.71 | 0.6 | 0.57 | 0.71 | 15/15 |
-| later-verification | 15 | 0.7 | 1.07 | 0.76 | 0.72 | 1.07 | 15/15 |
-| bad-auth | 2 | 0.15 | 0.23 | 0.19 | 0.19 | 0.23 | 2/2 |
-| malformed | 2 | 0.39 | 0.46 | 0.43 | 0.43 | 0.46 | 2/2 |
-| dependency-failure | 1 | 13.35 | 13.35 | 13.35 | 13.35 | 13.35 | 1/1 |
-| batch | 10 | 3.07 | 3.57 | 3.24 | 3.22 | 3.57 | 10/10 |
+| clean | 15 | 3.21 | 21.65 | 5.24 | 4.11 | 21.65 | 15/15 |
+| tampered | 15 | 4.74 | 42.82 | 7.76 | 5.13 | 42.82 | 15/15 |
+| repeat | 15 | 3.03 | 3.69 | 3.24 | 3.16 | 3.69 | 15/15 |
+| lookup | 15 | 0.51 | 0.63 | 0.57 | 0.56 | 0.63 | 15/15 |
+| later-verification | 15 | 0.67 | 1.08 | 0.77 | 0.71 | 1.08 | 15/15 |
+| bad-auth | 2 | 0.15 | 0.24 | 0.2 | 0.2 | 0.24 | 2/2 |
+| malformed | 2 | 0.37 | 0.48 | 0.42 | 0.42 | 0.48 | 2/2 |
+| dependency-failure | 1 | 13.28 | 13.28 | 13.28 | 13.28 | 13.28 | 1/1 |
+| batch | 10 | 3.09 | 3.79 | 3.26 | 3.15 | 3.79 | 10/10 |
 
 ## Reliability Notes
 - clean: 15/15 clean verification requests returned signed receipts.

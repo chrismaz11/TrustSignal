@@ -96,11 +96,13 @@ type BenchmarkOutput = {
       port: number;
       dbName: string;
     };
+    notes: string[];
   };
   harness: {
     scenario: string;
     runs: number;
     batchSize: number;
+    sampleNotes: string[];
   };
   metrics: {
     verificationRequestLatency: TimingSummary | null;
@@ -879,6 +881,16 @@ function buildMarkdownReport(output: BenchmarkOutput): string {
   lines.push(`- Temp database: ${output.environment.tempDatabase.engine} on 127.0.0.1:${output.environment.tempDatabase.port}`);
   lines.push(`- Harness command: \`${output.command}\``);
   lines.push('');
+  lines.push('## Iteration / Sample Notes');
+  for (const note of output.harness.sampleNotes) {
+    lines.push(`- ${note}`);
+  }
+  lines.push('');
+  lines.push('## Environment Notes');
+  for (const note of output.environment.notes) {
+    lines.push(`- ${note}`);
+  }
+  lines.push('');
   lines.push('## Scenarios Executed');
   for (const scenario of output.scenarios) {
     lines.push(`- ${scenario.scenario}: ${scenario.purpose}`);
@@ -1051,12 +1063,22 @@ async function main() {
           engine: 'postgresql',
           port: tempPostgres.port,
           dbName: tempPostgres.dbName
-        }
+        },
+        notes: [
+          'Local benchmark run on a developer workstation using a temporary PostgreSQL instance.',
+          'The harness exercises the public /api/v1/* evaluator lifecycle through Fastify injection rather than an external network hop.',
+          'No production load balancer, cross-service network latency, or remote datastore variance is included in these numbers.'
+        ]
       },
       harness: {
         scenario: options.scenario,
         runs: options.runs,
-        batchSize: options.batchSize
+        batchSize: options.batchSize,
+        sampleNotes: [
+          `Primary timing samples use ${options.runs} iterations per scenario when applicable.`,
+          `The sequential batch scenario uses ${options.batchSize} requests.`,
+          'First-run initialization effects may appear in max and p95 values, especially on scenarios that touch additional parsing or compliance paths.'
+        ]
       },
       metrics: {
         verificationRequestLatency,

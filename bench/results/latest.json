@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-12T22:22:06.846Z",
+  "generatedAt": "2026-03-12T22:30:04.260Z",
   "command": "npx tsx bench/run-bench.ts --scenario all --runs 15 --batch-size 10",
   "environment": {
     "node": "v22.14.0",
@@ -8,63 +8,73 @@
     "hostname": "Christophers-Mac-mini.local",
     "tempDatabase": {
       "engine": "postgresql",
-      "port": 63688,
+      "port": 64030,
       "dbName": "trustsignal_bench"
-    }
+    },
+    "notes": [
+      "Local benchmark run on a developer workstation using a temporary PostgreSQL instance.",
+      "The harness exercises the public /api/v1/* evaluator lifecycle through Fastify injection rather than an external network hop.",
+      "No production load balancer, cross-service network latency, or remote datastore variance is included in these numbers."
+    ]
   },
   "harness": {
     "scenario": "all",
     "runs": 15,
-    "batchSize": 10
+    "batchSize": 10,
+    "sampleNotes": [
+      "Primary timing samples use 15 iterations per scenario when applicable.",
+      "The sequential batch scenario uses 10 requests.",
+      "First-run initialization effects may appear in max and p95 values, especially on scenarios that touch additional parsing or compliance paths."
+    ]
   },
   "metrics": {
     "verificationRequestLatency": {
       "count": 15,
-      "minMs": 3.19,
-      "maxMs": 19.57,
-      "meanMs": 5.06,
-      "medianMs": 3.78,
-      "p95Ms": 19.57
+      "minMs": 3.21,
+      "maxMs": 21.65,
+      "meanMs": 5.24,
+      "medianMs": 4.11,
+      "p95Ms": 21.65
     },
     "signedReceiptGenerationLatency": {
       "count": 15,
-      "minMs": 0.28,
-      "maxMs": 0.9,
-      "meanMs": 0.38,
+      "minMs": 0.27,
+      "maxMs": 0.63,
+      "meanMs": 0.34,
       "medianMs": 0.32,
-      "p95Ms": 0.9
+      "p95Ms": 0.63
     },
     "laterVerificationLatency": {
       "count": 15,
-      "minMs": 0.7,
-      "maxMs": 1.07,
-      "meanMs": 0.76,
-      "medianMs": 0.72,
-      "p95Ms": 1.07
+      "minMs": 0.67,
+      "maxMs": 1.08,
+      "meanMs": 0.77,
+      "medianMs": 0.71,
+      "p95Ms": 1.08
     },
     "statusLookupLatency": {
       "count": 15,
-      "minMs": 0.56,
-      "maxMs": 0.71,
-      "meanMs": 0.6,
-      "medianMs": 0.57,
-      "p95Ms": 0.71
+      "minMs": 0.51,
+      "maxMs": 0.63,
+      "meanMs": 0.57,
+      "medianMs": 0.56,
+      "p95Ms": 0.63
     },
     "tamperedArtifactDetectionLatency": {
       "count": 15,
-      "minMs": 4.69,
-      "maxMs": 42.84,
-      "meanMs": 8.02,
-      "medianMs": 5.01,
-      "p95Ms": 42.84
+      "minMs": 4.74,
+      "maxMs": 42.82,
+      "meanMs": 7.76,
+      "medianMs": 5.13,
+      "p95Ms": 42.82
     },
     "repeatedRunStability": {
       "count": 15,
-      "minMs": 3,
-      "maxMs": 4.04,
+      "minMs": 3.03,
+      "maxMs": 3.69,
       "meanMs": 3.24,
-      "medianMs": 3.21,
-      "p95Ms": 4.04
+      "medianMs": 3.16,
+      "p95Ms": 3.69
     }
   },
   "scenarios": [
@@ -78,21 +88,21 @@
       ],
       "expectedOutcome": "HTTP 200 with receiptId, receiptHash, and receiptSignature present.",
       "timingsMs": [
-        19.57,
-        5.58,
-        4.46,
-        4.2,
-        5.58,
-        3.9,
-        3.55,
+        21.65,
+        4.85,
+        4.37,
+        4.24,
+        5.91,
+        4.11,
+        4.42,
+        3.5,
+        4.16,
+        3.85,
+        3.8,
         3.51,
-        4.4,
-        3.78,
         3.74,
-        3.48,
-        3.37,
-        3.19,
-        3.53
+        3.22,
+        3.21
       ],
       "statusCodes": [
         200,
@@ -119,11 +129,11 @@
       "caveats": [],
       "summary": {
         "count": 15,
-        "minMs": 3.19,
-        "maxMs": 19.57,
-        "meanMs": 5.06,
-        "medianMs": 3.78,
-        "p95Ms": 19.57
+        "minMs": 3.21,
+        "maxMs": 21.65,
+        "meanMs": 5.24,
+        "medianMs": 4.11,
+        "p95Ms": 21.65
       }
     },
     {
@@ -135,21 +145,21 @@
       ],
       "expectedOutcome": "HTTP 200 with mismatch visible in zkpAttestation.publicInputs declaredDocHash vs documentDigest.",
       "timingsMs": [
-        42.84,
-        11.13,
-        6.03,
-        4.93,
-        5.01,
-        4.84,
-        5.01,
-        4.99,
-        5.61,
-        5.52,
-        4.85,
-        4.69,
-        4.72,
-        5.19,
-        5.01
+        42.82,
+        5.77,
+        5.24,
+        5.03,
+        5.13,
+        5.04,
+        6.43,
+        5.18,
+        5.63,
+        5.13,
+        4.87,
+        4.74,
+        4.76,
+        4.82,
+        5.79
       ],
       "statusCodes": [
         200,
@@ -176,11 +186,11 @@
       "caveats": [],
       "summary": {
         "count": 15,
-        "minMs": 4.69,
-        "maxMs": 42.84,
-        "meanMs": 8.02,
-        "medianMs": 5.01,
-        "p95Ms": 42.84
+        "minMs": 4.74,
+        "maxMs": 42.82,
+        "meanMs": 7.76,
+        "medianMs": 5.13,
+        "p95Ms": 42.82
       }
     },
     {
@@ -192,21 +202,21 @@
       ],
       "expectedOutcome": "Repeated requests continue returning HTTP 200 and signed receipts without contract drift.",
       "timingsMs": [
-        3.48,
-        3.21,
-        4.04,
-        3.42,
-        3.25,
-        3.24,
-        3.23,
-        3.09,
-        3.05,
-        3.09,
-        3.37,
-        3.11,
-        3.04,
-        3,
-        3.03
+        3.36,
+        3.16,
+        3.33,
+        3.35,
+        3.34,
+        3.1,
+        3.69,
+        3.16,
+        3.1,
+        3.19,
+        3.1,
+        3.1,
+        3.07,
+        3.03,
+        3.52
       ],
       "statusCodes": [
         200,
@@ -233,11 +243,11 @@
       "caveats": [],
       "summary": {
         "count": 15,
-        "minMs": 3,
-        "maxMs": 4.04,
+        "minMs": 3.03,
+        "maxMs": 3.69,
         "meanMs": 3.24,
-        "medianMs": 3.21,
-        "p95Ms": 4.04
+        "medianMs": 3.16,
+        "p95Ms": 3.69
       }
     },
     {
@@ -249,21 +259,21 @@
       ],
       "expectedOutcome": "HTTP 200 with persisted receipt payload.",
       "timingsMs": [
-        0.64,
-        0.71,
+        0.57,
+        0.56,
+        0.6,
+        0.57,
+        0.55,
+        0.51,
         0.62,
-        0.59,
+        0.54,
+        0.63,
+        0.55,
+        0.55,
+        0.54,
         0.58,
-        0.57,
-        0.56,
-        0.56,
-        0.71,
-        0.57,
-        0.56,
-        0.56,
-        0.57,
-        0.57,
-        0.56
+        0.6,
+        0.54
       ],
       "statusCodes": [
         200,
@@ -290,11 +300,11 @@
       "caveats": [],
       "summary": {
         "count": 15,
-        "minMs": 0.56,
-        "maxMs": 0.71,
-        "meanMs": 0.6,
-        "medianMs": 0.57,
-        "p95Ms": 0.71
+        "minMs": 0.51,
+        "maxMs": 0.63,
+        "meanMs": 0.57,
+        "medianMs": 0.56,
+        "p95Ms": 0.63
       }
     },
     {
@@ -306,21 +316,21 @@
       ],
       "expectedOutcome": "HTTP 200 with verified=true, integrityVerified=true, and signatureVerified=true.",
       "timingsMs": [
-        1.07,
-        0.78,
-        0.76,
+        1.08,
+        0.71,
         0.74,
         0.71,
-        0.71,
-        0.71,
-        0.71,
-        0.86,
-        0.72,
-        0.79,
-        0.71,
-        0.75,
         0.7,
-        0.71
+        0.67,
+        0.78,
+        0.68,
+        0.89,
+        0.72,
+        0.78,
+        0.69,
+        1.07,
+        0.71,
+        0.67
       ],
       "statusCodes": [
         200,
@@ -347,11 +357,11 @@
       "caveats": [],
       "summary": {
         "count": 15,
-        "minMs": 0.7,
-        "maxMs": 1.07,
-        "meanMs": 0.76,
-        "medianMs": 0.72,
-        "p95Ms": 1.07
+        "minMs": 0.67,
+        "maxMs": 1.08,
+        "meanMs": 0.77,
+        "medianMs": 0.71,
+        "p95Ms": 1.08
       }
     },
     {
@@ -363,7 +373,7 @@
       ],
       "expectedOutcome": "Missing auth returns 401 and invalid auth returns 403.",
       "timingsMs": [
-        0.23,
+        0.24,
         0.15
       ],
       "statusCodes": [
@@ -379,10 +389,10 @@
       "summary": {
         "count": 2,
         "minMs": 0.15,
-        "maxMs": 0.23,
-        "meanMs": 0.19,
-        "medianMs": 0.19,
-        "p95Ms": 0.23
+        "maxMs": 0.24,
+        "meanMs": 0.2,
+        "medianMs": 0.2,
+        "p95Ms": 0.24
       }
     },
     {
@@ -394,8 +404,8 @@
       ],
       "expectedOutcome": "HTTP 400 with Invalid payload error.",
       "timingsMs": [
-        0.46,
-        0.39
+        0.48,
+        0.37
       ],
       "statusCodes": [
         400,
@@ -409,11 +419,11 @@
       "caveats": [],
       "summary": {
         "count": 2,
-        "minMs": 0.39,
-        "maxMs": 0.46,
-        "meanMs": 0.43,
-        "medianMs": 0.43,
-        "p95Ms": 0.46
+        "minMs": 0.37,
+        "maxMs": 0.48,
+        "meanMs": 0.42,
+        "medianMs": 0.42,
+        "p95Ms": 0.48
       }
     },
     {
@@ -425,7 +435,7 @@
       ],
       "expectedOutcome": "HTTP 200 with a non-ALLOW decision reflecting compliance-gap or fail-closed handling.",
       "timingsMs": [
-        13.35
+        13.28
       ],
       "statusCodes": [
         200
@@ -438,11 +448,11 @@
       "caveats": [],
       "summary": {
         "count": 1,
-        "minMs": 13.35,
-        "maxMs": 13.35,
-        "meanMs": 13.35,
-        "medianMs": 13.35,
-        "p95Ms": 13.35
+        "minMs": 13.28,
+        "maxMs": 13.28,
+        "meanMs": 13.28,
+        "medianMs": 13.28,
+        "p95Ms": 13.28
       }
     },
     {
@@ -455,15 +465,15 @@
       "expectedOutcome": "All 10 sequential requests return HTTP 200 with signed receipts.",
       "timingsMs": [
         3.31,
+        3.14,
+        3.13,
+        3.79,
+        3.51,
+        3.25,
         3.09,
-        3.07,
-        3.26,
-        3.37,
-        3.35,
+        3.13,
         3.11,
-        3.57,
-        3.18,
-        3.09
+        3.16
       ],
       "statusCodes": [
         200,
@@ -485,11 +495,11 @@
       "caveats": [],
       "summary": {
         "count": 10,
-        "minMs": 3.07,
-        "maxMs": 3.57,
-        "meanMs": 3.24,
-        "medianMs": 3.22,
-        "p95Ms": 3.57
+        "minMs": 3.09,
+        "maxMs": 3.79,
+        "meanMs": 3.26,
+        "medianMs": 3.15,
+        "p95Ms": 3.79
       }
     }
   ],

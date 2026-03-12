@@ -31,6 +31,7 @@ Start with these evaluator assets:
 
 - [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
 - [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [Benchmark summary](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
 - [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
 - [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
 
@@ -50,14 +51,14 @@ Canonical contract and payload examples live in [openapi.yaml](/Users/christophe
 
 ## Current Evaluator Metrics
 
-Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:22:06.846Z`:
+Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For evaluator-facing interpretation and caveats, see [benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md).
 
-- clean verification request latency: mean `5.06 ms`, median `3.78 ms`, p95 `19.57 ms`
-- signed receipt generation latency: mean `0.38 ms`, median `0.32 ms`, p95 `0.90 ms`
-- receipt lookup latency: mean `0.60 ms`, median `0.57 ms`, p95 `0.71 ms`
-- later verification latency: mean `0.76 ms`, median `0.72 ms`, p95 `1.07 ms`
-- tampered artifact detection latency: mean `8.02 ms`, median `5.01 ms`, p95 `42.84 ms`
-- repeated-run stability for the same artifact payload: mean `3.24 ms`, median `3.21 ms`, p95 `4.04 ms`
+- clean verification request latency: mean `5.24 ms`, median `4.11 ms`, p95 `21.65 ms`
+- signed receipt generation latency: mean `0.34 ms`, median `0.32 ms`, p95 `0.63 ms`
+- receipt lookup latency: mean `0.57 ms`, median `0.56 ms`, p95 `0.63 ms`
+- later verification latency: mean `0.77 ms`, median `0.71 ms`, p95 `1.08 ms`
+- tampered artifact detection latency: mean `7.76 ms`, median `5.13 ms`, p95 `42.82 ms`
+- repeated-run stability for the same artifact payload: mean `3.24 ms`, median `3.16 ms`, p95 `3.69 ms`
 
 This snapshot comes from a recent local evaluator run. It is useful for comparing request classes and checking regressions, not for inferring guaranteed deployment latency.
 

@@ -69,13 +69,13 @@ Revocation is part of the public contract, but it requires issuer authorization 
 
 ## Recent Verification Timing
 
-Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:22:06.846Z`:
+Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For a fuller evaluator-facing summary, see [benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md).
 
-- `POST /api/v1/verify` clean-path latency: mean `5.06 ms`, median `3.78 ms`, p95 `19.57 ms`
-- signed receipt generation latency: mean `0.38 ms`, median `0.32 ms`, p95 `0.90 ms`
-- `GET /api/v1/receipt/:receiptId` lookup latency: mean `0.60 ms`, median `0.57 ms`, p95 `0.71 ms`
-- `POST /api/v1/receipt/:receiptId/verify` later verification latency: mean `0.76 ms`, median `0.72 ms`, p95 `1.07 ms`
-- tampered artifact detection path: mean `8.02 ms`, median `5.01 ms`, p95 `42.84 ms`
+- `POST /api/v1/verify` clean-path latency: mean `5.24 ms`, median `4.11 ms`, p95 `21.65 ms`
+- signed receipt generation latency: mean `0.34 ms`, median `0.32 ms`, p95 `0.63 ms`
+- `GET /api/v1/receipt/:receiptId` lookup latency: mean `0.57 ms`, median `0.56 ms`, p95 `0.63 ms`
+- `POST /api/v1/receipt/:receiptId/verify` later verification latency: mean `0.77 ms`, median `0.71 ms`, p95 `1.08 ms`
+- tampered artifact detection path: mean `7.76 ms`, median `5.13 ms`, p95 `42.82 ms`
 
 These numbers come from a recent local benchmark harness run against the current evaluator path. They are current validation data, not guaranteed service latency.
 
