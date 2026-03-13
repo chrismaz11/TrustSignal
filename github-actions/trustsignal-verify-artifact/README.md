@@ -1,13 +1,13 @@
 # TrustSignal Verify Artifact
 
-Verify build artifacts in CI, issue signed verification receipts, and preserve provenance for later verification and audit workflows.
+Verify release artifacts in CI, issue signed verification receipts, and preserve provenance for downstream verification and audit workflows.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](package.json)
 
-`TrustSignal Verify Artifact` is a JavaScript GitHub Action for teams that want a clean verification checkpoint inside CI/CD. It hashes a build artifact or accepts a precomputed SHA-256 digest, submits that identity to TrustSignal, and returns receipt metadata your pipeline can persist, attach to release records, or feed into later verification workflows.
+`TrustSignal Verify Artifact` is a JavaScript GitHub Action for teams that need a reliable verification checkpoint inside CI/CD. It hashes a build artifact or accepts a precomputed SHA-256 digest, submits that artifact identity to TrustSignal, and returns receipt metadata that can be retained with release records, provenance evidence, and downstream audit workflows.
 
-TrustSignal is built for artifact integrity, signed receipts, verifiable provenance, and downstream auditability without exposing internal verification engine details.
+TrustSignal is designed for artifact integrity, signed verification receipts, verifiable provenance, and audit-ready release controls.
 
 ## Features
 
@@ -26,7 +26,7 @@ TrustSignal is built for artifact integrity, signed receipts, verifiable provena
 
 ## Quick Start
 
-1. Add a TrustSignal API key to GitHub Actions secrets.
+1. Add `TRUSTSIGNAL_API_BASE_URL` and `TRUSTSIGNAL_API_KEY` to GitHub Actions secrets.
 2. Call the action with either `artifact_path` or `artifact_hash`.
 3. Capture `receipt_id` and `receipt_signature` in downstream steps.
 4. Store receipt metadata anywhere you need later verification or audit evidence.
@@ -48,7 +48,7 @@ Provide exactly one of `artifact_path` or `artifact_hash`.
 
 | Output | Description |
 | --- | --- |
-| `verification_id` | Verification identifier returned by TrustSignal. Falls back to `receipt_id` when the API does not return a separate value. |
+| `verification_id` | Verification identifier returned by TrustSignal. For compatibility, this aliases `receipt_id` when the API does not return a separate verification identifier. |
 | `status` | Normalized verification status returned by the API. |
 | `receipt_id` | Signed receipt identifier returned by TrustSignal. |
 | `receipt_signature` | Signed receipt signature returned by TrustSignal. |
@@ -83,7 +83,7 @@ jobs:
         id: trustsignal
         uses: trustsignal-dev/trustsignal-verify-artifact@v1
         with:
-          api_base_url: https://api.trustsignal.dev
+          api_base_url: ${{ secrets.TRUSTSIGNAL_API_BASE_URL }}
           api_key: ${{ secrets.TRUSTSIGNAL_API_KEY }}
           artifact_path: dist/release.txt
           source: github-actions
@@ -116,7 +116,7 @@ jobs:
         id: trustsignal
         uses: trustsignal-dev/trustsignal-verify-artifact@v1
         with:
-          api_base_url: https://api.trustsignal.dev
+          api_base_url: ${{ secrets.TRUSTSIGNAL_API_BASE_URL }}
           api_key: ${{ secrets.TRUSTSIGNAL_API_KEY }}
           artifact_hash: 2f77668a9dfbf8d5847cf2d5d0370740e0c0601b4f061c1181f58c77c2b8f486
           source: github-actions
@@ -164,13 +164,13 @@ GitHub workflow context is added automatically when those environment variables 
 
 ## Why TrustSignal
 
-TrustSignal helps teams add a verification layer to CI/CD without exposing proprietary implementation details in every workflow. The action focuses on artifact identity, signed receipts, provenance continuity, and later verification so integrity signals can travel with the software lifecycle.
+TrustSignal gives security and release teams a consistent way to verify artifact identity inside CI/CD while preserving signed evidence for later validation. The action is built to support integrity controls, provenance continuity, and audit-ready release workflows without forcing teams to reimplement verification logic in every pipeline.
 
 ## Current Limitations
 
-- The local test path uses a fetch mock rather than a live TrustSignal deployment.
-- This package is extractable today, but Marketplace publication still requires a dedicated public repository root.
-- A production-facing integration test against a deployed TrustSignal API is still pending.
+- Local validation uses a fetch mock rather than a live TrustSignal deployment.
+- GitHub Marketplace publication requires this action to be published from a dedicated public repository root with `action.yml` at the top level.
+- Live end-to-end validation against a deployed TrustSignal API should remain part of the release process.
 
 ## Local Validation
 
@@ -193,29 +193,17 @@ npm run validate:local
 ## Versioning Guidance
 
 - Follow semantic versioning.
-- Publish immutable release tags such as `v0.1.0`, `v0.2.0`, and `v1.0.0`.
+- Publish immutable release tags for each shipped version.
 - Maintain a major tag such as `v1` for stable consumers.
 
-## Release Guidance
+## Release Checklist
 
 - Commit the built `dist/index.js` artifact with every release.
 - Create signed or otherwise controlled release tags according to your release process.
 - Update documentation when the public API contract or output mapping changes.
-- Marketplace publication requires a public repository, a root-level `action.yml`, and release tags.
 
 ## Roadmap
 
 - Add a live integration test against a deployed TrustSignal verification endpoint
 - Publish the action from a dedicated public repository root
 - Add example workflows for release pipelines and provenance retention patterns
-
-## Suggested GitHub Topics
-
-- `github-action`
-- `devsecops`
-- `ci-cd`
-- `artifact-integrity`
-- `supply-chain-security`
-- `compliance`
-- `provenance`
-- `verification`
