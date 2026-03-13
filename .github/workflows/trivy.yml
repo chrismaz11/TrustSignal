@@ -38,7 +38,7 @@ jobs:
 
       - name: Upload Trivy SARIF
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4 # GitHub-maintained action pinned to supported major; Dependabot tracks updates.
         with:
           sarif_file: trivy-results.sarif
 

@@ -15,6 +15,8 @@ Audience:
 - [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
 - [Verification lifecycle](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
 - [Security summary](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
+- [Security workflows](/Users/christopher/Projects/trustsignal/docs/security-workflows.md)
+- [GitHub settings checklist](/Users/christopher/Projects/trustsignal/docs/github-settings-checklist.md)
 - [Benchmark summary](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
 - [Claims boundary](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
 - [Docs architecture](/Users/christopher/Projects/trustsignal/docs/templates/docs-architecture.md)

@@ -15,15 +15,15 @@ jobs:
     name: zizmor advisory audit
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       actions: read
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v4.1.7
         with:
           persist-credentials: false
 
-      - name: Run zizmor in advisory mode
+      - name: Run zizmor
         continue-on-error: true
         uses: zizmorcore/zizmor-action@e639db99335bc9038abc0e066dfcd72e23d26fb4 # v0.3.0
         with:
@@ -37,6 +37,6 @@ jobs:
             echo "## zizmor workflow audit"
             echo ""
             echo "- Mode: advisory"
-            echo "- Trigger: only when files under .github/workflows/** change"
-            echo "- Findings: review annotations and job logs; the workflow does not fail the check solely for findings at this stage"
+            echo "- Scope: GitHub Actions workflow security linting"
+            echo "- Notes: findings are annotated in the run and should be reviewed before merging workflow changes"
           } >> "$GITHUB_STEP_SUMMARY"

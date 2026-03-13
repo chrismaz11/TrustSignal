@@ -1,107 +1,117 @@
 # TrustSignal Security Workflows
 
-> TrustSignal uses a minimal set of security-focused GitHub Actions workflows to scan the repository, review dependency changes, and harden workflow configuration over time.
+> TrustSignal manages a minimal set of security-focused GitHub Actions workflows in-repo. These checks improve repository hygiene and visibility, but they do not replace manual GitHub settings that must still be enabled by a repository administrator.
 
-## Overview
+Short description:
+This document explains which security and governance controls are now defined in repository files, when they run, and how to interpret advisory versus blocking outcomes.
 
-These workflows are intended to add practical security coverage without introducing broad permissions or noisy initial rollout behavior.
+Audience:
+- repository administrators
+- security reviewers
+- maintainers
+
+## In-Repo Automation
+
+The repository now defines these security workflows:
+
+- `.github/workflows/dependency-review.yml`
+- `.github/workflows/trivy.yml`
+- `.github/workflows/scorecard.yml`
+- `.github/workflows/zizmor.yml`
+
+## Dependency Review
+
+What it does:
+- reviews dependency diffs on pull requests
+- blocks only when a pull request introduces `high` or `critical` vulnerabilities through dependency changes
+
+When it runs:
+- on pull requests
+
+Mode:
+- blocking
+
+How to interpret failures:
+- a failing result means the dependency diff introduced a clearly risky dependency update
+- review the dependency review summary in the GitHub workflow run before merging
 
 ## Trivy Filesystem Scan
 
-Workflow:
-- `.github/workflows/security-trivy.yml`
-
 What it does:
-- scans the repository filesystem with Trivy
-- focuses on `HIGH` and `CRITICAL` vulnerabilities
-- ignores unfixed issues to reduce early noise
-- uploads SARIF results for review
+- scans the repository filesystem for `HIGH` and `CRITICAL` vulnerabilities
+- ignores unfixed issues in the first rollout to reduce noise
+- uploads SARIF results when GitHub token permissions allow it
 
 When it runs:
 - on every pull request
 - on pushes to `main`
 
-How to interpret failures:
-- this workflow starts in advisory mode and does not fail the job on findings
-- review SARIF/code scanning results for actionable `HIGH` or `CRITICAL` issues
-- on forked pull requests, SARIF upload may be skipped because GitHub does not grant `security-events: write` to untrusted fork tokens
-
 Mode:
 - advisory
 
-## OpenSSF Scorecard
+How to interpret failures:
+- this workflow currently does not fail the job on findings
+- review SARIF/code scanning results for actionable issues
+- on forked pull requests, SARIF upload may be skipped because GitHub does not grant `security-events: write` to untrusted fork tokens
 
-Workflow:
-- `.github/workflows/security-scorecard.yml`
+## OpenSSF Scorecard
 
 What it does:
 - runs OpenSSF Scorecard against the repository
-- uploads SARIF results
-- publishes results through the standard Scorecard-supported path
+- uploads SARIF results and stores the SARIF file as an artifact
+- publishes Scorecard results through the supported Scorecard path
 
 When it runs:
 - on pushes to `main`
 - weekly on schedule
 
-How to interpret failures:
-- failures usually indicate workflow/configuration issues, permissions issues, or a Scorecard execution problem
-- review the SARIF upload and workflow logs first
-
 Mode:
-- advisory by default unless later enforced through branch protection or policy
+- advisory
+
+How to interpret failures:
+- failures usually indicate a workflow/configuration issue, a permissions problem, or a Scorecard execution issue
+- review the workflow logs and SARIF upload details first
 
 ## zizmor Workflow Audit
 
-Workflow:
-- `.github/workflows/security-zizmor.yml`
-
 What it does:
-- audits GitHub Actions workflows for common security issues
-- emits annotations and log findings
+- audits GitHub Actions workflows for common workflow security issues
+- emits annotations and logs for maintainers reviewing workflow changes
 
 When it runs:
-- only when files under `.github/workflows/**` change
-
-How to interpret failures:
-- the workflow is intentionally advisory and uses `continue-on-error`
-- findings should still be reviewed and fixed, but they do not block merges at this stage
+- only when files in `.github/workflows/**` change
 
 Mode:
 - advisory
 
-## Dependency Review
-
-Workflow:
-- `.github/workflows/security-dependency-review.yml`
-
-What it does:
-- reviews dependency diffs on pull requests
-- fails if a pull request introduces `high` or `critical` vulnerabilities through dependency changes
-
-When it runs:
-- on pull requests
-
-Support note:
-- GitHub Dependency Review is supported for public repositories and for private repositories with GitHub Advanced Security
-
 How to interpret failures:
-- a failing result means the dependency diff introduced vulnerable dependencies at or above the configured threshold
-- review the dependency review summary in the workflow run before merging
+- findings are intentionally non-blocking during the rollout period
+- maintainers should still review and address findings before merging workflow changes
 
-Mode:
-- blocking
+## Least-Privilege Design
 
-## Permission Model
+These workflows follow a least-privilege model:
 
-These workflows follow a least-privilege approach:
+- `contents: read` is used where checkout or repository metadata access is required
+- `security-events: write` is granted only to SARIF-uploading workflows
+- `id-token: write` is granted only to Scorecard because its standard publishing flow requires it
+- no workflow uses `pull_request_target`
+- no workflow exposes repository secrets unnecessarily
 
-- `contents: read` is used where repository checkout or metadata access is required
-- `security-events: write` is granted only to SARIF-publishing workflows
-- `id-token: write` is granted only to Scorecard because publishing results requires it
-- no workflow uses broad write permissions or repository secrets
+## What Is Not Controlled By Repo Files
 
-## Operational Guidance
+These workflows do not automatically configure repository settings such as:
 
-- Treat Trivy and zizmor as early-warning signals during rollout.
-- Treat Dependency Review as the primary blocking dependency-diff control.
-- Review Scorecard results over time for repository hardening trends rather than expecting every check to be perfect immediately.
+- enabling Dependency Graph
+- enabling Dependabot alerts or security updates
+- enabling secret scanning
+- enabling CodeQL or GitHub code scanning defaults
+- configuring branch protection or rulesets
+
+Those controls still require manual verification in GitHub after merge.
+
+## Related Documentation
+
+- [GitHub settings checklist](/Users/christopher/Projects/trustsignal/docs/github-settings-checklist.md)
+- [Security summary](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
+- [Documentation index](/Users/christopher/Projects/trustsignal/docs/README.md)

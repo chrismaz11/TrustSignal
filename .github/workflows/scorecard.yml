@@ -14,10 +14,10 @@ jobs:
     name: OpenSSF Scorecard analysis
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       actions: read
-      security-events: write
+      contents: read
       id-token: write
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v4.1.7
@@ -32,12 +32,12 @@ jobs:
           publish_results: true
 
       - name: Upload Scorecard SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4 # GitHub-maintained action pinned to supported major; Dependabot tracks updates.
         with:
           sarif_file: scorecard-results.sarif
 
       - name: Upload Scorecard artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4 # GitHub-maintained action pinned to supported major; Dependabot tracks updates.
         with:
           name: scorecard-results
           path: scorecard-results.sarif
