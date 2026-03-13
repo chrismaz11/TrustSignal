@@ -8,9 +8,7 @@ function readEnv(name: string): string {
 }
 
 export function getServerOnlySupabaseConfig(): ServerOnlySupabaseConfig | null {
-  const url =
-    readEnv('SUPABASE_URL') ||
-    readEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const url = readEnv('SUPABASE_URL');
   const serviceRoleKey =
     readEnv('SUPABASE_SERVICE_ROLE_KEY') ||
     readEnv('SUPABASE_SECRET_KEY');

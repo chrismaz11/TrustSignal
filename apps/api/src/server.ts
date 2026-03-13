@@ -437,6 +437,14 @@ function databaseUrlHasRequiredSslMode(databaseUrl: string | undefined): boolean
   }
 }
 
+function summarizeDatabaseInitError(error: unknown): string {
+  if (!error) return 'database_initialization_failed';
+  if (error instanceof Error && error.name) {
+    return `${error.name}: database_initialization_failed`;
+  }
+  return 'database_initialization_failed';
+}
+
 function requireProductionVerifierConfig(env: NodeJS.ProcessEnv = process.env): void {
   if ((env.NODE_ENV || 'development') !== 'production') {
     return;
@@ -563,7 +571,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     await ensureDatabase(prisma);
   } catch (error) {
     databaseReady = false;
-    databaseInitError = error instanceof Error ? error.message : 'database_initialization_failed';
+    databaseInitError = summarizeDatabaseInitError(error);
     app.log.error({ err: error }, 'database initialization failed; non-DB routes remain available');
   }
 
