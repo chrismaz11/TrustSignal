@@ -1,0 +1,54 @@
+name: Security / Trivy Filesystem Scan
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-fs:
+    name: Trivy repository scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v4.1.7
+        with:
+          persist-credentials: false
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          hide-progress: true
+          format: sarif
+          output: trivy-results.sarif
+          limit-severities-for-sarif: true
+          exit-code: "0"
+          skip-dirs: node_modules,.next,dist,coverage,.git
+
+      - name: Upload Trivy SARIF
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Summarize Trivy mode
+        if: always()
+        run: |
+          {
+            echo "## Trivy filesystem scan"
+            echo ""
+            echo "- Mode: advisory"
+            echo "- Scope: filesystem vulnerability scan with HIGH/CRITICAL severity only"
+            echo "- Notes: ignores unfixed issues and uploads SARIF for review in Security/code scanning when token permissions allow it"
+          } >> "$GITHUB_STEP_SUMMARY"
