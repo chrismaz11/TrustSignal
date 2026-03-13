@@ -1,5 +1,7 @@
 # TrustSignal Secure Development Policy
 
+> This public policy is intentionally high level. Tool-specific configurations, sensitive findings, and operational review records must remain in private compliance systems.
+
 ## Purpose
 
 Establish secure software development expectations for TrustSignal so code changes are reviewed, tested, and released with documented security considerations.
@@ -26,8 +28,4 @@ This policy applies to application code, infrastructure-as-code, CI/CD workflows
 
 ## Evidence
 
-- pull request records and review comments
-- CI build and validation history
-- dependency review outputs
-- security workflow logs
-- remediation tickets for identified issues
+Evidence for this policy must be stored in Vanta, internal compliance storage, or a private audit repository rather than in this public repository.

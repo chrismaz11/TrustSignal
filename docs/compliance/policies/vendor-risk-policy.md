@@ -1,5 +1,7 @@
 # TrustSignal Vendor Risk Policy
 
+> This public policy is intentionally high level. Vendor contracts, assessments, and due diligence records must remain in private compliance systems.
+
 ## Purpose
 
 Define how TrustSignal evaluates and monitors third-party vendors, hosted services, and material software dependencies that may affect security posture or service integrity.
@@ -24,8 +26,4 @@ This policy applies to cloud providers, development tooling vendors, security to
 
 ## Evidence
 
-- vendor inventory
-- risk review worksheets
-- security questionnaire responses or attestations
-- renewal and reassessment notes
-- remediation tracking for vendor findings
+Evidence for this policy must be stored in Vanta, internal compliance storage, or a private audit repository rather than in this public repository.

@@ -1,15 +1,10 @@
-# TrustSignal CI Security Evidence Guide
+# TrustSignal CI Security Evidence Placeholder
 
-This file is a placeholder only. Do not store exported CI logs, workflow run artifacts, or internal review records in the public repository.
+Control Objective  
+Document that TrustSignal uses CI validation and security checks to review changes and detect security issues before merge.
 
-Expected evidence:
-- GitHub Actions run history for build, typecheck, and security workflows
-- workflow definitions showing least-privilege permissions
-- screenshots or exported records of required status checks
-- evidence that failing checks block merges where intended
-- change history for workflow updates
+Evidence Expected by Auditor  
+Workflow run records, required status check configuration, workflow review history, and security scan outcomes.
 
-TrustSignal notes:
-- current repository automation includes dependency review, Trivy, OpenSSF Scorecard, and zizmor
-- store real workflow evidence in Vanta or approved internal compliance storage and keep this file limited to a pointer to that system of record
-- do not paste raw workflow logs, internal approvals, or screenshots into this repository
+Where Evidence Is Stored  
+Vanta, internal compliance storage, or private audit repository. Do not store raw CI logs, screenshots, run artifacts, or internal approvals in this public repository.

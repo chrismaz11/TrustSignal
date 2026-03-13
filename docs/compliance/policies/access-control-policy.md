@@ -1,5 +1,7 @@
 # TrustSignal Access Control Policy
 
+> This public policy is intentionally high level. Operational access evidence and system-specific details must remain in private compliance systems.
+
 ## Purpose
 
 Define how TrustSignal grants, reviews, and removes access to code, infrastructure, environments, and sensitive operational tooling.
@@ -26,8 +28,4 @@ This policy applies to employees, contractors, service accounts, and third parti
 
 ## Evidence
 
-- access request and approval records
-- periodic access review logs
-- repository membership or team export
-- branch protection or ruleset screenshots
-- deprovisioning records for departed personnel
+Evidence for this policy must be stored in Vanta, internal compliance storage, or a private audit repository rather than in this public repository.

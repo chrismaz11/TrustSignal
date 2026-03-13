@@ -1,15 +1,10 @@
-# TrustSignal Access Control Evidence Guide
+# TrustSignal Access Control Evidence Placeholder
 
-This file is a placeholder only. Do not store access review data, employee access lists, approval records, or exported administrative evidence in the public repository.
+Control Objective  
+Document that access to TrustSignal systems and repositories is approved, limited, reviewed, and removed on least-privilege terms.
 
-Expected evidence:
-- GitHub organization membership and repository access listings
-- branch protection or ruleset configuration for protected branches
-- reviewer requirements for pull requests
-- access review logs or exported review records
-- joiner, mover, and leaver tickets showing approval and removal actions
+Evidence Expected by Auditor  
+Access review records, access approvals, repository protection settings, and joiner/mover/leaver evidence.
 
-TrustSignal notes:
-- repository files can document expected controls, but GitHub UI settings and access review outputs must be stored in Vanta or approved internal compliance storage
-- keep this file limited to a short pointer such as: "Current evidence is maintained in Vanta under Access Control / Quarterly Access Review"
-- do not paste screenshots, exports, names, email addresses, or system-specific access data into this repository
+Where Evidence Is Stored  
+Vanta, internal compliance storage, or private audit repository. Do not store access review data, employee access lists, names, or exported administrative records in this public repository.

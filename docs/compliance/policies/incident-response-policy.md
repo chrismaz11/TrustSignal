@@ -1,5 +1,7 @@
 # TrustSignal Incident Response Policy
 
+> This public policy is intentionally high level. Incident records, responder notes, and operational investigation details must remain in private compliance systems.
+
 ## Purpose
 
 Define a repeatable process for identifying, escalating, containing, investigating, and recovering from security incidents affecting TrustSignal systems or evidence integrity infrastructure.
@@ -26,8 +28,4 @@ This policy applies to suspected or confirmed incidents involving TrustSignal co
 
 ## Evidence
 
-- incident tickets or case records
-- timelines and escalation logs
-- forensic or log preservation notes
-- post-incident review documents
-- remediation tracking records
+Evidence for this policy must be stored in Vanta, internal compliance storage, or a private audit repository rather than in this public repository.

@@ -1,5 +1,7 @@
 # TrustSignal Data Retention Policy
 
+> This public policy is intentionally high level. Storage-specific evidence and operational records must remain in private compliance systems.
+
 ## Purpose
 
 Define retention, review, and disposal expectations for TrustSignal operational records, compliance evidence, and security-relevant data.
@@ -24,8 +26,4 @@ This policy applies to repository evidence, audit artifacts, logs, incident reco
 
 ## Evidence
 
-- retention schedule or matrix
-- evidence inventory
-- storage access reviews
-- deletion or archival procedures
-- examples of retained audit records
+Evidence for this policy must be stored in Vanta, internal compliance storage, or a private audit repository rather than in this public repository.

@@ -1,15 +1,10 @@
-# TrustSignal Logging and Monitoring Evidence Guide
+# TrustSignal Logging and Monitoring Evidence Placeholder
 
-This file is a placeholder only. Do not store production logs, alert payloads, internal dashboard exports, or incident-linked monitoring records in the public repository.
+Control Objective  
+Document that TrustSignal monitors security-relevant activity and retains reviewable monitoring evidence through approved operational systems.
 
-Expected evidence:
-- logging standards or operational runbooks
-- examples of security-relevant logs or alerts
-- monitoring dashboard screenshots or exported views
-- incident escalation records tied to monitored events
-- evidence of periodic review for monitoring outputs
+Evidence Expected by Auditor  
+Monitoring procedures, alert review records, dashboard evidence, and logging review records.
 
-TrustSignal notes:
-- repository files can describe expectations, but auditors will typically expect operational evidence from deployed systems and review processes
-- store real evidence in Vanta or approved internal compliance storage and keep this file limited to a pointer to the authoritative evidence location
-- do not include private system architecture, dashboard screenshots, production log excerpts, or responder notes here
+Where Evidence Is Stored  
+Vanta, internal compliance storage, or private audit repository. Do not store production logs, dashboard exports, alert payloads, or private system architecture in this public repository.

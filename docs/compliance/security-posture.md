@@ -23,4 +23,4 @@ Generated: 2026-03-13T00:32:09.914Z
 
 - Verify branch protection or rulesets directly in GitHub.
 - Verify Dependency Graph, Dependabot alerts, and code scanning are enabled in repository settings.
-- Capture dated screenshots or exports if the result will be used as audit evidence.
+- Store any operational evidence in Vanta, internal compliance storage, or a private audit repository rather than in this public repository.

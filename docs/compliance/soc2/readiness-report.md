@@ -47,4 +47,5 @@ Generated: 2026-03-13T00:32:03.795Z
 
 - Scores are based on repository-visible controls and documentation only.
 - GitHub UI configuration, infrastructure operations, access reviews, and restore testing still require manual verification.
+- Operational evidence must be stored in Vanta, internal compliance storage, or a private audit repository rather than in this public repository.
 - This report should be refreshed when major security workflows, policies, or governance controls change.
