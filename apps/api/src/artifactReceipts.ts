@@ -41,6 +41,46 @@ type ArtifactReceiptRow = {
   createdAt: Date;
 };
 
+export type ArtifactReceiptPublicView = {
+  receiptId: string;
+  artifact: {
+    hash: string;
+    algorithm: 'sha256';
+  };
+  source: {
+    provider: string;
+    repository?: string;
+    workflow?: string;
+    runId?: string;
+    commit?: string;
+    actor?: string;
+  };
+  status: string;
+  createdAt: string;
+  receiptSignature: {
+    alg: string;
+    kid: string;
+  };
+  verificationUrl?: string;
+};
+
+export type ArtifactReceiptSummaryView = {
+  receiptId: string;
+  status: string;
+  integrityState: 'valid' | 'check';
+  issuedAt: string;
+  source: {
+    provider: string;
+    repository?: string;
+    workflow?: string;
+  };
+  display: {
+    label: string;
+    tone: 'success' | 'warning';
+    statement: string;
+  };
+};
+
 type SignedArtifactReceiptPayload = {
   receiptVersion: '1.0';
   receiptId: string;
@@ -163,6 +203,35 @@ function toSignedPayload(row: ArtifactReceiptRow): SignedArtifactReceiptPayload 
   };
 }
 
+function toPublicSource(row: ArtifactReceiptRow) {
+  return {
+    provider: row.sourceProvider,
+    ...(row.repository ? { repository: row.repository } : {}),
+    ...(row.workflow ? { workflow: row.workflow } : {}),
+    ...(row.runId ? { runId: row.runId } : {}),
+    ...(row.commitSha ? { commit: row.commitSha } : {}),
+    ...(row.actor ? { actor: row.actor } : {})
+  };
+}
+
+function toSummaryDisplay(status: string): ArtifactReceiptSummaryView['display'] {
+  if (status === 'verified') {
+    return {
+      label: 'TrustSignal Verified',
+      tone: 'success',
+      statement:
+        'This artifact has a signed verification receipt and can be checked later for integrity drift.'
+    };
+  }
+
+  return {
+    label: 'TrustSignal Check Required',
+    tone: 'warning',
+    statement:
+      'This receipt is available for review, but the current verification state should be checked before relying on it.'
+  };
+}
+
 export async function issueArtifactReceipt(
   prisma: PrismaClient,
   securityConfig: SecurityConfig,
@@ -259,6 +328,44 @@ export async function getArtifactReceiptById(
   );
 
   return rows[0] || null;
+}
+
+export function toArtifactReceiptPublicView(
+  row: ArtifactReceiptRow,
+  options: { verificationUrl?: string } = {}
+): ArtifactReceiptPublicView {
+  return {
+    receiptId: row.receiptId,
+    artifact: {
+      hash: row.artifactHash,
+      algorithm: 'sha256'
+    },
+    source: toPublicSource(row),
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+    receiptSignature: {
+      alg: row.receiptSignatureAlg,
+      kid: row.receiptSignatureKid
+    },
+    ...(options.verificationUrl ? { verificationUrl: options.verificationUrl } : {})
+  };
+}
+
+export function toArtifactReceiptSummaryView(
+  row: ArtifactReceiptRow
+): ArtifactReceiptSummaryView {
+  return {
+    receiptId: row.receiptId,
+    status: row.status,
+    integrityState: row.status === 'verified' ? 'valid' : 'check',
+    issuedAt: row.createdAt.toISOString(),
+    source: {
+      provider: row.sourceProvider,
+      ...(row.repository ? { repository: row.repository } : {}),
+      ...(row.workflow ? { workflow: row.workflow } : {})
+    },
+    display: toSummaryDisplay(row.status)
+  };
 }
 
 export async function verifyArtifactReceiptById(

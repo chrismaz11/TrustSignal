@@ -11,7 +11,10 @@ import { PrismaClient } from '@prisma/client';
 import type { DeedParsed } from '../../../packages/public-contracts/dist/index.js';
 
 import {
+  getArtifactReceiptById,
   issueArtifactReceipt,
+  toArtifactReceiptPublicView,
+  toArtifactReceiptSummaryView,
   verifyArtifactReceiptById
 } from './artifactReceipts.js';
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
@@ -411,6 +414,18 @@ function normalizeForwardedProto(value: string | string[] | undefined): string |
   return first || null;
 }
 
+function buildPublicVerificationUrl(request: {
+  headers: Record<string, string | string[] | undefined>;
+  protocol?: string;
+}, receiptId: string): string | null {
+  const forwardedProto = normalizeForwardedProto(request.headers['x-forwarded-proto']);
+  const hostHeader = request.headers['x-forwarded-host'] || request.headers.host;
+  const host = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader;
+  if (!host) return null;
+  const protocol = forwardedProto || request.protocol || 'https';
+  return `${protocol}://${host}/verify/${receiptId}`;
+}
+
 function databaseUrlHasRequiredSslMode(databaseUrl: string | undefined): boolean {
   if (!databaseUrl) return false;
   try {
@@ -503,6 +518,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     timeWindow: securityConfig.rateLimitWindow,
     keyGenerator: getApiRateLimitKey
   };
+  const requireReadScope = requireApiKeyScope(securityConfig, 'read');
 
   app.addHook('onRequest', async (request) => {
     const timedRequest = request as typeof request & {
@@ -783,11 +799,26 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    const artifactReceipt = await getArtifactReceiptById(prisma, receiptId);
+    if (artifactReceipt) {
+      return reply.send(
+        toArtifactReceiptPublicView(artifactReceipt, {
+          verificationUrl: buildPublicVerificationUrl(request, receiptId) || undefined
+        })
+      );
+    }
+
+    if (!request.headers['x-api-key']) {
+      return reply.code(404).send({ error: 'Receipt not found' });
+    }
+
+    await requireReadScope(request, reply);
+    if (reply.sent) return;
+
     const storedReceipt = await verificationEngine.getReceipt(receiptId);
     if (!storedReceipt) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -815,6 +846,19 @@ export async function buildServer(options: BuildServerOptions = {}) {
       canonicalReceipt: storedReceipt.canonicalReceipt,
       pdfUrl: `/api/v1/receipt/${receiptId}/pdf`
     });
+  });
+
+  app.get('/api/v1/receipt/:receiptId/summary', {
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
+    const artifactReceipt = await getArtifactReceiptById(prisma, receiptId);
+    if (!artifactReceipt) {
+      return reply.code(404).send({ error: 'Receipt not found' });
+    }
+
+    return reply.send(toArtifactReceiptSummaryView(artifactReceipt));
   });
 
   app.get('/api/v1/receipt/:receiptId/pdf', {

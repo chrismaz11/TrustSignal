@@ -32,11 +32,16 @@ describe('Request validation hardening', () => {
   it('rejects invalid receiptId params', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/v1/receipt/invalid$id',
-      headers: { 'x-api-key': apiKey }
+      url: '/api/v1/receipt/invalid$id'
+    });
+
+    const summaryRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/receipt/invalid$id/summary'
     });
 
     expect(res.statusCode).toBe(expectedStatusCode);
+    expect(summaryRes.statusCode).toBe(expectedStatusCode);
   });
 
   it('rejects request bodies on no-body mutation routes', async () => {

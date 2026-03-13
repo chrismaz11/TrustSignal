@@ -70,6 +70,63 @@ describeWithDatabase('Generic artifact verification API', () => {
     );
     expect(persistedRows).toHaveLength(1);
 
+    const publicReceipt = await app.inject({
+      method: 'GET',
+      url: `/api/v1/receipt/${receipt.receiptId}`
+    });
+
+    expect(publicReceipt.statusCode).toBe(200);
+    expect(publicReceipt.json()).toMatchObject({
+      receiptId: receipt.receiptId,
+      artifact: {
+        hash: artifactHash,
+        algorithm: 'sha256'
+      },
+      source: {
+        provider: 'github-actions',
+        repository: 'TrustSignal-dev/TrustSignal-Verify-Artifact',
+        workflow: 'Verify Build Artifact',
+        runId: '12345',
+        commit: 'abc123def456',
+        actor: 'octocat'
+      },
+      status: 'verified',
+      receiptSignature: {
+        alg: 'EdDSA'
+      }
+    });
+    expect(publicReceipt.json().receiptSignature.signature).toBeUndefined();
+    expect(publicReceipt.json().canonicalReceipt).toBeUndefined();
+    expect(publicReceipt.json().verificationId).toBeUndefined();
+
+    const publicSummary = await app.inject({
+      method: 'GET',
+      url: `/api/v1/receipt/${receipt.receiptId}/summary`
+    });
+
+    expect(publicSummary.statusCode).toBe(200);
+    expect(publicSummary.json()).toMatchObject({
+      receiptId: receipt.receiptId,
+      status: 'verified',
+      integrityState: 'valid',
+      source: {
+        provider: 'github-actions',
+        repository: 'TrustSignal-dev/TrustSignal-Verify-Artifact',
+        workflow: 'Verify Build Artifact'
+      },
+      display: {
+        label: 'TrustSignal Verified',
+        tone: 'success'
+      }
+    });
+
+    const missingReceipt = await app.inject({
+      method: 'GET',
+      url: `/api/v1/receipt/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`
+    });
+
+    expect(missingReceipt.statusCode).toBe(404);
+
     const laterVerifyMatch = await app.inject({
       method: 'POST',
       url: `/api/v1/receipt/${receipt.receiptId}/verify`,

@@ -78,27 +78,49 @@ paths:
   /api/v1/receipt/{receiptId}:
     get:
       tags: [Receipts]
-      summary: Retrieve a stored verification receipt
+      summary: Retrieve a public-safe artifact receipt view
       description: |
-        Return the stored receipt view for a previously created verification,
-        including receipt metadata, the canonical receipt payload, and a PDF URL.
-      security:
-        - ApiKeyAuth: []
+        Return a compact inspection view for an artifact receipt. The response is safe for
+        external display and omits internal scoring, raw signatures, and backend details.
+        Artifact receipt identifiers are unguessable UUIDs, which allows read-only inspection
+        without exposing private persistence. Legacy non-artifact receipts still require read-scoped auth.
+      security: []
       parameters:
         - $ref: '#/components/parameters/ReceiptId'
       responses:
         '200':
-          description: Stored receipt returned.
+          description: Public artifact receipt view returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerificationReceipt'
+                $ref: '#/components/schemas/PublicArtifactReceipt'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/receipt/{receiptId}/summary:
+    get:
+      tags: [Receipts]
+      summary: Retrieve a compact partner-ready receipt summary
+      description: |
+        Return a stable summary payload that partner platforms can render as a verification badge
+        or evidence-panel status without understanding TrustSignal internals.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Compact verification summary returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicArtifactReceiptSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
         '429':
@@ -565,6 +587,119 @@ components:
           type: string
         recomputedHash:
           type: string
+    PublicArtifactReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - receiptId
+        - artifact
+        - source
+        - status
+        - createdAt
+        - receiptSignature
+      properties:
+        receiptId:
+          type: string
+          format: uuid
+        artifact:
+          type: object
+          additionalProperties: false
+          required:
+            - hash
+            - algorithm
+          properties:
+            hash:
+              type: string
+              pattern: '^[A-Fa-f0-9]{64}$'
+            algorithm:
+              type: string
+              enum: [sha256]
+        source:
+          type: object
+          additionalProperties: false
+          required:
+            - provider
+          properties:
+            provider:
+              type: string
+            repository:
+              type: string
+            workflow:
+              type: string
+            runId:
+              type: string
+            commit:
+              type: string
+            actor:
+              type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        receiptSignature:
+          type: object
+          additionalProperties: false
+          required:
+            - alg
+            - kid
+          properties:
+            alg:
+              type: string
+            kid:
+              type: string
+        verificationUrl:
+          type: string
+          format: uri
+    PublicArtifactReceiptSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - receiptId
+        - status
+        - integrityState
+        - issuedAt
+        - source
+        - display
+      properties:
+        receiptId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        integrityState:
+          type: string
+          enum: [valid, check]
+        issuedAt:
+          type: string
+          format: date-time
+        source:
+          type: object
+          additionalProperties: false
+          required:
+            - provider
+          properties:
+            provider:
+              type: string
+            repository:
+              type: string
+            workflow:
+              type: string
+        display:
+          type: object
+          additionalProperties: false
+          required:
+            - label
+            - tone
+            - statement
+          properties:
+            label:
+              type: string
+            tone:
+              type: string
+              enum: [success, warning]
+            statement:
+              type: string
     VerificationResponse:
       type: object
       additionalProperties: true

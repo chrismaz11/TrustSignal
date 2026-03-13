@@ -12,7 +12,8 @@ The GitHub Action does not connect to Supabase directly. TrustSignal persists re
 2. The action calls `POST /api/v1/verify` on `api.trustsignal.dev`.
 3. TrustSignal validates the request, authenticates the caller, issues a signed receipt, and persists the receipt server-side.
 4. The action stores `receiptId` and `receiptSignature` for later verification or audit use.
-5. A later workflow can call `POST /api/v1/receipt/{receiptId}/verify` with an artifact hash to confirm integrity.
+5. Public consumers can inspect the stored receipt through `GET /api/v1/receipt/{receiptId}` or render a compact badge from `GET /api/v1/receipt/{receiptId}/summary`.
+6. A later workflow can call `POST /api/v1/receipt/{receiptId}/verify` with an artifact hash to confirm integrity.
 
 ## Public API Contract
 
@@ -54,6 +55,14 @@ Response fields used by the action:
 - `receiptSignature`
 - `status`
 
+### `GET /api/v1/receipt/{receiptId}`
+
+This public-safe endpoint returns a compact inspection view for artifact receipts. It is intended for receipt drill-down pages and audit references.
+
+### `GET /api/v1/receipt/{receiptId}/summary`
+
+This public-safe endpoint returns a compact display payload for trust centers, evidence panels, and partner dashboards.
+
 ### `POST /api/v1/receipt/{receiptId}/verify`
 
 Request body:
@@ -85,6 +94,8 @@ Response fields:
 - Service role credentials are backend-only and must never be exposed to clients.
 - Artifact receipts are stored for later verification.
 - Row Level Security is enabled on the artifact receipt table as defense in depth.
+- Public lookup and summary endpoints are read-only and return safe receipt fields only.
+- Later verification remains behind TrustSignal API authentication.
 
 ## Current Limitations
 
