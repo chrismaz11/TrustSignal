@@ -2,6 +2,9 @@
 
 > This checklist is designed for mock-audit readiness reviews against SOC 2 Security criteria. It helps the team separate implemented controls from partially implemented controls and evidence that still depends on manual operations.
 
+> Public-repo boundary:
+> Use this checklist to track readiness at a high level only. Do not add internal infrastructure diagrams, employee access lists, production logs, incident reports, or other sensitive audit evidence here.
+
 Short description:
 Use this checklist during internal security reviews, partner diligence preparation, and pre-audit cleanup to confirm whether TrustSignal has evidence-ready controls rather than undocumented intent.
 

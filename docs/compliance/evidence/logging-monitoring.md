@@ -1,6 +1,6 @@
 # TrustSignal Logging and Monitoring Evidence Guide
 
-This placeholder tracks evidence for monitoring, detection, and operational review.
+This file is a placeholder only. Do not store production logs, alert payloads, internal dashboard exports, or incident-linked monitoring records in the public repository.
 
 Expected evidence:
 - logging standards or operational runbooks
@@ -11,4 +11,5 @@ Expected evidence:
 
 TrustSignal notes:
 - repository files can describe expectations, but auditors will typically expect operational evidence from deployed systems and review processes
-- document where logs are retained, who reviews them, and how anomalies are escalated
+- store real evidence in Vanta or approved internal compliance storage and keep this file limited to a pointer to the authoritative evidence location
+- do not include private system architecture, dashboard screenshots, production log excerpts, or responder notes here

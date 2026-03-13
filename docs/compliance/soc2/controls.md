@@ -2,6 +2,9 @@
 
 > TrustSignal maintains this document as a readiness-oriented control map for the SOC 2 Security Trust Services Criteria. It is intended for internal assessment, partner diligence, and gap remediation planning. It is not a statement of SOC 2 certification.
 
+> Public-repo boundary:
+> This file contains high-level control descriptions only. Sensitive audit evidence, private architecture, access review data, production logs, and incident records must remain in Vanta or approved internal compliance storage.
+
 Short description:
 This document maps observable TrustSignal practices, repository controls, and operating expectations to core SOC 2 Security control areas so teams can identify evidence, confirm coverage, and track remaining gaps.
 

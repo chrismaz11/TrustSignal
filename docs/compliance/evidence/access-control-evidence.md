@@ -1,6 +1,6 @@
 # TrustSignal Access Control Evidence Guide
 
-This placeholder tracks the types of evidence auditors normally expect for access control testing.
+This file is a placeholder only. Do not store access review data, employee access lists, approval records, or exported administrative evidence in the public repository.
 
 Expected evidence:
 - GitHub organization membership and repository access listings
@@ -10,5 +10,6 @@ Expected evidence:
 - joiner, mover, and leaver tickets showing approval and removal actions
 
 TrustSignal notes:
-- repository files can document expected controls, but GitHub UI settings and access review outputs must still be collected manually
-- attach dated screenshots, exports, or ticket references here during audit preparation
+- repository files can document expected controls, but GitHub UI settings and access review outputs must be stored in Vanta or approved internal compliance storage
+- keep this file limited to a short pointer such as: "Current evidence is maintained in Vanta under Access Control / Quarterly Access Review"
+- do not paste screenshots, exports, names, email addresses, or system-specific access data into this repository
