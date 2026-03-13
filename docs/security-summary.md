@@ -37,6 +37,10 @@ For the public `/api/v1/*` surface in this repository:
 - request validation and rate limiting are enforced at the API boundary
 - receipt revocation requires additional issuer authorization headers
 - later verification is available through a dedicated receipt verification route
+- the GitHub Action calls TrustSignal API, not Supabase directly
+- artifact receipts are persisted server-side behind the API boundary
+- Supabase service-role credentials are backend-only and must never be exposed to browser or action code
+- Row Level Security is enabled on the artifact receipt table as defense in depth
 
 Evaluator and demo flows are deliberate evaluator paths. They are designed to show the verification lifecycle safely before production integration.
 

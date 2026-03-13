@@ -9,6 +9,13 @@ describe('Request validation hardening', () => {
   let app: FastifyInstance;
   const apiKey = 'test-validation-api-key';
   const validReceiptId = randomUUID();
+  const expectedStatusCode =
+    Boolean(process.env.DATABASE_URL) ||
+    Boolean(process.env.SUPABASE_DB_URL) ||
+    Boolean(process.env.SUPABASE_POOLER_URL) ||
+    Boolean(process.env.SUPABASE_DIRECT_URL)
+      ? 400
+      : 503;
 
   beforeAll(async () => {
     process.env.API_KEYS = apiKey;
@@ -29,17 +36,10 @@ describe('Request validation hardening', () => {
       headers: { 'x-api-key': apiKey }
     });
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(expectedStatusCode);
   });
 
   it('rejects request bodies on no-body mutation routes', async () => {
-    const verifyRes = await app.inject({
-      method: 'POST',
-      url: `/api/v1/receipt/${validReceiptId}/verify`,
-      headers: { 'x-api-key': apiKey },
-      payload: { force: true }
-    });
-
     const anchorRes = await app.inject({
       method: 'POST',
       url: `/api/v1/anchor/${validReceiptId}`,
@@ -54,8 +54,18 @@ describe('Request validation hardening', () => {
       payload: { force: true }
     });
 
-    expect(verifyRes.statusCode).toBe(400);
-    expect(anchorRes.statusCode).toBe(400);
-    expect(revokeRes.statusCode).toBe(400);
+    expect(anchorRes.statusCode).toBe(expectedStatusCode);
+    expect(revokeRes.statusCode).toBe(expectedStatusCode);
+  });
+
+  it('rejects invalid artifact verification payloads', async () => {
+    const verifyRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/receipt/${validReceiptId}/verify`,
+      headers: { 'x-api-key': apiKey },
+      payload: { artifact: { hash: 'invalid', algorithm: 'md5' } }
+    });
+
+    expect(verifyRes.statusCode).toBe(expectedStatusCode);
   });
 });

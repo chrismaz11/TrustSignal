@@ -34,6 +34,27 @@ model Receipt {
   revoked          Boolean  @default(false)
 }
 
+model ArtifactReceipt {
+  receiptId            String   @id
+  verificationId       String   @unique
+  artifactHash         String
+  algorithm            String
+  sourceProvider       String
+  repository           String?
+  workflow             String?
+  runId                String?
+  commitSha            String?
+  actor                String?
+  status               String
+  receiptSignature     String
+  receiptSignatureAlg  String
+  receiptSignatureKid  String
+  metadataArtifactPath String?
+  createdAt            DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model Property {
   parcelId     String   @id
   currentOwner String

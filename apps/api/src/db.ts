@@ -34,6 +34,64 @@ export async function ensureDatabase(prisma: PrismaClient) {
     `ALTER TABLE "Receipt" ADD COLUMN IF NOT EXISTS "receiptSignature" TEXT`,
     `ALTER TABLE "Receipt" ADD COLUMN IF NOT EXISTS "receiptSignatureAlg" TEXT`,
     `ALTER TABLE "Receipt" ADD COLUMN IF NOT EXISTS "receiptSignatureKid" TEXT`,
+    `CREATE TABLE IF NOT EXISTS "ArtifactReceipt" (
+      "receiptId" TEXT PRIMARY KEY,
+      "verificationId" TEXT NOT NULL,
+      "artifactHash" TEXT NOT NULL,
+      "algorithm" TEXT NOT NULL,
+      "sourceProvider" TEXT NOT NULL,
+      "repository" TEXT,
+      "workflow" TEXT,
+      "runId" TEXT,
+      "commitSha" TEXT,
+      "actor" TEXT,
+      "status" TEXT NOT NULL,
+      "receiptSignature" TEXT NOT NULL,
+      "receiptSignatureAlg" TEXT NOT NULL,
+      "receiptSignatureKid" TEXT NOT NULL,
+      "metadataArtifactPath" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "ArtifactReceipt_verificationId_key"
+      ON "ArtifactReceipt" ("verificationId")`,
+    `CREATE INDEX IF NOT EXISTS "ArtifactReceipt_createdAt_idx"
+      ON "ArtifactReceipt" ("createdAt")`,
+    `ALTER TABLE "ArtifactReceipt" ENABLE ROW LEVEL SECURITY`,
+    `ALTER TABLE "ArtifactReceipt" FORCE ROW LEVEL SECURITY`,
+    `DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'ArtifactReceipt'
+          AND policyname = 'artifact_receipts_postgres_all'
+      ) THEN
+        CREATE POLICY "artifact_receipts_postgres_all"
+        ON "ArtifactReceipt"
+        FOR ALL
+        TO postgres
+        USING (true)
+        WITH CHECK (true);
+      END IF;
+    END $$`,
+    `DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname = 'service_role'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'ArtifactReceipt'
+          AND policyname = 'artifact_receipts_service_role_all'
+      ) THEN
+        CREATE POLICY "artifact_receipts_service_role_all"
+        ON "ArtifactReceipt"
+        FOR ALL
+        TO service_role
+        USING (true)
+        WITH CHECK (true);
+      END IF;
+    END $$`,
     `CREATE TABLE IF NOT EXISTS "Property" (
       "parcelId" TEXT PRIMARY KEY,
       "currentOwner" TEXT NOT NULL,

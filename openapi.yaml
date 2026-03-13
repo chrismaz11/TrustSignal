@@ -24,8 +24,8 @@ paths:
       tags: [Verification]
       summary: Create a verification and receive a signed verification receipt
       description: |
-        Submit a verification request from an existing workflow. TrustSignal returns verification signals,
-        a signed verification receipt, and verifiable provenance metadata that can be used for later verification.
+        Submit a generic artifact verification request from an existing workflow. TrustSignal returns
+        a signed verification receipt and persists it for later verification.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -33,54 +33,38 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VerificationRequest'
+              $ref: '#/components/schemas/ArtifactVerificationRequest'
             examples:
               default:
                 summary: Verification request
                 value:
-                  bundleId: verification-2026-03-12-001
-                  transactionType: deed_transfer
-                  ron:
-                    provider: source-system
-                    notaryId: NOTARY-EXAMPLE-01
-                    commissionState: IL
-                    sealPayload: simulated-seal-payload
-                  doc:
-                    docHash: "0x8b7b2f52f2a2e19f8f3fe0d815d1c1d8d1e0d120e8cc60d1baf5e7a6f9d211aa"
-                  policy:
-                    profile: CONTROL_CC_001
-                  property:
-                    parcelId: PARCEL-EXAMPLE-1001
-                    county: Cook
-                    state: IL
-                  timestamp: "2026-03-12T15:24:00.000Z"
+                  artifact:
+                    hash: 2f77668a9dfbf8d5847cf2d5d0370740e0c0601b4f061c1181f58c77c2b8f486
+                    algorithm: sha256
+                  source:
+                    provider: github-actions
+                    repository: TrustSignal-dev/TrustSignal-Verify-Artifact
+                    workflow: Verify Build Artifact
+                    runId: "12345"
+                    commit: abc123def456
+                    actor: octocat
+                  metadata:
+                    artifactPath: dist/release.txt
       responses:
         '200':
           description: Verification completed and a signed verification receipt was issued.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerificationResponse'
+                $ref: '#/components/schemas/ArtifactVerificationResponse'
               examples:
                 default:
                   summary: Verification response
                   value:
-                    receiptVersion: '2.0'
-                    decision: ALLOW
-                    reasons:
-                      - receipt issued
+                    verificationId: 2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a
                     receiptId: 2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a
-                    receiptHash: "0x4e7f2ce9d3f7a8d3b0e4c9f2aa17fd59d6b4fda2d7b7b7d1cce8124d7ee39d04"
-                    receiptSignature:
-                      alg: EdDSA
-                      kid: trustsignal-current
-                      signature: eyJleGFtcGxlIjoic2lnbmVkLXJlY2VpcHQifQ
-                    anchor:
-                      status: PENDING
-                      subjectDigest: "0x8c0f95cda31274e7b61adfd1dd1e0c03a4b96f78d90da52d42fd93d9a38fc112"
-                      subjectVersion: trustsignal.anchor_subject.v1
-                    revocation:
-                      status: ACTIVE
+                    receiptSignature: eyJleGFtcGxlIjoic2lnbmVkLXJlY2VpcHQifQ
+                    status: verified
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -154,19 +138,24 @@ paths:
       tags: [Lifecycle]
       summary: Check later verification status for a stored receipt
       description: |
-        Recompute receipt integrity and return the current verification status for later verification.
-        This endpoint does not accept a request body.
+        Compare a supplied artifact hash against a stored receipt and return the current verification status.
       security:
         - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ReceiptId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArtifactReceiptVerifyRequest'
       responses:
         '200':
           description: Receipt verification status returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerificationStatus'
+                $ref: '#/components/schemas/ArtifactReceiptVerificationStatus'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -462,6 +451,120 @@ components:
           type: string
           format: date-time
           description: Caller-provided event timestamp.
+    ArtifactVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - artifact
+        - source
+      properties:
+        artifact:
+          type: object
+          additionalProperties: false
+          required:
+            - hash
+            - algorithm
+          properties:
+            hash:
+              type: string
+              pattern: '^[A-Fa-f0-9]{64}$'
+            algorithm:
+              type: string
+              enum: [sha256]
+        source:
+          type: object
+          additionalProperties: false
+          required:
+            - provider
+          properties:
+            provider:
+              type: string
+            repository:
+              type: string
+            workflow:
+              type: string
+            runId:
+              type: string
+            commit:
+              type: string
+            actor:
+              type: string
+        metadata:
+          type: object
+          additionalProperties: false
+          properties:
+            artifactPath:
+              type: string
+    ArtifactVerificationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - verificationId
+        - receiptId
+        - receiptSignature
+        - status
+      properties:
+        verificationId:
+          type: string
+          format: uuid
+        receiptId:
+          type: string
+          format: uuid
+        receiptSignature:
+          type: string
+        status:
+          type: string
+          enum: [verified]
+    ArtifactReceiptVerifyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - artifact
+      properties:
+        artifact:
+          type: object
+          additionalProperties: false
+          required:
+            - hash
+            - algorithm
+          properties:
+            hash:
+              type: string
+              pattern: '^[A-Fa-f0-9]{64}$'
+            algorithm:
+              type: string
+              enum: [sha256]
+    ArtifactReceiptVerificationStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - verified
+        - integrityVerified
+        - signatureVerified
+        - status
+        - receiptId
+        - receiptSignature
+        - storedHash
+        - recomputedHash
+      properties:
+        verified:
+          type: boolean
+        integrityVerified:
+          type: boolean
+        signatureVerified:
+          type: boolean
+        status:
+          type: string
+          enum: [verified, mismatch]
+        receiptId:
+          type: string
+          format: uuid
+        receiptSignature:
+          type: string
+        storedHash:
+          type: string
+        recomputedHash:
+          type: string
     VerificationResponse:
       type: object
       additionalProperties: true
