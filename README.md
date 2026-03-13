@@ -10,17 +10,43 @@ Website: https://trustsignal.dev
 
 TrustSignal is evidence integrity infrastructure for existing workflows. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability without replacing the upstream system of record.
 
-## Problem
+Short description:
+This repository is the main TrustSignal documentation and implementation surface for public evaluation, existing workflow integration, and signed verification receipts with later verification.
+
+Audience:
+- evaluators
+- developers
+- partner reviewers
+
+## Start Here
+
+- [Documentation index](/Users/christopher/Projects/trustsignal/docs/README.md)
+- [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [Verification lifecycle](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
+- [API overview](/Users/christopher/Projects/trustsignal/wiki/API-Overview.md)
+- [Claims boundary](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+
+## Problem / Context
 
 High-stakes document and evidence workflows create an attack surface after collection, not just at intake. Once an artifact has been uploaded, reviewed, or approved, downstream teams still face risks such as tampered evidence, provenance loss, artifact substitution, and stale evidence that can no longer be verified later.
 
 Those risks matter in audit, compliance, partner-review, and trust-sensitive workflows because the evidence is often challenged after collection rather than at the moment it first entered the system. TrustSignal is designed for workflows where later auditability matters because the artifact, its provenance, or the surrounding workflow record may be questioned later.
 
-## Verification Lifecycle
+## Integrity Model
 
 The canonical lifecycle diagram and trust-boundary view are documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
 TrustSignal accepts a verification request, returns verification signals, issues a signed verification receipt, and supports later verification against stored receipt state so downstream teams can detect artifact tampering, evidence provenance loss, or stale records during audit review.
+
+## How It Works
+
+At the repository level, TrustSignal shows the public integrity layer through:
+
+- signed verification receipts
+- verification signals
+- verifiable provenance
+- later verification
+- existing workflow integration through the public API boundary
 
 ## Demo
 
@@ -49,7 +75,7 @@ It shows the full lifecycle in one run:
 
 See [demo/README.md](/Users/christopher/Projects/trustsignal/demo/README.md).
 
-## Integration Model
+## API And Examples
 
 Start here if you are evaluating the public verification lifecycle:
 
@@ -66,7 +92,7 @@ Golden path:
 3. retrieve the stored receipt
 4. run later verification
 
-## Technical Details
+## Verification Lifecycle
 
 The fastest path in this repository is the public `/api/v1/*` evaluator flow. It is a deliberate evaluator path, not a shortcut around production controls.
 
@@ -89,6 +115,11 @@ The evaluator path is designed to show the core value before full production int
 - verification signals that can be stored in an existing workflow
 - later verification against the stored receipt state
 - visible handling for tampered evidence or stale evidence through the later verification lifecycle
+
+## Production Considerations
+
+> [!IMPORTANT]
+> Production considerations: local evaluator paths are deliberate evaluation paths. They do not replace deployment-specific authentication, signing configuration, infrastructure controls, or operational review.
 
 ## Local API Development Setup
 
@@ -160,6 +191,11 @@ TrustSignal is designed to sit behind an existing workflow such as:
 - a deed or property-record workflow
 
 The upstream platform remains the system of record. TrustSignal adds an integrity layer at the boundary and returns technical verification artifacts that the upstream workflow can store and use later.
+
+## Security And Claims Boundary
+
+> [!NOTE]
+> Claims boundary: this repository documents the public integration and evaluation surface only. It does not expose proof internals, circuit identifiers, model outputs, signing infrastructure specifics, or internal service topology.
 
 ## Integration Boundary Notes
 
@@ -250,11 +286,13 @@ Recent local benchmark snapshot from [bench/results/latest.md](/Users/christophe
 
 This is a recent local evaluator run against the current `/api/v1/*` lifecycle with a temporary local PostgreSQL instance. It is a benchmark snapshot for evaluation and regression tracking, not a production guarantee or SLA.
 
-## Documentation Map
+## Related Documentation
 
 - [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
 - [docs/partner-eval/quickstart.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
 - [docs/partner-eval/api-playground.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [docs/templates/docs-architecture.md](/Users/christopher/Projects/trustsignal/docs/templates/docs-architecture.md)
+- [docs/templates/doc-template.md](/Users/christopher/Projects/trustsignal/docs/templates/doc-template.md)
 - [wiki/What-is-TrustSignal.md](/Users/christopher/Projects/trustsignal/wiki/What-is-TrustSignal.md)
 - [wiki/API-Overview.md](/Users/christopher/Projects/trustsignal/wiki/API-Overview.md)
 - [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)

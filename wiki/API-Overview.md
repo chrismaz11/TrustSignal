@@ -1,25 +1,43 @@
 **Navigation**
 
-- [Home](Home)
-- [What is TrustSignal](What-is-TrustSignal)
-- [Architecture](Evidence-Integrity-Architecture)
-- [Verification Receipts](Verification-Receipts)
-- [API Overview](API-Overview)
-- [Claims Boundary](Claims-Boundary)
-- [Quick Verification Example](Quick-Verification-Example)
-- [Vanta Integration Example](Vanta-Integration-Example)
+- [Home](Home.md)
+- [What is TrustSignal](What-is-TrustSignal.md)
+- [Architecture](Evidence-Integrity-Architecture.md)
+- [Verification Receipts](Verification-Receipts.md)
+- [API Overview](API-Overview.md)
+- [Claims Boundary](Claims-Boundary.md)
+- [Quick Verification Example](Quick-Verification-Example.md)
+- [Vanta Integration Example](Vanta-Integration-Example.md)
 
 # API Overview
 
-## Problem
+Short description:
+This page summarizes the TrustSignal public API surface for signed verification receipts, verification signals, verifiable provenance, later verification, and existing workflow integration.
+
+Audience:
+- integration engineers
+- evaluators
+- developers
+
+## Problem / Context
 
 Partners need a stable public contract that explains how TrustSignal fits into an existing workflow without requiring them to understand internal implementation details. The relevant attack surface includes evidence tampering after collection, artifact substitution attacks, provenance loss in compliance workflows, stale evidence during audit review, and documentation chains that cannot be verified later.
 
-## Verification Lifecycle
+## Integrity Model
 
 The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
 TrustSignal exposes a public verification lifecycle centered on signed verification receipts, verification signals, verifiable provenance metadata, and later verification.
+
+## How It Works
+
+The public lifecycle is centered on:
+
+- signed verification receipts
+- verification signals
+- verifiable provenance
+- later verification
+- existing workflow integration
 
 ## Demo
 
@@ -27,7 +45,7 @@ Start with the local developer trial for the fastest lifecycle walkthrough:
 
 - [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
 
-## Integration Model
+## API And Examples
 
 Start here to try the public lifecycle:
 
@@ -63,6 +81,11 @@ Golden path:
 - `x-signature-timestamp`
 - `x-issuer-signature`
 
+## Production Considerations
+
+> [!IMPORTANT]
+> Production considerations: the public API overview is an integration reference, not a substitute for deployment-specific authentication, signing configuration, infrastructure review, or operational controls.
+
 ## Integration Fit
 
 The integration-facing `/api/v1/*` surface is the main public partner API in this repository. It uses `x-api-key` authentication with scoped access such as `verify`, `read`, `anchor`, and `revoke`.
@@ -92,6 +115,11 @@ Local development defaults are intentionally constrained and fail closed where p
 | `GET` | `/v1/status/:bundleId` | bearer JWT | Check bundle status |
 | `POST` | `/v1/revoke` | bearer JWT with admin authorization | Revoke a bundle |
 
+## Security And Claims Boundary
+
+> [!NOTE]
+> Claims boundary: this page documents the public API contract and existing workflow integration surface only. It does not expose proof internals, signer infrastructure specifics, internal topology, or unsupported performance/security claims.
+
 ### Error Semantics
 
 Integrators should expect these broad patterns:
@@ -104,3 +132,10 @@ Integrators should expect these broad patterns:
 - `503` when a required dependency is unavailable
 
 The canonical public contract for the verification lifecycle is [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml).
+
+## Related Documentation
+
+- [docs/partner-eval/try-the-api.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
+- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
+- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)

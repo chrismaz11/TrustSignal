@@ -1,10 +1,20 @@
 # TrustSignal Partner Evaluation Overview
 
-## Problem
+> TrustSignal is evidence integrity infrastructure for signed verification receipts and later verification.
+
+Short description:
+This overview is the evaluator-facing entry point for the TrustSignal integrity layer, public lifecycle, benchmark materials, and existing workflow integration path.
+
+Audience:
+- partner evaluators
+- solutions engineers
+- technical sponsors
+
+## Problem / Context
 
 Teams often have a workflow record that says an artifact was reviewed, approved, or submitted, but they cannot easily prove later that the same artifact is still the one tied to that decision. In high-loss and highly scrutinized workflows, that creates an attack surface around tampered evidence, provenance loss, artifact substitution, and stale evidence in later review paths.
 
-## Verification Lifecycle
+## Integrity Model
 
 The canonical lifecycle diagram and trust-boundary diagram are documented in [../verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
@@ -17,6 +27,16 @@ TrustSignal is designed to support:
 - verifiable provenance
 - later verification without replacing the upstream workflow owner
 
+## How It Works
+
+TrustSignal supports evaluator review through:
+
+- signed verification receipts
+- verification signals
+- verifiable provenance
+- later verification
+- existing workflow integration through the public API boundary
+
 ## Demo
 
 Start with the local developer trial when you want the shortest path to the verification lifecycle:
@@ -25,7 +45,7 @@ Start with the local developer trial when you want the shortest path to the veri
 - [Evaluator start here](/Users/christopher/Projects/trustsignal/docs/partner-eval/start-here.md)
 - [Try the API](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
 
-## Integration Model
+## Partner Evaluation
 
 Start with these evaluator assets:
 
@@ -37,7 +57,7 @@ Start with these evaluator assets:
 
 The evaluator flow is designed to show the verification lifecycle safely before production integration requirements are introduced.
 
-## Technical Details
+## API And Examples
 
 The public evaluation path in this repository is the `/api/v1/*` surface:
 
@@ -49,7 +69,7 @@ The public evaluation path in this repository is the `/api/v1/*` surface:
 
 Canonical contract and payload examples live in [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml) and the [`examples/`](../../examples) directory.
 
-## Current Evaluator Metrics
+## Benchmarks And Evaluator Materials
 
 Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For evaluator-facing interpretation and caveats, see [benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md).
 
@@ -62,6 +82,11 @@ Recent local benchmark snapshot from [bench/results/latest.md](/Users/christophe
 
 This snapshot comes from a recent local evaluator run. It is useful for comparing request classes and checking regressions, not for inferring guaranteed deployment latency.
 
+## Production Considerations
+
+> [!IMPORTANT]
+> Production considerations: the evaluator path demonstrates the TrustSignal integrity layer before full deployment configuration. It does not replace deployment-specific authentication, signing configuration, or infrastructure review.
+
 ## Integration Fit
 
 TrustSignal fits behind an existing workflow such as:
@@ -73,6 +98,18 @@ TrustSignal fits behind an existing workflow such as:
 
 The upstream platform remains the system of record. TrustSignal adds an integrity layer and returns technical verification artifacts that can be stored alongside the workflow record.
 
+## Security And Claims Boundary
+
+> [!NOTE]
+> Claims boundary: this overview covers the public evaluation surface only. It does not expose proof internals, circuit identifiers, model outputs, signing infrastructure specifics, or internal service topology.
+
 ## Production Deployment Requirements
 
 Local and evaluator paths are deliberate evaluator paths. Production deployment requires explicit authentication, signing configuration, and environment setup. Fail-closed defaults are part of the security posture and are intended to stop unsafe production assumptions from being applied implicitly.
+
+## Related Documentation
+
+- [docs/partner-eval/try-the-api.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
+- [docs/partner-eval/benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
+- [docs/partner-eval/security-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/security-summary.md)
+- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)

@@ -1,6 +1,32 @@
 # Try The TrustSignal API
 
+> TrustSignal is evidence integrity infrastructure for signed verification receipts and later verification.
+
+Short description:
+This page is the copy-paste API trial path for the public TrustSignal evaluator contract and existing workflow integration flow.
+
+Audience:
+- integration engineers
+- evaluators
+- developers
+
 This page is the copy-paste API trial path for the public evaluator contract.
+
+## Problem / Context
+
+Evaluators and developers need a compact path to see how verification signals, signed verification receipts, verifiable provenance, and later verification work together at the API boundary.
+
+## Integrity Model
+
+The public evaluator path demonstrates:
+
+- signed verification receipts
+- verification signals
+- verifiable provenance
+- later verification
+- existing workflow integration
+
+## How It Works
 
 ## 1. Submit A Verification Request
 
@@ -67,6 +93,10 @@ curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/anchor/$RECEIPT_ID" \
 
 Revocation is part of the public contract, but it requires issuer authorization headers in addition to the API key. Use the Postman collection for the full request template.
 
+## Example Or Diagram
+
+The request and response examples below show the public evaluator flow from verification request to later verification.
+
 ## Recent Verification Timing
 
 Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For a fuller evaluator-facing summary, see [benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md).
@@ -79,9 +109,26 @@ Recent local benchmark snapshot from [bench/results/latest.md](/Users/christophe
 
 These numbers come from a recent local benchmark harness run against the current evaluator path. They are current validation data, not guaranteed service latency.
 
+## Production Considerations
+
+> [!IMPORTANT]
+> Production considerations: use this evaluator flow as a technical trial path, not as a complete production deployment checklist.
+
 ## Production Readiness
 
 - Authentication: use `x-api-key` with the scopes required for verify, read, anchor, or revoke operations.
 - Environment configuration: separate local, staging, and production base URLs, API keys, and lifecycle identifiers.
 - Lifecycle monitoring: monitor receipt retrieval, lifecycle state changes, and later verification outcomes in the surrounding workflow.
 - Verification checks before relying on prior results: run later verification before audit review, handoff, or another high-trust workflow step.
+
+## Security And Claims Boundary
+
+> [!NOTE]
+> Claims boundary: this page documents the public evaluator contract only. It does not expose proof internals, signer infrastructure specifics, internal topology, or unsupported performance guarantees.
+
+## Related Documentation
+
+- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [docs/partner-eval/benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
+- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
+- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)

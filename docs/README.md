@@ -1,16 +1,44 @@
 # TrustSignal Documentation Index
 
-This folder is organized into active, canonical documents and archived historical material.
+> TrustSignal is evidence integrity infrastructure for signed verification receipts and later verification.
 
-## Problem
+Short description:
+This index organizes the active TrustSignal documentation set for evaluators, developers, and partner reviewers, with links to lifecycle, API, security, benchmark, and claims-boundary materials.
+
+Audience:
+- evaluators
+- developers
+- partner reviewers
+
+## Start Here
+
+- [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [Verification lifecycle](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
+- [Security summary](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
+- [Benchmark summary](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
+- [Claims boundary](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [Docs architecture](/Users/christopher/Projects/trustsignal/docs/templates/docs-architecture.md)
+
+## Problem / Context
 
 TrustSignal documentation is written for evaluators and implementers working in workflows where later auditability matters. The main attack surface is not only bad data at intake, but also tampered evidence, provenance loss, artifact substitution, and stale evidence that cannot be verified later.
 
-## Verification Lifecycle
+## Integrity Model
 
 The canonical lifecycle and trust-boundary diagrams are documented in [verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
 TrustSignal is evidence integrity infrastructure. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflow integration.
+
+## How It Works
+
+The documentation set is organized around:
+
+- overview and start-here materials
+- core concepts and verification lifecycle
+- API and example documents
+- security and claims boundary materials
+- benchmarks and partner evaluation materials
+- reference and archive material
 
 ## Demo
 
@@ -20,7 +48,7 @@ Start with the local developer trial if you want the fastest technical evaluatio
 
 The demo shows artifact hashing, verification, signed verification receipt issuance, later verification, and tampered artifact mismatch detection without external services.
 
-## Integration Model
+## Partner Evaluation
 
 Start here if you want to evaluate the public verification lifecycle quickly:
 
@@ -38,7 +66,7 @@ Golden path:
 3. retrieve the stored receipt
 4. run later verification
 
-## Integration Fit
+## Reference / Related Docs
 
 The evaluator and demo paths are deliberate evaluator paths. They show the verification lifecycle safely before production integration and do not remove production security requirements.
 
@@ -82,3 +110,10 @@ Historical planning, synthesized source-of-truth drafts, and early notebook logs
 - `archive/legacy-2026-02-25/`
 
 Use archived files for context only, not as current implementation guidance.
+
+## Related Documentation
+
+- [README.md](/Users/christopher/Projects/trustsignal/README.md)
+- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
+- [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
+- [docs/templates/docs-architecture.md](/Users/christopher/Projects/trustsignal/docs/templates/docs-architecture.md)
