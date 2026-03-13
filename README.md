@@ -199,6 +199,12 @@ The upstream platform remains the system of record. TrustSignal adds an integrit
 > [!NOTE]
 > Claims boundary: this repository documents the public integration and evaluation surface only. It does not expose proof internals, circuit identifiers, model outputs, signing infrastructure specifics, or internal service topology.
 
+## Compliance and Security Readiness
+
+TrustSignal includes a repository-level SOC 2 readiness framework for assessing security posture, documentation maturity, governance evidence, and mock-audit gaps. It is intended to support internal review and partner diligence preparation. It does not claim SOC 2 certification.
+
+- [SOC 2 readiness report](/Users/christopher/Projects/trustsignal/docs/compliance/soc2/readiness-report.md)
+
 ## Integration Boundary Notes
 
 The local evaluator path is intentionally constrained. Local development defaults are a deliberate evaluator and development path, and they fail closed where production trust assumptions are not satisfied.
