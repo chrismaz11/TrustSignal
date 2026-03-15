@@ -134,7 +134,7 @@ Update/merge into canonical plan and current architecture reality:
 - duplicated architecture summaries in root and legacy docs
 
 De-prioritize until Phase 3:
-- items in `docs/archive/legacy-2026-02-25/notebook/deedshield_v2_notebook.md` requiring mock-to-real ZKP conversion or portability expansion
+- items in `docs/archive/legacy-2026-02-25/notebook/trustsignal_v2_notebook.md` requiring mock-to-real ZKP conversion or portability expansion
 - older lab notebook implementation details in `docs/archive/legacy-2026-02-25/lab-notebook/*` except where they provide concrete test evidence needed for audit trails
 
 ## 9. Execution Cadence

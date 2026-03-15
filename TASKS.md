@@ -30,7 +30,7 @@ Plan reference: `PROJECT_PLAN.md`
 
 ### P1-S3 Monitoring and Operational Baseline
 - [x] Implement service-level health/status reporting (`/api/v1/health`, `/api/v1/status`, `/api/v1/metrics`).
-- [x] Define baseline API metrics instrumentation (`deedshield_http_requests_total`, `deedshield_http_request_duration_seconds`).
+- [x] Define baseline API metrics instrumentation (`trustsignal_http_requests_total`, `trustsignal_http_request_duration_seconds`).
 - [x] Document incident/escalation workflow aligned with current architecture (`docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`).
 - [x] Define alert thresholds and dashboard/SLO targets baseline (`docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`).
 - [ ] Implement dashboard and alert rules in staging monitoring stack.

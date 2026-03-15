@@ -2,10 +2,10 @@
 inclusion: always
 ---
 
-# Deed Shield Design System Rules
+# TrustSignal Design System Rules
 
 ## Project Context
-Deed Shield is a verification and attestation layer for real-estate recording workflows. The UI must reflect a neutral, compliance-focused aesthetic appropriate for regulatory software.
+TrustSignal is a verification and attestation layer for real-estate recording workflows. The UI must reflect a neutral, compliance-focused aesthetic appropriate for regulatory software.
 
 ## System Boundaries
 - Verification and attestation layer only

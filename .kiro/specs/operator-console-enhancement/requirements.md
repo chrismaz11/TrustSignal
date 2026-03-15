@@ -2,11 +2,11 @@
 
 ## Introduction
 
-Transform the existing Deed Shield verification interface into an Operator Console that matches the Figma design specifications. The system maintains all existing backend functionality while providing a verification interface for notaries, title companies, and county recorders.
+Transform the existing TrustSignal verification interface into an Operator Console that matches the Figma design specifications. The system maintains all existing backend functionality while providing a verification interface for notaries, title companies, and county recorders.
 
 ## System Boundaries
 
-Deed Shield is a verification and attestation layer that:
+TrustSignal is a verification and attestation layer that:
 - Verifies RON bundle processes and produces receipts
 - Issues verifiable receipts and audit artifacts
 - Does NOT store documents

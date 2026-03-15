@@ -1,5 +1,5 @@
 {
-  "name": "@deed-shield/api",
+  "name": "@trust-signal/api",
   "version": "0.1.0",
   "private": true,
   "type": "commonjs",
@@ -15,7 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@deed-shield/core": "file:../../packages/core",
+    "@trust-signal/core": "file:../../packages/core",
     "@fastify/cors": "^11.2.0",
     "@fastify/rate-limit": "^10.3.0",
     "@prisma/client": "^5.17.0",

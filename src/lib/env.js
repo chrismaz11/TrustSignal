@@ -70,7 +70,7 @@ function getIssuerPublicJwk() {
 }
 
 function getIssuerDid() {
-  return process.env.ISSUER_DID || 'did:example:deedshield-issuer';
+  return process.env.ISSUER_DID || 'did:example:trustsignal-issuer';
 }
 
 function getAnchorConfig() {

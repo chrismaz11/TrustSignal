@@ -169,7 +169,7 @@ const vantaVerificationResultSchema = z.object({
   generatedAt: z.string().datetime(),
   vendor: z.object({
     name: z.literal('TrustSignal'),
-    module: z.literal('DeedShield'),
+    module: z.literal('TrustSignal'),
     environment: z.string(),
     apiVersion: z.literal('v1')
   }),
@@ -251,7 +251,7 @@ const vantaVerificationResultJsonSchema = {
       required: ['name', 'module', 'environment', 'apiVersion'],
       properties: {
         name: { const: 'TrustSignal' },
-        module: { const: 'DeedShield' },
+        module: { const: 'TrustSignal' },
         environment: { type: 'string' },
         apiVersion: { const: 'v1' }
       }
@@ -461,7 +461,7 @@ function receiptFromDb(record: ReceiptRecord) {
     decision: record.decision as 'ALLOW' | 'FLAG' | 'BLOCK',
     reasons: JSON.parse(record.reasons) as string[],
     riskScore: record.riskScore,
-    verifierId: 'deed-shield',
+    verifierId: 'trust-signal',
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
     zkpAttestation: record.zkpAttestation ? JSON.parse(record.zkpAttestation) as ZKPAttestation : undefined,
@@ -576,7 +576,7 @@ async function toVantaVerificationResult(record: ReceiptRecord, securityConfig: 
     generatedAt: new Date().toISOString(),
     vendor: {
       name: 'TrustSignal' as const,
-      module: 'DeedShield' as const,
+      module: 'TrustSignal' as const,
       environment: process.env.NODE_ENV || 'development',
       apiVersion: 'v1' as const
     },
@@ -854,15 +854,15 @@ export async function buildServer(options: BuildServerOptions = {}) {
     fetchImpl: options.fetchImpl
   });
   const metricsRegistry = new Registry();
-  collectDefaultMetrics({ register: metricsRegistry, prefix: 'deedshield_api_' });
+  collectDefaultMetrics({ register: metricsRegistry, prefix: 'trustsignal_api_' });
   const httpRequestsTotal = new Counter({
-    name: 'deedshield_http_requests_total',
+    name: 'trustsignal_http_requests_total',
     help: 'Total HTTP requests served by the API',
     labelNames: ['method', 'route', 'status_code'] as const,
     registers: [metricsRegistry]
   });
   const httpRequestDurationSeconds = new Histogram({
-    name: 'deedshield_http_request_duration_seconds',
+    name: 'trustsignal_http_request_duration_seconds',
     help: 'HTTP request duration in seconds',
     labelNames: ['method', 'route', 'status_code'] as const,
     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
@@ -940,7 +940,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const forwardedProto = normalizeForwardedProto(request.headers['x-forwarded-proto']);
     return {
       status: 'ok',
-      service: 'deed-shield-api',
+      service: 'trust-signal-api',
       environment: process.env.NODE_ENV || 'development',
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
@@ -1199,7 +1199,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       canonicalDocumentBase64: input.doc.pdfBase64
     });
 
-    const receipt = buildReceipt(input, verification, 'deed-shield', {
+    const receipt = buildReceipt(input, verification, 'trust-signal', {
       fraudRisk,
       zkpAttestation
     });

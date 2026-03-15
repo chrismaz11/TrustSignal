@@ -44,7 +44,7 @@ Scope: Repository-wide (`TrustSignal`)
 | 10 | Multi-organization isolation (no cross-tenant access) | `VERIFIED IN TEST` | Ownership checks in `apps/api/src/server.ts`; integration tests | Staging adversarial test suite |
 | 11 | Smart contract governance (audit readiness, multisig, pause) | `VERIFIED IN TEST` | `packages/contracts/contracts/AnchorRegistry.sol`, contract tests | Third-party audit completion + deployment governance evidence |
 | 12 | Retention, DPIA hooks, user rights (`access/erasure/portability`) | `IN PROGRESS` | Retention fields and revoke endpoints exist | No 90-day job, export/erasure endpoints, or DPIA workflow evidence |
-| 13 | Incident runbooks + real `status.deedshield.io` | `IN PROGRESS` | Incident/escalation baseline docs and legacy runbook | No live status-page implementation evidence or drill artifact |
+| 13 | Incident runbooks + real `status.trustsignal.io` | `IN PROGRESS` | Incident/escalation baseline docs and legacy runbook | No live status-page implementation evidence or drill artifact |
 
 ## Dated Notes
 - 2026-03-08: `master` branch protection was verified live through GitHub API and matches the expected required-check/review policy.

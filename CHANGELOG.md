@@ -28,7 +28,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Changed
 
-- Repositioned repository documentation from DeedShield-only framing to TrustSignal canonical platform framing.
+- Repositioned repository documentation from TrustSignal-only framing to TrustSignal canonical platform framing.
 - Standardized production-readiness narrative across `docs/final`, `TASKS.md`, and release artifacts.
 
 ### Security

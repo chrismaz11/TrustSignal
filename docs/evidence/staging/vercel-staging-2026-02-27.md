@@ -48,7 +48,7 @@ x-vercel-cache: MISS
 x-vercel-id: cle1::iad1::xw5xk-1772217694988-d326dd7cf547
 content-length: 128
 
-{"status":"ok","service":"deed-shield-api","environment":"production","uptimeSeconds":15,"timestamp":"2026-02-27T18:41:35.104Z"}
+{"status":"ok","service":"trust-signal-api","environment":"production","uptimeSeconds":15,"timestamp":"2026-02-27T18:41:35.104Z"}
 ```
 ### GET /api/v1/metrics
 - Deployment: https://trust-signal-agmnni6ue-christopher-marzianis-projects.vercel.app
@@ -71,23 +71,23 @@ x-vercel-cache: MISS
 x-vercel-id: cle1::iad1::bz5bq-1772217696692-64d3627b4262
 content-length: 13508
 
-# HELP deedshield_api_process_cpu_user_seconds_total Total user CPU time spent in seconds.
-# TYPE deedshield_api_process_cpu_user_seconds_total counter
-deedshield_api_process_cpu_user_seconds_total 0.132708
+# HELP trustsignal_api_process_cpu_user_seconds_total Total user CPU time spent in seconds.
+# TYPE trustsignal_api_process_cpu_user_seconds_total counter
+trustsignal_api_process_cpu_user_seconds_total 0.132708
 
-# HELP deedshield_api_process_cpu_system_seconds_total Total system CPU time spent in seconds.
-# TYPE deedshield_api_process_cpu_system_seconds_total counter
-deedshield_api_process_cpu_system_seconds_total 0.041515
+# HELP trustsignal_api_process_cpu_system_seconds_total Total system CPU time spent in seconds.
+# TYPE trustsignal_api_process_cpu_system_seconds_total counter
+trustsignal_api_process_cpu_system_seconds_total 0.041515
 
-# HELP deedshield_api_process_cpu_seconds_total Total user and system CPU time spent in seconds.
-# TYPE deedshield_api_process_cpu_seconds_total counter
-deedshield_api_process_cpu_seconds_total 0.174223
+# HELP trustsignal_api_process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE trustsignal_api_process_cpu_seconds_total counter
+trustsignal_api_process_cpu_seconds_total 0.174223
 
-# HELP deedshield_api_process_start_time_seconds Start time of the process since unix epoch in seconds.
-# TYPE deedshield_api_process_start_time_seconds gauge
-deedshield_api_process_start_time_seconds 1772217680
+# HELP trustsignal_api_process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE trustsignal_api_process_start_time_seconds gauge
+trustsignal_api_process_start_time_seconds 1772217680
 
-# HELP deedshield_api_process_resident_memory_bytes Resident memory size in bytes.
+# HELP trustsignal_api_process_resident_memory_bytes Resident memory size in bytes.
 # TY
 ```
 

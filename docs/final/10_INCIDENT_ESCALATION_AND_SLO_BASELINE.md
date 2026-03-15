@@ -42,17 +42,17 @@ Use `/api/v1/metrics` Prometheus data:
 - Severity: `SEV-2` (escalate to `SEV-1` if >15 minutes sustained).
 
 2. Error rate alert:
-- Signal: `5xx / total requests` using `deedshield_http_requests_total`.
+- Signal: `5xx / total requests` using `trustsignal_http_requests_total`.
 - Warning: `> 2%` for 10 minutes.
 - Critical: `> 5%` for 5 minutes.
 
 3. Latency alert:
-- Signal: p95 from `deedshield_http_request_duration_seconds`.
+- Signal: p95 from `trustsignal_http_request_duration_seconds`.
 - Warning: `> 1.0s` for 10 minutes.
 - Critical: `> 2.5s` for 5 minutes.
 
 4. Traffic drop alert:
-- Signal: request rate from `deedshield_http_requests_total`.
+- Signal: request rate from `trustsignal_http_requests_total`.
 - Warning: request volume drops >70% from 24h baseline for 15 minutes (business hours).
 
 ## Required Artifacts for Gate Evidence

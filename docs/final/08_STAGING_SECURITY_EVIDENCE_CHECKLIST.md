@@ -57,7 +57,7 @@ Produce staging evidence for production gate items currently marked as "verified
 ## Current Artifacts (2026-02-27 UTC)
 - `docs/evidence/staging/vercel-staging-2026-02-27.md` (API health/status/metrics + TLS certificate probe)
 - `docs/evidence/staging/supabase-db-security-2026-02-27.md` (Supabase SSL enforcement, root-key presence redaction, TLSv1.3 session proof)
-- `docs/ops/monitoring/alert-rules.yml` + `docs/ops/monitoring/grafana-dashboard-deedshield-api.json` (staging monitoring rollout artifacts)
+- `docs/ops/monitoring/alert-rules.yml` + `docs/ops/monitoring/grafana-dashboard-trustsignal-api.json` (staging monitoring rollout artifacts)
 - `scripts/capture-staging-evidence.sh` (staging API + ingress forwarding + TLS metadata evidence automation)
 - `scripts/capture-vercel-staging-evidence.sh` (Vercel deployment probe automation)
 - `scripts/capture-supabase-db-security-evidence.sh` (Supabase DB control evidence automation)

@@ -23,7 +23,7 @@ node scripts/gen-issuer-keys.js
 
 Expected (example):
 ```json
-{"did":"did:example:deedshield-issuer","privateKeyPath":"keys/issuer.private.jwk.json","publicKeyPath":"keys/issuer.public.jwk.json","publicKeyFingerprint":"...sha256..."}
+{"did":"did:example:trustsignal-issuer","privateKeyPath":"keys/issuer.private.jwk.json","publicKeyPath":"keys/issuer.public.jwk.json","publicKeyFingerprint":"...sha256..."}
 ```
 
 ## 3) Seed issuer public JWK into SQLite
@@ -34,7 +34,7 @@ node scripts/seed-issuer-public.js
 
 Expected (example):
 ```json
-{"did":"did:example:deedshield-issuer","dbPath":"attestations.sqlite","inserted":true}
+{"did":"did:example:trustsignal-issuer","dbPath":"attestations.sqlite","inserted":true}
 ```
 
 ## 4) Start server (verify + receipt + demo)
