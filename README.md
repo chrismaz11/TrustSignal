@@ -225,7 +225,7 @@ TrustSignal does not provide:
 
 ## Current Repository Context
 
-DeedShield is the current application surface in this repository. The broader product framing remains TrustSignal as evidence integrity infrastructure and an integrity layer for existing workflows.
+TrustSignal is the current application surface in this repository. The broader product framing remains TrustSignal as evidence integrity infrastructure and an integrity layer for existing workflows.
 
 ## Validation
 

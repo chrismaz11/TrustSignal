@@ -6,7 +6,7 @@
 ---
 
 ## 1. Compliance Philosophy
-Deed Shield builds trust through **technical transparency** rather than opaque assertions. While we are a technology provider and not a regulated financial institution, our architecture is **designed to align** with the rigorous standards expected by title underwriters and government recorders.
+TrustSignal builds trust through **technical transparency** rather than opaque assertions. While we are a technology provider and not a regulated financial institution, our architecture is **designed to align** with the rigorous standards expected by title underwriters and government recorders.
 
 ## 2. Standards Alignment
 
@@ -16,7 +16,7 @@ Our data structures and audit trails are designed to leverage **MISMO e-Mortgage
 - **Auditability:** Every verification event produces a timestamped, signed receipt.
 
 ### 2.2. Remote Online Notarization (RON)
-Deed Shield supports the verification of artifacts produced by RON platforms. We align with the **Model Notary Act** principles by:
+TrustSignal supports the verification of artifacts produced by RON platforms. We align with the **Model Notary Act** principles by:
 - Verifying the digital signature on the notarized bundle.
 - checking the active status of the notary against our registry (simulated).
 
@@ -26,7 +26,7 @@ Deed Shield supports the verification of artifacts produced by RON platforms. We
 - **ISO 27001:** *Not yet certified.*
 - **GDPR/CCPA:** We align by default via our "No PII Persistence" architecture.
 
-**Note:** As a Pilot/Simulator, Deed Shield has not yet undergone independent third-party compliance audits. Users requiring certified systems for production workloads should await our General Availability (GA) release.
+**Note:** As a Pilot/Simulator, TrustSignal has not yet undergone independent third-party compliance audits. Users requiring certified systems for production workloads should await our General Availability (GA) release.
 
 ---
 *Change Log:*

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import * as fsPromises from 'fs/promises';
 
 import { loadRegistry } from './registryLoader.js';
-import { generateRegistryKeypair, signRegistry } from '@deed-shield/core';
+import { generateRegistryKeypair, signRegistry } from '@trust-signal/core';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const registryDir = path.resolve(__dirname, '../../../packages/core/registry');

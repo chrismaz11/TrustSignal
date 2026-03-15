@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Operator Console Enhancement transforms the existing Deed Shield verification interface into a compliance-focused system that matches the Figma design specifications. The design maintains all existing backend functionality while implementing a two-panel layout for document verification workflows used by notaries, title companies, and county recorders.
+The Operator Console Enhancement transforms the existing TrustSignal verification interface into a compliance-focused system that matches the Figma design specifications. The design maintains all existing backend functionality while implementing a two-panel layout for document verification workflows used by notaries, title companies, and county recorders.
 
 ## System Boundaries
 
-Deed Shield operates as a verification and attestation layer that:
+TrustSignal operates as a verification and attestation layer that:
 - Verifies RON bundle processes and produces receipts
 - Issues verifiable receipts and audit artifacts
 - Does NOT store documents

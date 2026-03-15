@@ -155,7 +155,7 @@ async function handleReceipt(req, res) {
       });
 
       const receipt = {
-        deedShieldVersion: '0.1',
+        trustSignalVersion: '0.1',
         verifiedAt: new Date().toISOString(),
         jurisdiction,
         docType,

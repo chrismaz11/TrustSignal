@@ -20,9 +20,9 @@ export interface ComplianceCheckResult {
 
 
 const COOK_COUNTY_SYSTEM_PROMPT = `
-DEEDSHIELD LLM SYSTEM PROMPT: Cook County Clerk Recording Requirements
+TRUSTSIGNAL LLM SYSTEM PROMPT: Cook County Clerk Recording Requirements
 Your Role
-You are an AI assistant integrated into DeedShield, a deed verification and title company automation platform. Your primary responsibility is to validate real estate documents against Cook County Clerk's Office recording requirements and identify policy mismatches before submission.
+You are an AI assistant integrated into TrustSignal, a deed verification and title company automation platform. Your primary responsibility is to validate real estate documents against Cook County Clerk's Office recording requirements and identify policy mismatches before submission.
 
 Core Recording Requirements (Illinois §55 ILCS 5/3-5018)
 All real estate documents submitted to the Cook County Clerk must meet these mandatory requirements:
@@ -210,7 +210,7 @@ Must affirm original not INTENTIONALLY DESTROYED or DISPOSED OF
 
 Requires notarized affidavit confirming oath statement is true
 
-6. Validation Protocol for DeedShield
+6. Validation Protocol for TrustSignal
 When analyzing a document, perform these checks:
 
 Format Check: Verify 8.5x11, margins, clerk's corner space, no staples

@@ -1,169 +1,169 @@
 groups:
-  - name: deedshield-api-slo-recording
+  - name: trustsignal-api-slo-recording
     interval: 30s
     rules:
-      - record: deedshield:api_requests:rate5m
+      - record: trustsignal:api_requests:rate5m
         expr: |
-          sum by (job) (rate(deedshield_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[5m]))
+          sum by (job) (rate(trustsignal_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[5m]))
 
-      - record: deedshield:api_5xx_ratio:rate5m
+      - record: trustsignal:api_5xx_ratio:rate5m
         expr: |
-          sum by (job) (rate(deedshield_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics",status_code=~"5.."}[5m]))
+          sum by (job) (rate(trustsignal_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics",status_code=~"5.."}[5m]))
           /
-          clamp_min(sum by (job) (rate(deedshield_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[5m])), 0.001)
+          clamp_min(sum by (job) (rate(trustsignal_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[5m])), 0.001)
 
-      - record: deedshield:api_health_success_ratio:rate5m
+      - record: trustsignal:api_health_success_ratio:rate5m
         expr: |
-          sum by (job) (rate(deedshield_http_requests_total{route="/api/v1/health",status_code=~"2.."}[5m]))
+          sum by (job) (rate(trustsignal_http_requests_total{route="/api/v1/health",status_code=~"2.."}[5m]))
           /
-          clamp_min(sum by (job) (rate(deedshield_http_requests_total{route="/api/v1/health"}[5m])), 0.001)
+          clamp_min(sum by (job) (rate(trustsignal_http_requests_total{route="/api/v1/health"}[5m])), 0.001)
 
-      - record: deedshield:api_core_p95_latency_seconds:rate5m
+      - record: trustsignal:api_core_p95_latency_seconds:rate5m
         expr: |
           histogram_quantile(
             0.95,
             sum by (job, le) (
-              rate(deedshield_http_request_duration_seconds_bucket{route=~"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$"}[5m])
+              rate(trustsignal_http_request_duration_seconds_bucket{route=~"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$"}[5m])
             )
           )
 
-      - record: deedshield:api_traffic_ratio_to_24h_baseline
+      - record: trustsignal:api_traffic_ratio_to_24h_baseline
         expr: |
-          sum by (job) (rate(deedshield_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[5m]))
+          sum by (job) (rate(trustsignal_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[5m]))
           /
-          clamp_min(sum by (job) (rate(deedshield_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[24h])), 0.001)
+          clamp_min(sum by (job) (rate(trustsignal_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[24h])), 0.001)
 
-  - name: deedshield-api-slo-alerts
+  - name: trustsignal-api-slo-alerts
     interval: 30s
     rules:
-      - alert: DeedShieldHealthProbeFailuresSEV2
+      - alert: TrustSignalHealthProbeFailuresSEV2
         expr: |
           (
-            sum by (job) (increase(deedshield_http_requests_total{route="/api/v1/health"}[3m])) >= 3
+            sum by (job) (increase(trustsignal_http_requests_total{route="/api/v1/health"}[3m])) >= 3
           )
           and
           (
-            sum by (job) (increase(deedshield_http_requests_total{route="/api/v1/health",status_code=~"2.."}[3m])) == 0
+            sum by (job) (increase(trustsignal_http_requests_total{route="/api/v1/health",status_code=~"2.."}[3m])) == 0
           )
         for: 0m
         labels:
           severity: warning
           incident_severity: SEV-2
-          service: deedshield-api
+          service: trustsignal-api
           slo: availability
         annotations:
           summary: "Health probe failed 3 consecutive checks"
           description: "No successful /api/v1/health checks observed across the last 3 checks for job {{ $labels.job }}. Start SEV-2 triage."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldHealthProbeFailuresSEV1
+      - alert: TrustSignalHealthProbeFailuresSEV1
         expr: |
           (
-            sum by (job) (increase(deedshield_http_requests_total{route="/api/v1/health"}[3m])) >= 3
+            sum by (job) (increase(trustsignal_http_requests_total{route="/api/v1/health"}[3m])) >= 3
           )
           and
           (
-            sum by (job) (increase(deedshield_http_requests_total{route="/api/v1/health",status_code=~"2.."}[3m])) == 0
+            sum by (job) (increase(trustsignal_http_requests_total{route="/api/v1/health",status_code=~"2.."}[3m])) == 0
           )
         for: 15m
         labels:
           severity: critical
           incident_severity: SEV-1
-          service: deedshield-api
+          service: trustsignal-api
           slo: availability
         annotations:
           summary: "Health probe failure sustained >15m"
           description: "Health failures persisted for 15 minutes for job {{ $labels.job }}. Escalate incident severity to SEV-1 and open stakeholder timeline updates every 30 minutes."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApi5xxRateWarning
+      - alert: TrustSignalApi5xxRateWarning
         expr: |
           (
-            deedshield:api_5xx_ratio:rate5m > 0.02
+            trustsignal:api_5xx_ratio:rate5m > 0.02
           )
           and on (job)
           (
-            deedshield:api_requests:rate5m > 0.10
+            trustsignal:api_requests:rate5m > 0.10
           )
         for: 10m
         labels:
           severity: warning
           incident_severity: SEV-2
-          service: deedshield-api
+          service: trustsignal-api
           slo: success-ratio
         annotations:
           summary: "5xx rate above 2% for 10m"
           description: "API error-rate warning threshold breached (>2% 5xx) for job {{ $labels.job }}. Investigate core verification and revocation paths."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApi5xxRateCritical
+      - alert: TrustSignalApi5xxRateCritical
         expr: |
           (
-            deedshield:api_5xx_ratio:rate5m > 0.05
+            trustsignal:api_5xx_ratio:rate5m > 0.05
           )
           and on (job)
           (
-            deedshield:api_requests:rate5m > 0.10
+            trustsignal:api_requests:rate5m > 0.10
           )
         for: 5m
         labels:
           severity: critical
           incident_severity: SEV-2
-          service: deedshield-api
+          service: trustsignal-api
           slo: success-ratio
         annotations:
           summary: "5xx rate above 5% for 5m"
           description: "API error-rate critical threshold breached (>5% 5xx) for job {{ $labels.job }}. Start SEV-2 incident workflow and contain blast radius."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApiCoreP95LatencyWarning
+      - alert: TrustSignalApiCoreP95LatencyWarning
         expr: |
           (
-            deedshield:api_core_p95_latency_seconds:rate5m > 1.0
+            trustsignal:api_core_p95_latency_seconds:rate5m > 1.0
           )
           and on (job)
           (
-            sum by (job) (rate(deedshield_http_requests_total{route=~"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$"}[5m])) > 0.05
+            sum by (job) (rate(trustsignal_http_requests_total{route=~"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$"}[5m])) > 0.05
           )
         for: 10m
         labels:
           severity: warning
           incident_severity: SEV-3
-          service: deedshield-api
+          service: trustsignal-api
           slo: latency
         annotations:
           summary: "Core endpoint p95 latency above 1.0s for 10m"
           description: "P95 latency for /api/v1/verify and receipt verification paths exceeded baseline target for job {{ $labels.job }}."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApiCoreP95LatencyCritical
+      - alert: TrustSignalApiCoreP95LatencyCritical
         expr: |
           (
-            deedshield:api_core_p95_latency_seconds:rate5m > 2.5
+            trustsignal:api_core_p95_latency_seconds:rate5m > 2.5
           )
           and on (job)
           (
-            sum by (job) (rate(deedshield_http_requests_total{route=~"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$"}[5m])) > 0.05
+            sum by (job) (rate(trustsignal_http_requests_total{route=~"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$"}[5m])) > 0.05
           )
         for: 5m
         labels:
           severity: critical
           incident_severity: SEV-2
-          service: deedshield-api
+          service: trustsignal-api
           slo: latency
         annotations:
           summary: "Core endpoint p95 latency above 2.5s for 5m"
           description: "Critical latency regression on core verification flow for job {{ $labels.job }}. Start SEV-2 incident escalation."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApiTrafficDropBusinessHours
+      - alert: TrustSignalApiTrafficDropBusinessHours
         expr: |
           (
-            deedshield:api_traffic_ratio_to_24h_baseline < 0.30
+            trustsignal:api_traffic_ratio_to_24h_baseline < 0.30
           )
           and on (job)
           (
-            sum by (job) (rate(deedshield_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[24h])) > 0.10
+            sum by (job) (rate(trustsignal_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[24h])) > 0.10
           )
           and on()
           (
@@ -173,7 +173,7 @@ groups:
         labels:
           severity: warning
           incident_severity: SEV-3
-          service: deedshield-api
+          service: trustsignal-api
           slo: traffic
         annotations:
           summary: "Traffic volume dropped >70% from 24h baseline"

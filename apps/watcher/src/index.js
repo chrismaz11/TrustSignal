@@ -25,7 +25,7 @@ if (!fs.existsSync(WATCH_DIR)) {
     console.log(`Created watch directory: ${WATCH_DIR}`);
 }
 
-console.log(`DeedShield Watcher Service started.`);
+console.log(`TrustSignal Watcher Service started.`);
 console.log(`Monitoring: ${WATCH_DIR}`);
 
 const watcher = chokidar.watch(WATCH_DIR, {
@@ -79,7 +79,7 @@ watcher.on('add', async (filePath) => {
         };
 
         // 3. Verify via API
-        console.log(' -> Verifying against Deed Shield Network...');
+        console.log(' -> Verifying against TrustSignal Network...');
         const response = await axios.post(API_URL, payload);
         const result = response.data;
 
@@ -87,7 +87,7 @@ watcher.on('add', async (filePath) => {
         if (result.decision === 'ALLOW') {
             console.log(` -> ✅ RESULT: VERIFIED (Score: ${result.riskScore})`);
             notifier.notify({
-                title: 'Deed Shield Verified',
+                title: 'TrustSignal Verified',
                 message: `File: ${fileName}\nStatus: Is Clean (Score: 0)`,
                 sound: true
             });
@@ -95,7 +95,7 @@ watcher.on('add', async (filePath) => {
             console.log(` -> ⚠️ RESULT: ${result.decision}`);
             const reasons = Array.isArray(result.reasons) ? result.reasons.join(', ') : 'Unknown risks';
             notifier.notify({
-                title: 'Deed Shield Alert',
+                title: 'TrustSignal Alert',
                 message: `File: ${fileName}\nFlagged: ${reasons}`,
                 sound: 'Glass'
             });
@@ -104,7 +104,7 @@ watcher.on('add', async (filePath) => {
     } catch (err) {
         if (err.code === 'ECONNREFUSED') {
             console.error(' -> ❌ ERROR: API Server is unreachable. Is it running on port 3001?');
-            notifier.notify({ title: 'Deed Shield Error', message: 'Could not connect to Verification Server.' });
+            notifier.notify({ title: 'TrustSignal Error', message: 'Could not connect to Verification Server.' });
         } else {
             console.error(' -> ❌ ERROR:', err.message);
             if (err.response) {

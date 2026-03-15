@@ -10,7 +10,7 @@ export async function renderReceiptPdf(receipt: Receipt): Promise<Buffer> {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    doc.fontSize(18).text('Deed Shield Receipt', { underline: true });
+    doc.fontSize(18).text('TrustSignal Receipt', { underline: true });
     doc.moveDown();
     doc.fontSize(12);
     doc.text(`Receipt ID: ${receipt.receiptId}`);

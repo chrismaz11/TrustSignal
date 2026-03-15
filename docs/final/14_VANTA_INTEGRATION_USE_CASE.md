@@ -9,7 +9,7 @@ Provide Vanta-ingestable verification evidence from TrustSignal for document-lev
 
 ## Reference Pilot Scenario
 
-- Vertical: Property deed verification (DeedShield module)
+- Vertical: Property deed verification (TrustSignal module)
 - Workflow: Partner submits a verification bundle, receives receipt, and forwards normalized verification output to Vanta evidence workflows.
 - Data mode: Pilot-safe/synthetic where required by policy and agreement.
 
@@ -41,7 +41,7 @@ Provide Vanta-ingestable verification evidence from TrustSignal for document-lev
   "generatedAt": "2026-03-05T15:00:00.000Z",
   "vendor": {
     "name": "TrustSignal",
-    "module": "DeedShield",
+    "module": "TrustSignal",
     "environment": "production",
     "apiVersion": "v1"
   },

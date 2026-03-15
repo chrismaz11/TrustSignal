@@ -1,10 +1,10 @@
-# DeedShield User Manual
+# TrustSignal User Manual
 
-**Version:** 2.0 (Risk & Compliance Enhanced)  
+**Version:** 2.0 (Risk & Compliance Enhanced)
 **Date:** February 2026
 
 ## 1. Overview
-DeedShield is an automated document verification platform designed to prevent real estate title fraud. It protects homeowners and county clerks by ensuring:
+TrustSignal is an automated document verification platform designed to prevent real estate title fraud. It protects homeowners and county clerks by ensuring:
 1.  **Recording Integrity**: Documents meet strict Cook County formatting and content rules.
 2.  **Fraud Detection**: An AI Risk Engine analyzes documents for signs of forgery or tampering.
 3.  **Immutable Proof**: Every validation is "anchored" on a public blockchain (EVM), creating a permanent, tamper-proof audit trail.
@@ -20,7 +20,7 @@ DeedShield is an automated document verification platform designed to prevent re
     *   *Note: Only PDF files are supported for full verification.*
 
 ### Step 2: Automated Extraction & Review
-Once uploaded, DeedShield automatically:
+Once uploaded, TrustSignal automatically:
 *   **Removes Watermarks**: Strips "DO NOT COPY" or "UNOFFICIAL" stamps to read the text.
 *   **Extracts Metadata**: Finds the **Parcel ID (PIN)** and **Grantor Name**.
 *   **Computes Hash**: Generates a unique `SHA-256` digital fingerprint of your file.
@@ -36,7 +36,7 @@ The system pre-fills the verification form with your document's data.
 3.  Click **"Verify Bundle"**.
 
 ### Step 4: Results & Receipt
-DeedShield runs a comprehensive audit and produces a **Verification Receipt**.
+TrustSignal runs a comprehensive audit and produces a **Verification Receipt**.
 *   **Decision**: 
     *   `ALLOW`: Safe to record.
     *   `FLAG`: Minor issues found (e.g., low visual quality, warnings).
@@ -63,7 +63,7 @@ The **Document Fraud Risk Engine** assigns a probability score (0.0 - 1.0) based
 
 ### C. Anchoring
 *   **"Anchored" Status**: The digital fingerprint (hash) of your receipt has been written to the Ethereum blockchain.
-*   **Proof**: This proves *exactly* what the document looked like and what the verification result was at that specific moment in time. Even DeedShield cannot alter this record later.
+*   **Proof**: This proves *exactly* what the document looked like and what the verification result was at that specific moment in time. Even TrustSignal cannot alter this record later.
 
 ---
 

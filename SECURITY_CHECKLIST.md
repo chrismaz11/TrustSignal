@@ -1,6 +1,6 @@
-# Deed Shield — Security & Production Readiness Checklist
+# TrustSignal — Security & Production Readiness Checklist
 
-> This document tracks the security posture of the Deed Shield API.
+> This document tracks the security posture of the TrustSignal API.
 > Each item is either ✅ (verified in-repo), 🔒 (enforced by code), or 📋 (requires infra/ops verification).
 
 ---
@@ -45,7 +45,7 @@
 
 | #   | Requirement                                | Status | Evidence                                                 |
 | --- | ------------------------------------------ | ------ | -------------------------------------------------------- |
-| 4.1 | Keccak-256 for document hashing            | ✅     | `keccak256Buffer` from `@deed-shield/core`.              |
+| 4.1 | Keccak-256 for document hashing            | ✅     | `keccak256Buffer` from `@trust-signal/core`.              |
 | 4.2 | Receipt hash verification                  | ✅     | `POST /receipt/:id/verify` recomputes hash.              |
 | 4.3 | JWT receipts have expiration               | ✅     | Enforced in core receipt builder.                        |
 | 4.4 | Private keys never in code or config files | ✅     | Only via `PRIVATE_KEY` env var, never imported directly. |

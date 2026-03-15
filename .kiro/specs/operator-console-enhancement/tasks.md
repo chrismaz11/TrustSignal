@@ -2,7 +2,7 @@
 
 ## Overview
 
-Transform the existing Deed Shield verification interface into an Operator Console that matches the Figma design specifications. This implementation maintains all existing backend functionality while providing a verification interface with controlled inputs, operator attestation, and audit capabilities.
+Transform the existing TrustSignal verification interface into an Operator Console that matches the Figma design specifications. This implementation maintains all existing backend functionality while providing a verification interface with controlled inputs, operator attestation, and audit capabilities.
 
 ## System Boundaries
 - Verification and attestation layer only

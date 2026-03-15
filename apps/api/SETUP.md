@@ -1,4 +1,4 @@
-# Deed Shield API — Developer Setup
+# TrustSignal API — Developer Setup
 
 ## Prerequisites
 
@@ -9,8 +9,8 @@
 ## 1. Clone & Install
 
 ```bash
-git clone git@github.com:chrismaz11/Deed_Shield.git
-cd Deed_Shield
+git clone git@github.com:trustsignal-dev/trustsignal.git
+cd trustsignal
 npm install            # installs all workspaces
 ```
 
@@ -67,7 +67,7 @@ npx prisma db seed
 
 ```bash
 docker run -d \
-  --name deed-shield-pg \
+  --name trust-signal-pg \
   -e POSTGRES_DB=deed_shield \
   -e POSTGRES_PASSWORD=localdev \
   -p 5432:5432 \
