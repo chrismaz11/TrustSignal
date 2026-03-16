@@ -2,7 +2,7 @@
 
 - Describe the change
 
-## AI Disclosure
+## AI Disclosure (optional)
 
 - [ ] AI-assisted changes are included in this PR
 
