@@ -406,7 +406,6 @@ const deedParsedSchema = z.object({
 });
 
 type ReceiptRecord = NonNullable<Awaited<ReturnType<typeof prisma.receipt.findUnique>>>;
-type ReceiptListRecord = Awaited<ReturnType<typeof prisma.receipt.findMany>>[number];
 
 function normalizeForwardedProto(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -698,13 +697,20 @@ class DatabasePropertyVerifier {
   async verify(bundle: BundleInput): Promise<CheckResult> {
     console.log(`[DatabasePropertyVerifier] Checking property: ${bundle.property.parcelId}`);
 
-    const existing = await prisma.receipt.findFirst({
-      where: {
-        parcelId: bundle.property.parcelId,
-        decision: 'ALLOW',
-        revoked: false
-      }
-    });
+    const propertyQuery = bundle.ocrData?.grantorName
+      ? prisma.property.findUnique({ where: { parcelId: bundle.property.parcelId } })
+      : Promise.resolve(null);
+
+    const [existing, property] = await Promise.all([
+      prisma.receipt.findFirst({
+        where: {
+          parcelId: bundle.property.parcelId,
+          decision: 'ALLOW',
+          revoked: false
+        }
+      }),
+      propertyQuery
+    ]);
 
     if (existing) {
       return { checkId: 'property-database', status: 'FLAG', details: `Duplicate Title: Active receipt exists (${existing.id})` } as unknown as CheckResult;
@@ -712,10 +718,6 @@ class DatabasePropertyVerifier {
 
     // 2. Chain of Title Check (Grantor Verification)
     if (bundle.ocrData?.grantorName) {
-      const property = await prisma.property.findUnique({
-        where: { parcelId: bundle.property.parcelId }
-      });
-
       if (property) {
         const score = nameOverlapScore([bundle.ocrData.grantorName], [property.currentOwner]);
         const normalizedGrantor = normalizeName(bundle.ocrData.grantorName);
@@ -765,19 +767,21 @@ class AttomPropertyVerifier implements PropertyVerifier {
         if (ownerName && ownerName !== 'Unknown') {
           const saleDateStr = prop?.sale?.saleTransDate || prop?.assessment?.saleDate;
           const lastSaleDate = saleDateStr ? new Date(saleDateStr) : null;
-          await prisma.property.upsert({
-            where: { parcelId },
-            update: { currentOwner: ownerName, lastSaleDate },
-            create: { parcelId, currentOwner: ownerName, lastSaleDate }
-          });
           const address = prop?.address;
-          if (address?.countrySubd || address?.countrySecondarySubd) {
-            await prisma.countyRecord.upsert({
+          await prisma.$transaction(async (tx) => {
+            await tx.property.upsert({
               where: { parcelId },
-              update: { county: address.countrySecondarySubd, state: address.countrySubd, active: true },
-              create: { parcelId, county: address.countrySecondarySubd || 'Unknown', state: address.countrySubd || 'IL', active: true }
+              update: { currentOwner: ownerName, lastSaleDate },
+              create: { parcelId, currentOwner: ownerName, lastSaleDate }
             });
-          }
+            if (address?.countrySubd || address?.countrySecondarySubd) {
+              await tx.countyRecord.upsert({
+                where: { parcelId },
+                update: { county: address.countrySecondarySubd, state: address.countrySubd, active: true },
+                create: { parcelId, county: address.countrySecondarySubd || 'Unknown', state: address.countrySubd || 'IL', active: true }
+              });
+            }
+          });
         }
       } catch (err) {
         console.error('ATTOM API Error:', err);
@@ -1470,10 +1474,21 @@ export async function buildServer(options: BuildServerOptions = {}) {
   app.get('/api/v1/receipts', {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
     config: { rateLimit: perApiKeyRateLimit }
-  }, async () => {
-    const records: ReceiptListRecord[] = await prisma.receipt.findMany({
+  }, async (request) => {
+    const query = request.query as { limit?: string };
+    const rawLimit = query.limit !== undefined ? Number.parseInt(query.limit, 10) : NaN;
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(rawLimit, 200)) : 50;
+    const records = await prisma.receipt.findMany({
+      select: {
+        id: true,
+        decision: true,
+        riskScore: true,
+        createdAt: true,
+        anchorStatus: true,
+        revoked: true
+      },
       orderBy: { createdAt: 'desc' },
-      take: 100
+      take: limit
     });
     return records.map((record) => ({
       receiptId: record.id,

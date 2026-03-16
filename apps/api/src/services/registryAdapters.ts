@@ -871,15 +871,37 @@ async function dispatchOracleJob(
   }
 }
 
+const SOURCES_SYNC_TTL_MS = 60 * 60 * 1000; // re-sync source seeds at most once per hour
+
 export function createRegistryAdapterService(
   prisma: PrismaClient,
   options?: { fetchImpl?: FetchLike }
 ) {
   const fetchImpl = options?.fetchImpl ?? fetch;
+  let sourcesReadyAt: number | null = null;
+  let syncInFlight: Promise<void> | null = null;
+
+  async function ensureSourcesReady(): Promise<void> {
+    const now = Date.now();
+    if (sourcesReadyAt !== null && now - sourcesReadyAt < SOURCES_SYNC_TTL_MS) {
+      return;
+    }
+    // Deduplicate concurrent sync calls: share a single in-flight promise.
+    if (!syncInFlight) {
+      syncInFlight = syncRegistrySources(prisma).then(() => {
+        sourcesReadyAt = Date.now();
+        syncInFlight = null;
+      }).catch((err) => {
+        syncInFlight = null;
+        throw err;
+      });
+    }
+    await syncInFlight;
+  }
 
   return {
     async listSources() {
-      await syncRegistrySources(prisma);
+      await ensureSourcesReady();
       const sources = await prisma.registrySource.findMany({ orderBy: [{ category: 'asc' }, { id: 'asc' }] });
       return sources.map((source) => ({
         id: source.id,
@@ -898,7 +920,7 @@ export function createRegistryAdapterService(
     },
 
     async verify(input: { sourceId: RegistrySourceId; subject: string; forceRefresh?: boolean }): Promise<RegistryVerifyResult> {
-      await syncRegistrySources(prisma);
+      await ensureSourcesReady();
 
       const source = await prisma.registrySource.findUnique({ where: { id: input.sourceId } });
       if (!source || !source.active) {
@@ -1012,15 +1034,11 @@ export function createRegistryAdapterService(
 
     async verifyBatch(input: { sourceIds: RegistrySourceId[]; subject: string; forceRefresh?: boolean }) {
       const uniqueSources = [...new Set(input.sourceIds)];
-      const results: RegistryVerifyResult[] = [];
-      for (const sourceId of uniqueSources) {
-        const result = await this.verify({
-          sourceId,
-          subject: input.subject,
-          forceRefresh: input.forceRefresh
-        });
-        results.push(result);
-      }
+      const results = await Promise.all(
+        uniqueSources.map((sourceId) =>
+          this.verify({ sourceId, subject: input.subject, forceRefresh: input.forceRefresh })
+        )
+      );
       return {
         subject: input.subject,
         generatedAt: new Date().toISOString(),
