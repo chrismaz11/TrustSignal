@@ -16,6 +16,18 @@
     {
       "src": "/api/(.*)",
       "dest": "api/[...path].ts"
+    },
+    {
+      "src": "/v1/(.*)",
+      "dest": "api/[...path].ts"
+    },
+    {
+      "src": "/version",
+      "dest": "api/[...path].ts"
+    },
+    {
+      "src": "/health",
+      "dest": "api/[...path].ts"
     }
   ],
   "headers": [
