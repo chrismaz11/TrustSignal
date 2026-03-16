@@ -97,6 +97,29 @@ jobs:
       - name: Run unit/integration tests with coverage
         run: npx vitest run --coverage
 
+  web-build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TRUSTSIGNAL_JWT_SECRET: ${{ secrets.TRUSTSIGNAL_JWT_SECRET }}
+      TRUSTSIGNAL_JWT_SECRETS: ${{ secrets.TRUSTSIGNAL_JWT_SECRETS }}
+      POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build releasable web surface
+        run: npm --workspace apps/web run build
+
   signed-receipt-smoke:
     runs-on: ubuntu-latest
     services:
@@ -156,8 +179,6 @@ jobs:
 
   secret-scan:
     runs-on: ubuntu-latest
-    env:
-      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
