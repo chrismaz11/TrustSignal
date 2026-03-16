@@ -1,0 +1,5 @@
+Prepared By: TrustSignal Benchmark Harness
+Mail To: Evaluator Review Queue
+Property Address: 100 Integrity Way, Demo City
+Legal Description: Lot 1, Block A, TrustSignal Research Park
+Narrative: baseline artifact bytes for signed receipt issuance and later verification.
