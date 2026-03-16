@@ -76,6 +76,50 @@ The evaluator and demo paths are deliberate evaluator paths. They show the verif
 
 Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
+## Problem
+
+TrustSignal documentation is written for evaluators and implementers working in workflows where later auditability matters. The main attack surface is not only bad data at intake, but also tampered evidence, provenance loss, artifact substitution, and stale evidence that cannot be verified later.
+
+## Verification Lifecycle
+
+The canonical lifecycle and trust-boundary diagrams are documented in [verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+
+TrustSignal is evidence integrity infrastructure. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflow integration.
+
+## Demo
+
+Start with the local developer trial if you want the fastest technical evaluation:
+
+- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+
+The demo shows artifact hashing, verification, signed verification receipt issuance, later verification, and tampered artifact mismatch detection without external services.
+
+## Integration Model
+
+Start here if you want to evaluate the public verification lifecycle quickly:
+
+- [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
+- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
+- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+
+Golden path:
+
+1. submit a verification request
+2. receive verification signals plus a signed verification receipt
+3. retrieve the stored receipt
+4. run later verification
+
+## Integration Fit
+
+The evaluator and demo paths are deliberate evaluator paths. They show the verification lifecycle safely before production integration and do not remove production security requirements.
+
+## Production Deployment Requirements
+
+Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
+
 ## Canonical Documentation
 - `final/01_EXECUTIVE_SUMMARY.md`
 - `final/02_ARCHITECTURE_AND_BOUNDARIES.md`

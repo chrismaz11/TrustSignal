@@ -20,42 +20,31 @@ Audience:
 
 ## Start Here
 
-- [Documentation index](/Users/christopher/Projects/trustsignal/docs/README.md)
-- [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [Verification lifecycle](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
-- [Security workflows](/Users/christopher/Projects/trustsignal/docs/security-workflows.md)
-- [GitHub settings checklist](/Users/christopher/Projects/trustsignal/docs/github-settings-checklist.md)
-- [API overview](/Users/christopher/Projects/trustsignal/wiki/API-Overview.md)
-- [Claims boundary](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [Documentation index](docs/README.md)
+- [Partner evaluation overview](docs/partner-eval/overview.md)
+- [Verification lifecycle](docs/verification-lifecycle.md)
+- [Security workflows](docs/security-workflows.md)
+- [GitHub settings checklist](docs/github-settings-checklist.md)
+- [API overview](wiki/API-Overview.md)
+- [Claims boundary](wiki/Claims-Boundary.md)
 
-## Problem / Context
+## Problem
 
 High-stakes document and evidence workflows create an attack surface after collection, not just at intake. Once an artifact has been uploaded, reviewed, or approved, downstream teams still face risks such as tampered evidence, provenance loss, artifact substitution, and stale evidence that can no longer be verified later.
 
 Those risks matter in audit, compliance, partner-review, and trust-sensitive workflows because the evidence is often challenged after collection rather than at the moment it first entered the system. TrustSignal is designed for workflows where later auditability matters because the artifact, its provenance, or the surrounding workflow record may be questioned later.
 
-## Integrity Model
+## Verification Lifecycle
 
-The canonical lifecycle diagram and trust-boundary view are documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+The canonical lifecycle diagram and trust-boundary view are documented in [docs/verification-lifecycle.md](docs/verification-lifecycle.md).
 
 TrustSignal accepts a verification request, returns verification signals, issues a signed verification receipt, and supports later verification against stored receipt state so downstream teams can detect artifact tampering, evidence provenance loss, or stale records during audit review.
-
-## How It Works
-
-At the repository level, TrustSignal shows the public integrity layer through:
-
-- signed verification receipts
-- verification signals
-- verifiable provenance
-- later verification
-- existing workflow integration through the public API boundary
 
 ## Demo
 
 The fastest evaluator path is the local 5-minute developer trial:
 
 TrustSignal provides:
-
 - signed verification receipts
 - verification signals
 - verifiable provenance metadata
@@ -75,17 +64,17 @@ It shows the full lifecycle in one run:
 4. later verification
 5. tampered artifact mismatch detection
 
-See [demo/README.md](/Users/christopher/Projects/trustsignal/demo/README.md).
+See [demo/README.md](demo/README.md).
 
-## API And Examples
+## Integration Model
 
 Start here if you are evaluating the public verification lifecycle:
 
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
-- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+- [Evaluator quickstart](docs/partner-eval/quickstart.md)
+- [API playground](docs/partner-eval/api-playground.md)
+- [OpenAPI contract](openapi.yaml)
+- [Postman collection](postman/TrustSignal.postman_collection.json)
+- [Postman local environment](postman/TrustSignal.local.postman_environment.json)
 
 Golden path:
 
@@ -94,7 +83,7 @@ Golden path:
 3. retrieve the stored receipt
 4. run later verification
 
-## Verification Lifecycle
+## Technical Details
 
 The fastest path in this repository is the public `/api/v1/*` evaluator flow. It is a deliberate evaluator path, not a shortcut around production controls.
 
@@ -203,7 +192,7 @@ The upstream platform remains the system of record. TrustSignal adds an integrit
 
 TrustSignal includes a repository-level SOC 2 readiness framework for assessing security posture, documentation maturity, governance evidence, and mock-audit gaps. It is intended to support internal review and partner diligence preparation. It does not claim SOC 2 certification.
 
-- [SOC 2 readiness report](/Users/christopher/Projects/trustsignal/docs/compliance/soc2/readiness-report.md)
+- [SOC 2 readiness report](docs/compliance/soc2/readiness-report.md)
 
 ## Integration Boundary Notes
 
@@ -235,12 +224,12 @@ Fail-closed defaults are part of the security posture. They are meant to prevent
 
 The public evaluation artifacts in this repo are:
 
-- [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
-- [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
-- [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
-- [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
-- [partner evaluation kit](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [openapi.yaml](openapi.yaml)
+- [verification-request.json](examples/verification-request.json)
+- [verification-response.json](examples/verification-response.json)
+- [verification-receipt.json](examples/verification-receipt.json)
+- [verification-status.json](examples/verification-status.json)
+- [partner evaluation kit](docs/partner-eval/overview.md)
 
 These artifacts document the public verification lifecycle only. They intentionally avoid proof internals, model outputs, circuit identifiers, signing infrastructure specifics, and internal service topology.
 
@@ -255,7 +244,7 @@ Public-facing security properties for this repository are:
 - explicit lifecycle boundaries for read, revoke, and provenance-state operations
 - fail-closed defaults where production trust assumptions are not satisfied
 
-See [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md), [SECURITY_CHECKLIST.md](/Users/christopher/Projects/trustsignal/SECURITY_CHECKLIST.md), and [docs/SECURITY.md](/Users/christopher/Projects/trustsignal/docs/SECURITY.md) for the current public-safe security summary and repository guardrails.
+See [docs/security-summary.md](docs/security-summary.md), [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md), and [docs/SECURITY.md](docs/SECURITY.md) for the current public-safe security summary and repository guardrails.
 
 ## What TrustSignal Does Not Claim
 
@@ -283,7 +272,7 @@ npm run build
 
 ## Current Evaluator Metrics
 
-Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. A partner-facing interpretation is available in [docs/partner-eval/benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md).
+Recent local benchmark snapshot from [bench/results/latest.md](bench/results/latest.md). A partner-facing interpretation is available in [docs/partner-eval/benchmark-summary.md](docs/partner-eval/benchmark-summary.md).
 
 - clean verification request latency: mean `5.24 ms`, median `4.11 ms`, p95 `21.65 ms`
 - signed receipt generation latency: mean `0.34 ms`, median `0.32 ms`, p95 `0.63 ms`
@@ -294,14 +283,14 @@ Recent local benchmark snapshot from [bench/results/latest.md](/Users/christophe
 
 This is a recent local evaluator run against the current `/api/v1/*` lifecycle with a temporary local PostgreSQL instance. It is a benchmark snapshot for evaluation and regression tracking, not a production guarantee or SLA.
 
-## Related Documentation
+## Documentation Map
 
-- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [docs/partner-eval/quickstart.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [docs/partner-eval/api-playground.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [docs/templates/docs-architecture.md](/Users/christopher/Projects/trustsignal/docs/templates/docs-architecture.md)
-- [docs/templates/doc-template.md](/Users/christopher/Projects/trustsignal/docs/templates/doc-template.md)
-- [wiki/What-is-TrustSignal.md](/Users/christopher/Projects/trustsignal/wiki/What-is-TrustSignal.md)
-- [wiki/API-Overview.md](/Users/christopher/Projects/trustsignal/wiki/API-Overview.md)
-- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
-- [wiki/Verification-Receipts.md](/Users/christopher/Projects/trustsignal/wiki/Verification-Receipts.md)
+- [docs/partner-eval/overview.md](docs/partner-eval/overview.md)
+- [docs/partner-eval/quickstart.md](docs/partner-eval/quickstart.md)
+- [docs/partner-eval/api-playground.md](docs/partner-eval/api-playground.md)
+- [docs/templates/docs-architecture.md](docs/templates/docs-architecture.md)
+- [docs/templates/doc-template.md](docs/templates/doc-template.md)
+- [wiki/What-is-TrustSignal.md](wiki/What-is-TrustSignal.md)
+- [wiki/API-Overview.md](wiki/API-Overview.md)
+- [wiki/Claims-Boundary.md](wiki/Claims-Boundary.md)
+- [wiki/Verification-Receipts.md](wiki/Verification-Receipts.md)
