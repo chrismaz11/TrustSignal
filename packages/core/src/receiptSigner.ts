@@ -61,7 +61,20 @@ export async function verifyReceiptSignature(
   try {
     const header = decodeProtectedHeader(receiptSignature.signature);
     const alg = typeof header.alg === 'string' ? header.alg : receiptSignature.alg;
-    const kid = typeof header.kid === 'string' ? header.kid : receiptSignature.kid;
+    const payloadKid = typeof payload.signing_key_id === 'string' ? payload.signing_key_id.trim() : '';
+    const headerKid = typeof header.kid === 'string' ? header.kid : '';
+    const kid = payloadKid || headerKid || receiptSignature.kid;
+
+    if (payloadKid && receiptSignature.kid !== payloadKid) {
+      return {
+        verified: false,
+        keyResolved: false,
+        payloadMatches: false,
+        kid,
+        alg,
+        reason: 'signing_key_id_mismatch'
+      };
+    }
     const publicJwk = keys.get(kid);
 
     if (!publicJwk) {
@@ -81,7 +94,8 @@ export async function verifyReceiptSignature(
     const expectedPayload = canonicalizeUnsignedReceiptPayload(payload);
     const payloadMatches = payloadString === expectedPayload;
     const signatureMatchesMetadata = protectedHeader.alg === receiptSignature.alg && protectedHeader.kid === receiptSignature.kid;
-    const verified = payloadMatches && signatureMatchesMetadata;
+    const signingKeyMatches = !payloadKid || protectedHeader.kid === payloadKid;
+    const verified = payloadMatches && signatureMatchesMetadata && signingKeyMatches;
 
     return {
       verified,
@@ -89,7 +103,13 @@ export async function verifyReceiptSignature(
       payloadMatches,
       kid,
       alg,
-      reason: verified ? undefined : payloadMatches ? 'signature_metadata_mismatch' : 'payload_mismatch'
+      reason: verified
+        ? undefined
+        : payloadMatches
+          ? signatureMatchesMetadata
+            ? 'signing_key_id_mismatch'
+            : 'signature_metadata_mismatch'
+          : 'payload_mismatch'
     };
   } catch (error) {
     return {
