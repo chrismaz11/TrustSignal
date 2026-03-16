@@ -10,13 +10,12 @@ import {
   tabSize,
   waitUntilDone,
 } from "../font";
-import { Props } from "../Main";
 import { getFiles } from "./get-files";
 import { processSnippet } from "./process-snippet";
 import { schema } from "./schema";
 
 export const calculateMetadata: CalculateMetadataFunction<
-  Props & z.infer<typeof schema>
+  z.infer<typeof schema>
 > = async ({ props }) => {
   const contents = await getFiles();
 
