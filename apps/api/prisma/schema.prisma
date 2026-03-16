@@ -18,6 +18,7 @@ model Receipt {
   riskScore        Int
   checks           String
   rawInputsHash    String
+  signingKeyId     String?
   createdAt        DateTime @default(now())
   anchorStatus     String   @default("PENDING")
   anchorTxHash     String?

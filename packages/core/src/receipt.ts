@@ -24,6 +24,7 @@ export function toUnsignedReceiptPayload(receipt: Receipt): UnsignedReceiptPaylo
     reasons: receipt.reasons,
     riskScore: receipt.riskScore,
     verifierId: receipt.verifierId,
+    ...(receipt.signing_key_id ? { signing_key_id: receipt.signing_key_id } : {}),
     fraudRisk: receipt.fraudRisk,
     zkpAttestation: receipt.zkpAttestation
   };
@@ -36,6 +37,7 @@ export function buildReceipt(
   extensions: {
     fraudRisk?: Receipt['fraudRisk'];
     zkpAttestation?: Receipt['zkpAttestation'];
+    signing_key_id?: string;
   } = {}
 ): Receipt {
   const receiptId = randomUUID();
@@ -52,6 +54,7 @@ export function buildReceipt(
     reasons: verification.reasons,
     riskScore: verification.riskScore,
     verifierId,
+    ...(extensions.signing_key_id ? { signing_key_id: extensions.signing_key_id } : {}),
     fraudRisk: extensions.fraudRisk,
     zkpAttestation: extensions.zkpAttestation
   };
