@@ -1,4 +1,4 @@
-name: TrustSignal Verify Artifact
+name: .github/workflows/main.yml
 
 on:
   workflow_dispatch:
