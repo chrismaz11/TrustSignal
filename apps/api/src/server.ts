@@ -462,6 +462,7 @@ function receiptFromDb(record: ReceiptRecord) {
     reasons: JSON.parse(record.reasons) as string[],
     riskScore: record.riskScore,
     verifierId: 'deed-shield',
+    ...(record.signingKeyId ? { signing_key_id: record.signingKeyId } : {}),
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
     zkpAttestation: record.zkpAttestation ? JSON.parse(record.zkpAttestation) as ZKPAttestation : undefined,
@@ -1200,6 +1201,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     });
 
     const receipt = buildReceipt(input, verification, 'deed-shield', {
+      signing_key_id: securityConfig.receiptSigning.current.kid,
       fraudRisk,
       zkpAttestation
     });
@@ -1224,6 +1226,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
         riskScore: signedReceipt.riskScore,
         checks: JSON.stringify(signedReceipt.checks),
         rawInputsHash: signedReceipt.inputsCommitment,
+        signingKeyId: signedReceipt.signing_key_id,
         createdAt: new Date(signedReceipt.createdAt),
         fraudRisk: signedReceipt.fraudRisk ? JSON.stringify(signedReceipt.fraudRisk) : undefined,
         zkpAttestation: signedReceipt.zkpAttestation ? JSON.stringify(signedReceipt.zkpAttestation) : undefined,
