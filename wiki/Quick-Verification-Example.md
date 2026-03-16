@@ -1,25 +1,43 @@
 **Navigation**
 
-- [Home](Home)
-- [What is TrustSignal](What-is-TrustSignal)
-- [Architecture](Evidence-Integrity-Architecture)
-- [Verification Receipts](Verification-Receipts)
-- [API Overview](API-Overview)
-- [Claims Boundary](Claims-Boundary)
-- [Quick Verification Example](Quick-Verification-Example)
-- [Vanta Integration Example](Vanta-Integration-Example)
+- [Home](Home.md)
+- [What is TrustSignal](What-is-TrustSignal.md)
+- [Architecture](Evidence-Integrity-Architecture.md)
+- [Verification Receipts](Verification-Receipts.md)
+- [API Overview](API-Overview.md)
+- [Claims Boundary](Claims-Boundary.md)
+- [Quick Verification Example](Quick-Verification-Example.md)
+- [Vanta Integration Example](Vanta-Integration-Example.md)
 
 # Quick Verification Example
 
-## Problem
+Short description:
+This page walks through a minimal TrustSignal evaluator flow for verification signals, signed verification receipts, verifiable provenance, and later verification.
+
+Audience:
+- partner evaluators
+- integration engineers
+- developers
+
+## Problem / Context
 
 This example is for partner engineers who want the smallest realistic TrustSignal flow that shows what goes in, what comes back, and how later verification works. It is intended for workflows where tampered evidence, provenance loss, artifact substitution, and stale evidence matter after collection.
 
-## Verification Lifecycle
+## Integrity Model
 
 The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
 
 This example uses the current integration-facing lifecycle to create a verification, return verification signals plus a signed verification receipt, store the receipt with the workflow record, and later verify stored receipt state during audit review.
+
+## How It Works
+
+This example shows:
+
+- signed verification receipts
+- verification signals
+- verifiable provenance
+- later verification
+- existing workflow integration through the public lifecycle
 
 ## Demo
 
@@ -30,15 +48,20 @@ Start here for the full evaluator path:
 - [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
 - [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
 
-## Integration Model
+## API And Examples
 
 This example is a deliberate evaluator path. It is designed to show the verification lifecycle before production authentication, signing, and environment requirements are fully configured.
+
+## Production Considerations
+
+> [!IMPORTANT]
+> Production considerations: this is a compact evaluator example. Production deployment still requires explicit authentication, signing configuration, infrastructure controls, and operational review.
 
 ## Production Deployment Requirements
 
 Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
-## Technical Details
+## Example Or Diagram
 
 ```mermaid
 sequenceDiagram
@@ -119,6 +142,23 @@ curl -X POST -H "x-api-key: $TRUSTSIGNAL_API_KEY" \
   https://api.trustsignal.example/api/v1/receipt/2c17d2f5-4de6-48c3-b22c-0b7ea9eb5c0a/verify
 ```
 
+### Recent Verification Timing
+
+Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`:
+
+- clean verification request latency: mean `5.24 ms`, median `4.11 ms`, p95 `21.65 ms`
+- signed receipt generation latency: mean `0.34 ms`, median `0.32 ms`, p95 `0.63 ms`
+- receipt lookup latency: mean `0.57 ms`, median `0.56 ms`, p95 `0.63 ms`
+- later verification latency: mean `0.77 ms`, median `0.71 ms`, p95 `1.08 ms`
+- tampered artifact detection latency: mean `7.76 ms`, median `5.13 ms`, p95 `42.82 ms`
+
+This is a recent local evaluator benchmark snapshot, not a production guarantee. The tampered path is most useful as a behavior check for mismatch handling rather than a parser-completeness claim.
+
+## Security And Claims Boundary
+
+> [!NOTE]
+> Claims boundary: this example documents the public evaluation flow only. It does not expose proof internals, circuit identifiers, model outputs, signing infrastructure specifics, or internal service topology.
+
 ### What This Does Not Expose
 
 This public example does not expose:
@@ -130,3 +170,10 @@ This public example does not expose:
 - internal service topology
 - witness or prover details
 - registry scoring algorithms
+
+## Related Documentation
+
+- [docs/partner-eval/try-the-api.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
+- [docs/partner-eval/benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
+- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
+- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
