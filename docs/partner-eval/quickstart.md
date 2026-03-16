@@ -12,10 +12,10 @@ TrustSignal is evidence integrity infrastructure. It acts as an integrity layer 
 
 Start with these evaluator assets:
 
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
-- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+- [OpenAPI contract](../../openapi.yaml)
+- [API playground](api-playground.md)
+- [Postman collection](../../postman/TrustSignal.postman_collection.json)
+- [Postman local environment](../../postman/TrustSignal.local.postman_environment.json)
 
 The 5-minute evaluator path uses the public `/api/v1/*` lifecycle already documented in this repository:
 
@@ -46,7 +46,7 @@ Local development defaults are intentionally constrained and fail closed where p
 
 ### Step 1: Submit An Artifact Hash And Verification Request
 
-Request body: [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
+Request body: [verification-request.json](../../examples/verification-request.json)
 
 ```bash
 curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/verify" \
@@ -55,7 +55,7 @@ curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/verify" \
   --data @examples/verification-request.json
 ```
 
-Expected response shape: [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
+Expected response shape: [verification-response.json](../../examples/verification-response.json)
 
 Key public-safe outputs to look for:
 
@@ -72,7 +72,7 @@ curl "$TRUSTSIGNAL_BASE_URL/api/v1/receipt/$RECEIPT_ID" \
   -H "x-api-key: $TRUSTSIGNAL_API_KEY"
 ```
 
-Expected response shape: [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
+Expected response shape: [verification-receipt.json](../../examples/verification-receipt.json)
 
 This response shows the stored receipt view, the canonical receipt payload, and the PDF URL used for evaluator review.
 
@@ -83,7 +83,7 @@ curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/receipt/$RECEIPT_ID/verify" \
   -H "x-api-key: $TRUSTSIGNAL_API_KEY"
 ```
 
-Expected response shape: [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
+Expected response shape: [verification-status.json](../../examples/verification-status.json)
 
 This later verification step is how a workflow or reviewer confirms that the stored receipt still verifies before audit, handoff, or downstream reliance.
 

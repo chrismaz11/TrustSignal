@@ -1,12 +1,12 @@
 # Supabase DB Security Evidence
 
 - Captured at (UTC): 2026-02-28T00:41:40Z
-- Supabase project ref: `bwjyvakfrnmaawztasxu`
-- DB target: `aws-1-us-east-2.pooler.supabase.com:5432/postgres`
+- Supabase project ref: `[redacted]`
+- DB target: `[redacted]`
 
 ## 1. SSL Enforcement (Provider Control)
 Command:
-`supabase --experimental ssl-enforcement get --project-ref bwjyvakfrnmaawztasxu`
+`supabase --experimental ssl-enforcement get --project-ref [redacted]`
 
 Output:
 ```text
@@ -15,7 +15,7 @@ SSL is being enforced.
 
 ## 2. Encryption-at-Rest Control Presence (Redacted)
 Command:
-`supabase --experimental encryption get-root-key --project-ref bwjyvakfrnmaawztasxu`
+`supabase --experimental encryption get-root-key --project-ref [redacted]`
 
 Redacted output summary:
 ```text
@@ -26,7 +26,7 @@ Interpretation: root encryption key is present; full key material intentionally 
 
 ## 3. Live DB TLS Session Proof
 Command:
-`PGPASSWORD='***' psql "host=aws-1-us-east-2.pooler.supabase.com port=5432 dbname=postgres user=postgres.bwjyvakfrnmaawztasxu sslmode=require connect_timeout=8" -Atc "select 'ssl='||ssl::text||',version='||version||',cipher='||cipher from pg_stat_ssl where pid=pg_backend_pid();"`
+`PGPASSWORD='***' psql "host=[redacted] port=5432 dbname=postgres user=[redacted] sslmode=require connect_timeout=8" -Atc "select 'ssl='||ssl::text||',version='||version||',cipher='||cipher from pg_stat_ssl where pid=pg_backend_pid();"`
 
 Output:
 ```text
