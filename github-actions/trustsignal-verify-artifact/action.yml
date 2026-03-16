@@ -1,0 +1,42 @@
+name: TrustSignal Verify Artifact
+description: Verify build artifacts with TrustSignal and capture signed verification receipt metadata in GitHub Actions.
+author: TrustSignal
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  api_base_url:
+    description: Base URL for the TrustSignal public API.
+    required: true
+  api_key:
+    description: API key for the TrustSignal public API.
+    required: true
+  artifact_path:
+    description: Local path to the artifact to hash and verify.
+    required: false
+  artifact_hash:
+    description: Precomputed artifact hash to verify instead of hashing a file.
+    required: false
+  source:
+    description: Source label for the artifact verification request.
+    required: false
+    default: github-actions
+  fail_on_mismatch:
+    description: Fail the action when TrustSignal does not return a valid verification result.
+    required: false
+    default: "true"
+
+outputs:
+  verification_id:
+    description: TrustSignal verification identifier returned by the API, or a compatibility alias to receipt_id when the API omits a separate verification id.
+  status:
+    description: Normalized verification status returned by TrustSignal.
+  receipt_id:
+    description: TrustSignal receipt identifier returned by the API.
+  receipt_signature:
+    description: Signed receipt signature returned by the API.
+
+runs:
+  using: node20
+  main: dist/index.js
