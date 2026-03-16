@@ -1,18 +1,15 @@
-            - name: TrustSignal Verify Artifact
-  # You may pin to the exact commit or the version.
-  # uses: TrustSignal-dev/TrustSignal-Verify-Artifact@7574042b07035b4f26908daf96ff116a9c690d27
-  uses: TrustSignal-dev/TrustSignal-Verify-Artifact@v0.1.0
-  with:
-    # Base URL for the TrustSignal public API.
-    api_base_url: 
-    # API key for the TrustSignal public API.
-    api_key: 
-    # Local path to the artifact to hash and verify.
-    artifact_path: # optional
-    # Precomputed artifact hash to verify instead of hashing a file.
-    artifact_hash: # optional
-    # Source label for the artifact verification request.
-    source: # optional, default is github-actions
-    # Fail the action when TrustSignal does not return a valid verification result.
-    fail_on_mismatch: # optional, default is true
-          
+name: TrustSignal Verify Artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+
+jobs:
+  verify-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Echo placeholder
+        run: echo "Placeholder TrustSignal verify artifact task"
