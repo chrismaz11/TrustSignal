@@ -1,0 +1,26 @@
+name: TrustSignal Messaging Guardrails
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "USER_MANUAL.md"
+      - "docs/**"
+      - "apps/web/**"
+      - "package.json"
+      - "scripts/check-public-messaging.sh"
+
+jobs:
+  messaging-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Run messaging guardrail check
+        run: npm run messaging:check

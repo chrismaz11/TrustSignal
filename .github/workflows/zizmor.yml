@@ -1,0 +1,42 @@
+name: Security / zizmor Workflow Audit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+  push:
+    paths:
+      - ".github/workflows/**"
+
+permissions: {}
+
+jobs:
+  zizmor:
+    name: zizmor advisory audit
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v4.1.7
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        continue-on-error: true
+        uses: zizmorcore/zizmor-action@e639db99335bc9038abc0e066dfcd72e23d26fb4 # v0.3.0
+        with:
+          advanced-security: false
+          annotations: true
+
+      - name: Summarize zizmor mode
+        if: always()
+        run: |
+          {
+            echo "## zizmor workflow audit"
+            echo ""
+            echo "- Mode: advisory"
+            echo "- Scope: GitHub Actions workflow security linting"
+            echo "- Notes: findings are annotated in the run and should be reviewed before merging workflow changes"
+          } >> "$GITHUB_STEP_SUMMARY"

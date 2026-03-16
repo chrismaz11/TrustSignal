@@ -1,0 +1,17 @@
+name: Security / Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency diff review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4 # GitHub-maintained action pinned to supported major; Dependabot tracks updates.
+        with:
+          fail-on-severity: high
