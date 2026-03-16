@@ -49,6 +49,6 @@ Document the relevant public-safe security and claims boundary notes.
 
 ## Related Documentation
 
-- [Related doc one](/Users/christopher/Projects/trustsignal/docs/README.md)
-- [Related doc two](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
-- [Related doc three](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [Related doc one](../README.md)
+- [Related doc two](../verification-lifecycle.md)
+- [Related doc three](../../wiki/Claims-Boundary.md)

@@ -12,14 +12,14 @@ Audience:
 
 ## Start Here
 
-- [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [Verification lifecycle](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
-- [Security summary](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
-- [Security workflows](/Users/christopher/Projects/trustsignal/docs/security-workflows.md)
-- [GitHub settings checklist](/Users/christopher/Projects/trustsignal/docs/github-settings-checklist.md)
-- [Benchmark summary](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
-- [Claims boundary](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
-- [Docs architecture](/Users/christopher/Projects/trustsignal/docs/templates/docs-architecture.md)
+- [Partner evaluation overview](partner-eval/overview.md)
+- [Verification lifecycle](verification-lifecycle.md)
+- [Security summary](security-summary.md)
+- [Security workflows](security-workflows.md)
+- [GitHub settings checklist](github-settings-checklist.md)
+- [Benchmark summary](partner-eval/benchmark-summary.md)
+- [Claims boundary](../wiki/Claims-Boundary.md)
+- [Docs architecture](templates/docs-architecture.md)
 
 ## Problem / Context
 
@@ -27,7 +27,7 @@ TrustSignal documentation is written for evaluators and implementers working in 
 
 ## Integrity Model
 
-The canonical lifecycle and trust-boundary diagrams are documented in [verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+The canonical lifecycle and trust-boundary diagrams are documented in [verification-lifecycle.md](verification-lifecycle.md).
 
 TrustSignal is evidence integrity infrastructure. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability for existing workflow integration.
 
@@ -46,7 +46,7 @@ The documentation set is organized around:
 
 Start with the local developer trial if you want the fastest technical evaluation:
 
-- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+- [5-minute developer trial](../demo/README.md)
 
 The demo shows artifact hashing, verification, signed verification receipt issuance, later verification, and tampered artifact mismatch detection without external services.
 
@@ -54,12 +54,12 @@ The demo shows artifact hashing, verification, signed verification receipt issua
 
 Start here if you want to evaluate the public verification lifecycle quickly:
 
-- [Partner evaluation overview](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
-- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+- [Partner evaluation overview](partner-eval/overview.md)
+- [Evaluator quickstart](partner-eval/quickstart.md)
+- [API playground](partner-eval/api-playground.md)
+- [OpenAPI contract](../openapi.yaml)
+- [Postman collection](../postman/TrustSignal.postman_collection.json)
+- [Postman local environment](../postman/TrustSignal.local.postman_environment.json)
 
 Golden path:
 
@@ -115,7 +115,7 @@ Use archived files for context only, not as current implementation guidance.
 
 ## Related Documentation
 
-- [README.md](/Users/christopher/Projects/trustsignal/README.md)
-- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
-- [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
-- [docs/templates/docs-architecture.md](/Users/christopher/Projects/trustsignal/docs/templates/docs-architecture.md)
+- [README.md](../README.md)
+- [docs/verification-lifecycle.md](verification-lifecycle.md)
+- [docs/security-summary.md](security-summary.md)
+- [docs/templates/docs-architecture.md](templates/docs-architecture.md)

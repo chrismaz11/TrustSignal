@@ -112,6 +112,6 @@ Those controls still require manual verification in GitHub after merge.
 
 ## Related Documentation
 
-- [GitHub settings checklist](/Users/christopher/Projects/trustsignal/docs/github-settings-checklist.md)
-- [Security summary](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
-- [Documentation index](/Users/christopher/Projects/trustsignal/docs/README.md)
+- [GitHub settings checklist](github-settings-checklist.md)
+- [Security summary](security-summary.md)
+- [Documentation index](README.md)

@@ -49,6 +49,6 @@ Add the supporting details, table, example, or diagram.
 
 ## Related Artifacts / References
 
-- [Related artifact one](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [Related artifact two](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
-- [Related artifact three](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [Related artifact one](../partner-eval/overview.md)
+- [Related artifact two](../verification-lifecycle.md)
+- [Related artifact three](../../wiki/Claims-Boundary.md)

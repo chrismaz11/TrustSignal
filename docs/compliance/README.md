@@ -41,6 +41,6 @@ Prohibited evidence types in this public repository:
 
 ## Related Documentation
 
-- [Evidence boundary](/Users/christopher/Projects/trustsignal/docs/compliance/evidence-boundary.md)
-- [SOC 2 controls](/Users/christopher/Projects/trustsignal/docs/compliance/soc2/controls.md)
-- [SOC 2 readiness checklist](/Users/christopher/Projects/trustsignal/docs/compliance/soc2/readiness-checklist.md)
+- [Evidence boundary](evidence-boundary.md)
+- [SOC 2 controls](soc2/controls.md)
+- [SOC 2 readiness checklist](soc2/readiness-checklist.md)

@@ -10,7 +10,7 @@ Audience:
 - technical sponsors
 - developers validating benchmark artifacts
 
-This page summarizes the most recent local evaluator benchmark snapshot from [bench/results/latest.json](/Users/christopher/Projects/trustsignal/bench/results/latest.json) and [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md).
+This page summarizes the most recent local evaluator benchmark snapshot from [bench/results/latest.json](../../bench/results/latest.json) and [bench/results/latest.md](../../bench/results/latest.md).
 
 ## Executive Summary
 
@@ -23,7 +23,7 @@ The tampered artifact path also completed successfully across all sampled runs, 
 - Scope: current local evaluator benchmark run against the public `/api/v1/*` lifecycle
 - Primary sample size: `15` iterations per applicable scenario
 - Sequential batch size: `10`
-- Raw artifacts: [latest.json](/Users/christopher/Projects/trustsignal/bench/results/latest.json), [latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md)
+- Raw artifacts: [latest.json](../../bench/results/latest.json), [latest.md](../../bench/results/latest.md)
 - Integrity layer focus: signed verification receipts, verification signals, verifiable provenance, later verification, and existing workflow integration
 
 ## Main Content
@@ -108,7 +108,7 @@ The tampered artifact path recorded a median of `5.13 ms` but a p95 of `42.82 ms
 
 ## Related Artifacts / References
 
-- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [docs/partner-eval/try-the-api.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
-- [docs/partner-eval/security-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/security-summary.md)
-- [bench/README.md](/Users/christopher/Projects/trustsignal/bench/README.md)
+- [docs/partner-eval/overview.md](overview.md)
+- [docs/partner-eval/try-the-api.md](try-the-api.md)
+- [docs/partner-eval/security-summary.md](security-summary.md)
+- [bench/README.md](../../bench/README.md)

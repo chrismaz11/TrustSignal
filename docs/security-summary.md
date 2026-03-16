@@ -82,7 +82,7 @@ TrustSignal does not provide:
 
 ## Related Documentation
 
-- [docs/partner-eval/security-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/security-summary.md)
-- [SECURITY_CHECKLIST.md](/Users/christopher/Projects/trustsignal/SECURITY_CHECKLIST.md)
-- [docs/SECURITY.md](/Users/christopher/Projects/trustsignal/docs/SECURITY.md)
-- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [docs/partner-eval/security-summary.md](partner-eval/security-summary.md)
+- [SECURITY_CHECKLIST.md](../SECURITY_CHECKLIST.md)
+- [docs/SECURITY.md](SECURITY.md)
+- [wiki/Claims-Boundary.md](../wiki/Claims-Boundary.md)

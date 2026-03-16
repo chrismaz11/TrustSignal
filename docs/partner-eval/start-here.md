@@ -22,7 +22,7 @@ TrustSignal does not provide:
 
 ## 2. The Verification Lifecycle
 
-Start with the canonical lifecycle and trust-boundary diagrams in [verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+Start with the canonical lifecycle and trust-boundary diagrams in [verification-lifecycle.md](../verification-lifecycle.md).
 
 The public lifecycle is:
 
@@ -43,34 +43,34 @@ Use the local evaluator and public API artifacts to confirm:
 
 Start here:
 
-- [overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [try-the-api.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
-- [demo/README.md](/Users/christopher/Projects/trustsignal/demo/README.md)
+- [overview.md](overview.md)
+- [try-the-api.md](try-the-api.md)
+- [demo/README.md](../../demo/README.md)
 
 ## 4. Public API Contract
 
-- [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [TrustSignal.postman_collection.json](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
-- [TrustSignal.local.postman_environment.json](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+- [openapi.yaml](../../openapi.yaml)
+- [TrustSignal.postman_collection.json](../../postman/TrustSignal.postman_collection.json)
+- [TrustSignal.local.postman_environment.json](../../postman/TrustSignal.local.postman_environment.json)
 
 The public evaluator path uses the existing `/api/v1/*` contract only.
 
 ## 5. Example Payloads
 
-- [examples/verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
-- [examples/verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
-- [examples/verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
-- [examples/verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
+- [examples/verification-request.json](../../examples/verification-request.json)
+- [examples/verification-response.json](../../examples/verification-response.json)
+- [examples/verification-receipt.json](../../examples/verification-receipt.json)
+- [examples/verification-status.json](../../examples/verification-status.json)
 
 ## 6. Security / Claims Boundary
 
-- [security-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/security-summary.md)
-- [claims-boundary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/claims-boundary.md)
+- [security-summary.md](security-summary.md)
+- [claims-boundary.md](claims-boundary.md)
 
 Public evaluator materials intentionally do not expose proof internals, circuit identifiers, model outputs, signing infrastructure specifics, internal service topology, witness or prover details, or registry scoring algorithms.
 
 ## 7. Where To Go Next
 
-- [integration-model.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/integration-model.md)
-- [api-playground.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [quickstart.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
+- [integration-model.md](integration-model.md)
+- [api-playground.md](api-playground.md)
+- [quickstart.md](quickstart.md)

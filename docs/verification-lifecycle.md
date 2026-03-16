@@ -113,7 +113,7 @@ flowchart TD
 
 ## Current Evaluator Metrics
 
-Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`:
+Recent local benchmark snapshot from [bench/results/latest.md](../bench/results/latest.md) at `2026-03-12T22:30:04.260Z`:
 
 - clean verification request latency: mean `5.24 ms`, median `4.11 ms`, p95 `21.65 ms`
 - signed receipt generation latency: mean `0.34 ms`, median `0.32 ms`, p95 `0.63 ms`
@@ -125,7 +125,7 @@ This benchmark snapshot is from a recent local evaluator run using the current p
 
 ## Related Documentation
 
-- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [docs/partner-eval/try-the-api.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
-- [docs/partner-eval/benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
-- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [docs/partner-eval/overview.md](partner-eval/overview.md)
+- [docs/partner-eval/try-the-api.md](partner-eval/try-the-api.md)
+- [docs/partner-eval/benchmark-summary.md](partner-eval/benchmark-summary.md)
+- [wiki/Claims-Boundary.md](../wiki/Claims-Boundary.md)

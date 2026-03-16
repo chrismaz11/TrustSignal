@@ -103,6 +103,6 @@ Advisory only by default:
 
 ## Related Documentation
 
-- [Security workflows](/Users/christopher/Projects/trustsignal/docs/security-workflows.md)
-- [Security summary](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
-- [Documentation index](/Users/christopher/Projects/trustsignal/docs/README.md)
+- [Security workflows](security-workflows.md)
+- [Security summary](security-summary.md)
+- [Documentation index](README.md)

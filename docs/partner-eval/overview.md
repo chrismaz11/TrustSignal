@@ -16,7 +16,7 @@ Teams often have a workflow record that says an artifact was reviewed, approved,
 
 ## Integrity Model
 
-The canonical lifecycle diagram and trust-boundary diagram are documented in [../verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+The canonical lifecycle diagram and trust-boundary diagram are documented in [../verification-lifecycle.md](../verification-lifecycle.md).
 
 TrustSignal is evidence integrity infrastructure. It acts as an integrity layer for existing workflows by accepting a verification request, returning verification signals, issuing signed verification receipts, and supporting later verification during audit review.
 
@@ -41,19 +41,19 @@ TrustSignal supports evaluator review through:
 
 Start with the local developer trial when you want the shortest path to the verification lifecycle:
 
-- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
-- [Evaluator start here](/Users/christopher/Projects/trustsignal/docs/partner-eval/start-here.md)
-- [Try the API](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
+- [5-minute developer trial](../../demo/README.md)
+- [Evaluator start here](start-here.md)
+- [Try the API](try-the-api.md)
 
 ## Partner Evaluation
 
 Start with these evaluator assets:
 
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [Benchmark summary](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [Evaluator quickstart](quickstart.md)
+- [API playground](api-playground.md)
+- [Benchmark summary](benchmark-summary.md)
+- [OpenAPI contract](../../openapi.yaml)
+- [Postman collection](../../postman/TrustSignal.postman_collection.json)
 
 The evaluator flow is designed to show the verification lifecycle safely before production integration requirements are introduced.
 
@@ -67,11 +67,11 @@ The public evaluation path in this repository is the `/api/v1/*` surface:
 4. Run later verification at `POST /api/v1/receipt/{receiptId}/verify`.
 5. Use authorized lifecycle actions such as revocation and provenance-state retrieval where needed.
 
-Canonical contract and payload examples live in [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml) and the [`examples/`](../../examples) directory.
+Canonical contract and payload examples live in [openapi.yaml](../../openapi.yaml) and the [`examples/`](../../examples) directory.
 
 ## Benchmarks And Evaluator Materials
 
-Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For evaluator-facing interpretation and caveats, see [benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md).
+Recent local benchmark snapshot from [bench/results/latest.md](../../bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For evaluator-facing interpretation and caveats, see [benchmark-summary.md](benchmark-summary.md).
 
 - clean verification request latency: mean `5.24 ms`, median `4.11 ms`, p95 `21.65 ms`
 - signed receipt generation latency: mean `0.34 ms`, median `0.32 ms`, p95 `0.63 ms`
@@ -109,7 +109,7 @@ Local and evaluator paths are deliberate evaluator paths. Production deployment 
 
 ## Related Documentation
 
-- [docs/partner-eval/try-the-api.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/try-the-api.md)
-- [docs/partner-eval/benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
-- [docs/partner-eval/security-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/security-summary.md)
-- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
+- [docs/partner-eval/try-the-api.md](try-the-api.md)
+- [docs/partner-eval/benchmark-summary.md](benchmark-summary.md)
+- [docs/partner-eval/security-summary.md](security-summary.md)
+- [docs/verification-lifecycle.md](../verification-lifecycle.md)

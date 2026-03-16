@@ -69,7 +69,7 @@ Operational deployment details such as environment-specific key custody, hosting
 
 ## Related Artifacts / References
 
-- [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md)
-- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
-- [SECURITY_CHECKLIST.md](/Users/christopher/Projects/trustsignal/SECURITY_CHECKLIST.md)
+- [docs/security-summary.md](../security-summary.md)
+- [docs/partner-eval/overview.md](overview.md)
+- [wiki/Claims-Boundary.md](../../wiki/Claims-Boundary.md)
+- [SECURITY_CHECKLIST.md](../../SECURITY_CHECKLIST.md)

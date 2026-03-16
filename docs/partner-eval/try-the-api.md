@@ -30,7 +30,7 @@ The public evaluator path demonstrates:
 
 ## 1. Submit A Verification Request
 
-Request body: [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
+Request body: [verification-request.json](../../examples/verification-request.json)
 
 ```bash
 curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/verify" \
@@ -39,7 +39,7 @@ curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/verify" \
   --data @examples/verification-request.json
 ```
 
-Sample response: [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
+Sample response: [verification-response.json](../../examples/verification-response.json)
 
 ```json
 {
@@ -66,7 +66,7 @@ Sample response: [verification-response.json](/Users/christopher/Projects/trusts
 
 ## 2. Retrieve The Stored Receipt
 
-Receipt example: [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
+Receipt example: [verification-receipt.json](../../examples/verification-receipt.json)
 
 ```bash
 curl "$TRUSTSIGNAL_BASE_URL/api/v1/receipt/$RECEIPT_ID" \
@@ -75,7 +75,7 @@ curl "$TRUSTSIGNAL_BASE_URL/api/v1/receipt/$RECEIPT_ID" \
 
 ## 3. Run Later Verification
 
-Status example: [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
+Status example: [verification-status.json](../../examples/verification-status.json)
 
 ```bash
 curl -X POST "$TRUSTSIGNAL_BASE_URL/api/v1/receipt/$RECEIPT_ID/verify" \
@@ -99,7 +99,7 @@ The request and response examples below show the public evaluator flow from veri
 
 ## Recent Verification Timing
 
-Recent local benchmark snapshot from [bench/results/latest.md](/Users/christopher/Projects/trustsignal/bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For a fuller evaluator-facing summary, see [benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md).
+Recent local benchmark snapshot from [bench/results/latest.md](../../bench/results/latest.md) at `2026-03-12T22:30:04.260Z`. For a fuller evaluator-facing summary, see [benchmark-summary.md](benchmark-summary.md).
 
 - `POST /api/v1/verify` clean-path latency: mean `5.24 ms`, median `4.11 ms`, p95 `21.65 ms`
 - signed receipt generation latency: mean `0.34 ms`, median `0.32 ms`, p95 `0.63 ms`
@@ -128,7 +128,7 @@ These numbers come from a recent local benchmark harness run against the current
 
 ## Related Documentation
 
-- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [docs/partner-eval/benchmark-summary.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/benchmark-summary.md)
-- [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md)
-- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
+- [docs/partner-eval/overview.md](overview.md)
+- [docs/partner-eval/benchmark-summary.md](benchmark-summary.md)
+- [docs/verification-lifecycle.md](../verification-lifecycle.md)
+- [wiki/Claims-Boundary.md](../../wiki/Claims-Boundary.md)

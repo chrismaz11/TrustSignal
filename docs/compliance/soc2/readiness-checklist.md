@@ -91,6 +91,6 @@ Audience:
 
 ## Related Documentation
 
-- [SOC 2 controls mapping](/Users/christopher/Projects/trustsignal/docs/compliance/soc2/controls.md)
-- [SOC 2 readiness report](/Users/christopher/Projects/trustsignal/docs/compliance/soc2/readiness-report.md)
-- [Policy templates](/Users/christopher/Projects/trustsignal/docs/compliance/policies)
+- [SOC 2 controls mapping](controls.md)
+- [SOC 2 readiness report](readiness-report.md)
+- [Policy templates](../policies)
