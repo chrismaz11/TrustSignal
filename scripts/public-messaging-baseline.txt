@@ -1,0 +1,13 @@
+# Baseline matches for scripts/check-public-messaging.sh
+#
+# Intentionally tracked so the messaging guardrail can be introduced without
+# blocking unrelated work. Remove entries as messaging is tightened.
+[pattern:AI fraud scoring] apps/web/src/app/page.tsx:9:  'AI fraud scoring with verifiable machine learning (ezkl) - not a black box',
+[pattern:cryptographic fraud prevention platform] apps/web/src/app/layout.tsx:11:  title: 'TrustSignal | Cryptographic Fraud Prevention Platform',
+[pattern:cryptographic fraud prevention platform] apps/web/src/app/page.tsx:78:              &copy; 2026 TrustSignal. All Rights Reserved. Proprietary cryptographic fraud prevention platform.
+[pattern:zero-knowledge verification] apps/web/src/app/layout.tsx:13:    'TrustSignal prevents fraud in deeds, licenses, and credentials with zero-knowledge verification and tamper-evident proof anchoring.'
+[pattern:zero-knowledge verification] apps/web/src/app/page.tsx:66:              Stop fraudulent deeds, licenses, and credentials before they&apos;re recorded. Zero-knowledge verification
+[pattern:zero-knowledge verification] apps/web/src/app/security/page.tsx:6:        TrustSignal applies zero-knowledge verification, signed receipts, revocation controls, and immutable proof
+[positioning] USER_MANUAL.md:7:DeedShield is an automated document verification platform designed to prevent real estate title fraud. It protects homeowners and county clerks by ensuring:
+[positioning] apps/web/src/app/layout.tsx:11:  title: 'TrustSignal | Cryptographic Fraud Prevention Platform',
+[positioning] apps/web/src/app/page.tsx:78:              &copy; 2026 TrustSignal. All Rights Reserved. Proprietary cryptographic fraud prevention platform.

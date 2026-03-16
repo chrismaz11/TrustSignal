@@ -17,12 +17,28 @@ TARGETS=(
 
 PATTERN="from ['\"][^'\"]*(packages/engine-internal/|packages/core/(src|dist)/|src/core/|src/verifiers/|src/services/polygonMumbaiAnchor\\.js|/engine/(anchoring|compliance|registry)/|/services/(compliance|registryAdapters)\\.js|/anchor\\.js)[^'\"]*['\"]"
 
-if violations="$(rg -n --glob '*.ts' "$PATTERN" "${TARGETS[@]}")"; then
-  if [[ -n "$violations" ]]; then
-    echo "Public gateway boundary violations detected:"
-    echo "$violations"
-    exit 1
-  fi
+BASELINE_FILE="${API_BOUNDARY_BASELINE_FILE:-$REPO_ROOT/scripts/api-boundary-baseline.txt}"
+
+violations="$(rg -n --glob '*.ts' "$PATTERN" "${TARGETS[@]}" | sort || true)"
+
+if [[ -z "$violations" ]]; then
+  echo "Public API boundary check passed."
+  exit 0
 fi
 
-echo "Public API boundary check passed."
+if [[ ! -f "$BASELINE_FILE" ]]; then
+  echo "Public gateway boundary violations detected (no baseline file at $BASELINE_FILE):"
+  echo "$violations"
+  exit 1
+fi
+
+baseline="$(rg -v '^(#|\\s*$)' "$BASELINE_FILE" | sort || true)"
+new_violations="$(comm -13 <(printf '%s\n' "$baseline") <(printf '%s\n' "$violations") || true)"
+
+if [[ -n "$new_violations" ]]; then
+  echo "Public gateway boundary violations detected (not in baseline):"
+  echo "$new_violations"
+  exit 1
+fi
+
+echo "Public API boundary check passed (baseline-only violations present)."

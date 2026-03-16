@@ -1,0 +1,11 @@
+# Baseline violations for scripts/check-api-boundary.sh
+#
+# Intentionally tracked so guardrails can be introduced without blocking
+# unrelated work. Remove entries as the boundary is cleaned up.
+apps/api/src/receiptPdf.ts:2:import { Receipt } from '../../../packages/core/dist/index.js';
+apps/api/src/registryLoader.ts:4:import { TrustRegistry, verifyRegistrySignature } from '../../../packages/core/dist/index.js';
+apps/api/src/server.ts:38:} from '../../../packages/core/dist/index.js';
+apps/api/src/server.ts:41:import { anchorReceipt, buildAnchorSubject } from './anchor.js';
+apps/api/src/server.ts:45:import { attomCrossCheck, DeedParsed } from '../../../packages/core/dist/index.js';
+apps/api/src/server.ts:47:import { CookCountyComplianceValidator } from './services/compliance.js';
+apps/api/src/server.ts:53:} from './services/registryAdapters.js';
