@@ -4,6 +4,12 @@ All notable changes to TrustSignal are documented in this file.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning principles for externally visible contract changes.
 
+## 0.2.0 - 2026-03-17
+
+### Changed
+
+- Bumped all package versions from `0.1.0` to `0.2.0` (`package.json`, `sdk/package.json`, `apps/api/package.json`, `apps/web/package.json`, `packages/core/package.json`, `packages/contracts/package.json`).
+
 ## 0.1.0 - 2026-03-02
 
 ### Added
