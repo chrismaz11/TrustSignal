@@ -227,6 +227,28 @@ TrustSignal does not provide:
 
 DeedShield is the current application surface in this repository. The broader product framing remains TrustSignal as evidence integrity infrastructure and an integrity layer for existing workflows.
 
+## Newbie Difficulty Rating
+
+**Overall: 7 / 10** — This is a production-grade, security-critical codebase. It requires familiarity with multiple technologies and concepts. Newcomers with a general web-development background can follow the evaluator path and run the demo within minutes, but full contribution requires deeper expertise across several layers.
+
+| Area | Difficulty | Notes |
+|------|-----------|-------|
+| Running the demo | 2 / 10 | `npm install && npm run demo` is all you need |
+| API integration | 3 / 10 | Well-documented OpenAPI spec and Postman collections |
+| Web app (Next.js) | 4 / 10 | Standard React and Next.js patterns |
+| API server (Fastify) | 5 / 10 | Requires Node.js and TypeScript familiarity |
+| Verification core | 6 / 10 | Cryptographic hashing and JWS signing knowledge needed |
+| Smart contracts | 8 / 10 | Requires Solidity and Hardhat experience |
+| ZKP circuits | 9 / 10 | Requires Rust and Halo2 zero-knowledge proof expertise |
+
+### Recommended Starting Points by Background
+
+- **Evaluator / non-engineer** — Run `npm run demo` and read [docs/partner-eval/start-here.md](docs/partner-eval/start-here.md)
+- **Junior developer** — Follow the local setup in this README, then explore `apps/api`
+- **Full-stack developer** — Dive into `apps/api` and `packages/core`
+- **Blockchain engineer** — Explore `packages/contracts` and the anchoring lifecycle
+- **Cryptography / ZKP engineer** — Explore `circuits/`
+
 ## Validation
 
 Relevant repository checks include:
