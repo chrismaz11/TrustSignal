@@ -16,14 +16,14 @@ Scope: Repository-wide (`TrustSignal`)
 - Reason:
   - The consolidated integration branch `cm/integration-halo2-governance-20260308` is not yet merged into `master`; this branch carries the current Halo2/ZKP baseline plus governance guardrails and is now the required review/merge unit.
   - `master` branch protection is active and verified live on GitHub as of 2026-03-08: required PRs, 1 approving review, required checks (`lint`, `typecheck`, `test`, `rust-build`), required signatures, conversation resolution, and admin enforcement.
-  - Historical secret exposure remediation remains open until credential-rotation evidence is captured and hidden `refs/pull/*` retention cleanup is confirmed.
+  - Historical secret exposure remediation remains open: credential-rotation evidence is pending and GitHub Support confirmation for hidden `refs/pull/*` retention cleanup is awaiting response (support request submitted 2026-03-16; see `docs/evidence/security/github-support-purge-request-2026-03-16.md`).
   - TLS ingress evidence and monitoring/alert evidence remain incomplete for staging/production governance closure.
 
 ## Critical Week 1 Roadmap
 | Item | Status | Evidence | Blocker |
 |---|---|---|---|
 | Consolidated governance + Halo2 branch merged to `master` | `IN PROGRESS` | Branch `cm/integration-halo2-governance-20260308`; governance guardrails in `AGENTS.md`, override files, and `.github/workflows/ci.yml`; Halo2 milestone in local `master` commit `95c87ba` | PR not yet opened/approved/merged |
-| Remove `.env` secrets from git history | `IN PROGRESS` | Current tracked secret files removed from index; ignore rules hardened; remediation scripts and runbook exist | Need credential rotation evidence and GitHub hidden-ref purge confirmation |
+| Remove `.env` secrets from git history | `IN PROGRESS` | Current tracked secret files removed from index; ignore rules hardened; remediation scripts and runbook exist; GitHub Support purge request submitted 2026-03-16 (`docs/evidence/security/github-support-purge-request-2026-03-16.md`) | Need credential rotation evidence and GitHub Support confirmation of hidden-ref/cached-object purge |
 | JSON/Zod validation on all API endpoints | `VERIFIED IN TEST` | Route schema hardening in `apps/api/src/server.ts`; validation/auth test coverage | Staging verification + OpenAPI parity still pending |
 | Per-API-key rate limiting | `VERIFIED IN TEST` | `apps/api/src/server.ts`, security hardening tests | Needs staging verification under load |
 | PostgreSQL + TLS DB path | `VERIFIED IN STAGING` | PostgreSQL datasource/migrations in `apps/api/prisma/`; staging Vercel/Supabase evidence captured | Production evidence cadence still pending |
@@ -47,6 +47,7 @@ Scope: Repository-wide (`TrustSignal`)
 | 13 | Incident runbooks + real `status.deedshield.io` | `IN PROGRESS` | Incident/escalation baseline docs and legacy runbook | No live status-page implementation evidence or drill artifact |
 
 ## Dated Notes
+- 2026-03-16: GitHub Support purge request submitted for hidden `refs/pull/*` retained objects (`.env.local`, `attestations.sqlite`, `packages/core/registry/registry.private.jwk`). Evidence artifact: `docs/evidence/security/github-support-purge-request-2026-03-16.md`. Awaiting confirmation to close the secret-history remediation blocker.
 - 2026-03-08: `master` branch protection was verified live through GitHub API and matches the expected required-check/review policy.
 - 2026-03-08: The integration baseline is now `cm/integration-halo2-governance-20260308`, not PR `#11` or PR `#12` individually.
 - 2026-03-08: PR `#11` is being mined only for governance evidence/doc artifacts; runtime code from that branch is intentionally not the merge baseline.

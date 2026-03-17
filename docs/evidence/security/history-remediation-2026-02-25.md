@@ -40,4 +40,8 @@ git rev-list --all --objects | rg '(^| )(.env.local|attestations.sqlite|packages
 
 ## Tracking
 - GitHub issue opened to track support request and closure steps:
-  - https://github.com/chrismaz11/TrustSignal/issues/4
+  - https://github.com/TrustSignal-dev/TrustSignal/issues/15
+- GitHub Support purge request submitted on 2026-03-16:
+  - Evidence artifact: `docs/evidence/security/github-support-purge-request-2026-03-16.md`
+  - Template used: `docs/final/09_GITHUB_SUPPORT_PURGE_REQUEST_TEMPLATE.md`
+  - Status: **SUBMITTED — Awaiting GitHub Support Confirmation**
