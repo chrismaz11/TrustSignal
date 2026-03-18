@@ -74,9 +74,21 @@ Store screenshots in staging evidence (for example under `docs/evidence/staging/
 
 ## Notes
 - The alert rules use metrics emitted by `apps/api/src/server.ts`:
-  - `deedshield_http_requests_total`
-  - `deedshield_http_request_duration_seconds`
+  - **HTTP infrastructure metrics:**
+    - `deedshield_http_requests_total` (labels: `method`, `route`, `status_code`)
+    - `deedshield_http_request_duration_seconds` (labels: `method`, `route`, `status_code`)
+  - **Verification lifecycle business metrics:**
+    - `deedshield_receipts_issued_total` (labels: `decision`, `policy_profile`) — incremented per signed receipt issued
+    - `deedshield_receipt_verifications_total` (labels: `outcome`: `verified` | `not_verified`) — incremented per post-issuance receipt verification
+    - `deedshield_revocations_total` — incremented per receipt revocation
+    - `deedshield_verify_duration_seconds` (labels: `decision`) — histogram of end-to-end verify+receipt-issue duration
 - Core latency scope follows baseline routes:
   - `/api/v1/verify`
   - `/api/v1/receipt/:receiptId`
   - `/api/v1/receipt/:receiptId/verify`
+- Correlation IDs: every response includes `x-request-id` matching Fastify's `request.id`. Structured log entries for `receipt_issued`, `receipt_verified`, and `receipt_revoked` events include `request_id` for cross-log correlation.
+- Cardinality guidance:
+  - `decision` label: low cardinality (ALLOW | FLAG | BLOCK)
+  - `policy_profile` label: low cardinality per deployment; monitor new profiles before adding
+  - `outcome` label: low cardinality (verified | not_verified)
+  - Avoid per-receipt or per-user labels to prevent cardinality explosion

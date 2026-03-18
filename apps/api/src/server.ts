@@ -873,6 +873,32 @@ export async function buildServer(options: BuildServerOptions = {}) {
     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
     registers: [metricsRegistry]
   });
+  // Business-level verification lifecycle metrics
+  const receiptsIssuedTotal = new Counter({
+    name: 'deedshield_receipts_issued_total',
+    help: 'Total signed receipts issued by decision outcome',
+    labelNames: ['decision', 'policy_profile'] as const,
+    registers: [metricsRegistry]
+  });
+  const receiptVerificationsTotal = new Counter({
+    name: 'deedshield_receipt_verifications_total',
+    help: 'Total post-issuance receipt verifications by outcome',
+    labelNames: ['outcome'] as const,
+    registers: [metricsRegistry]
+  });
+  const revocationsTotal = new Counter({
+    name: 'deedshield_revocations_total',
+    help: 'Total receipt revocations processed',
+    labelNames: [] as const,
+    registers: [metricsRegistry]
+  });
+  const verifyDurationSeconds = new Histogram({
+    name: 'deedshield_verify_duration_seconds',
+    help: 'End-to-end duration of the verification and receipt issuance flow',
+    labelNames: ['decision'] as const,
+    buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10],
+    registers: [metricsRegistry]
+  });
   const perApiKeyRateLimit = {
     max: securityConfig.perApiKeyRateLimitMax,
     timeWindow: securityConfig.rateLimitWindow,
@@ -881,6 +907,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.addHook('onRequest', async (request) => {
     (request as any)[REQUEST_START] = Date.now();
+  });
+
+  // Propagate Fastify's auto-generated request ID as x-request-id for correlation across logs
+  app.addHook('onSend', async (request, reply) => {
+    reply.header('x-request-id', request.id);
   });
 
   app.addHook('onResponse', async (request, reply) => {
@@ -1100,6 +1131,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
+    const verifyStartMs = Date.now();
     const parsed = verifyInputSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
@@ -1255,6 +1287,20 @@ export async function buildServer(options: BuildServerOptions = {}) {
       riskScore: signedReceipt.riskScore
     });
 
+    receiptsIssuedTotal.inc({ decision: signedReceipt.decision, policy_profile: input.policy.profile });
+    verifyDurationSeconds.observe({ decision: signedReceipt.decision }, (Date.now() - verifyStartMs) / 1000);
+    app.log.info(
+      {
+        event: 'receipt_issued',
+        request_id: request.id,
+        receipt_id: record.id,
+        decision: signedReceipt.decision,
+        policy_profile: input.policy.profile,
+        duration_ms: Date.now() - verifyStartMs
+      },
+      'receipt_issued'
+    );
+
     return reply.send(body);
   });
 
@@ -1372,6 +1418,19 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return reply.code(500).send({ error: 'Receipt reconstruction failed' });
     }
     const verificationResult = await verifyStoredReceipt(receipt, record, securityConfig);
+    const verificationOutcome = verificationResult.verified ? 'verified' : 'not_verified';
+    receiptVerificationsTotal.inc({ outcome: verificationOutcome });
+    app.log.info(
+      {
+        event: 'receipt_verified',
+        request_id: request.id,
+        receipt_id: receiptId,
+        outcome: verificationOutcome,
+        signature_verified: verificationResult.signatureVerified,
+        integrity_verified: verificationResult.integrityVerified
+      },
+      'receipt_verified'
+    );
 
     return reply.send({
       verified: verificationResult.verified,
@@ -1467,6 +1526,17 @@ export async function buildServer(options: BuildServerOptions = {}) {
       where: { id: receiptId },
       data: { revoked: true }
     });
+
+    revocationsTotal.inc();
+    app.log.info(
+      {
+        event: 'receipt_revoked',
+        request_id: request.id,
+        receipt_id: receiptId,
+        issuer_id: revocationVerification.issuerId
+      },
+      'receipt_revoked'
+    );
 
     return reply.send({ status: 'REVOKED', issuerId: revocationVerification.issuerId });
   });

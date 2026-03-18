@@ -33,6 +33,30 @@ groups:
           /
           clamp_min(sum by (job) (rate(deedshield_http_requests_total{route=~"/api/v1/.*",route!="/api/v1/metrics"}[24h])), 0.001)
 
+      # Verification lifecycle business metrics
+      - record: deedshield:receipts_issued:rate5m
+        expr: |
+          sum by (job) (rate(deedshield_receipts_issued_total[5m]))
+
+      - record: deedshield:receipts_issued_allow_ratio:rate5m
+        expr: |
+          sum by (job) (rate(deedshield_receipts_issued_total{decision="ALLOW"}[5m]))
+          /
+          clamp_min(sum by (job) (rate(deedshield_receipts_issued_total[5m])), 0.001)
+
+      - record: deedshield:revocations:rate1h
+        expr: |
+          sum by (job) (rate(deedshield_revocations_total[1h]))
+
+      - record: deedshield:verify_p95_duration_seconds:rate5m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (job, le) (
+              rate(deedshield_verify_duration_seconds_bucket[5m])
+            )
+          )
+
   - name: deedshield-api-slo-alerts
     interval: 30s
     rules:
@@ -179,3 +203,39 @@ groups:
           summary: "Traffic volume dropped >70% from 24h baseline"
           description: "Business-hours request volume for job {{ $labels.job }} is below 30% of the 24h baseline for 15m (UTC window 14:00-23:00)."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
+
+      # Verification lifecycle alerts
+      - alert: DeedShieldVerifyP95LatencyWarning
+        expr: |
+          (
+            deedshield:verify_p95_duration_seconds:rate5m > 3.0
+          )
+          and on (job)
+          (
+            sum by (job) (rate(deedshield_receipts_issued_total[5m])) > 0.01
+          )
+        for: 10m
+        labels:
+          severity: warning
+          incident_severity: SEV-3
+          service: deedshield-api
+          slo: verify-latency
+        annotations:
+          summary: "Verification p95 duration above 3s for 10m"
+          description: "End-to-end verify+receipt-issue p95 duration exceeded 3s for job {{ $labels.job }}. Check upstream verifier dependencies."
+          runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
+
+      - alert: DeedShieldRevocationSpike
+        expr: |
+          sum by (job) (increase(deedshield_revocations_total[5m])) > 5
+        for: 0m
+        labels:
+          severity: warning
+          incident_severity: SEV-3
+          service: deedshield-api
+          slo: revocation-integrity
+        annotations:
+          summary: "More than 5 receipt revocations in 5 minutes"
+          description: "Revocation spike detected: {{ $value }} revocations in last 5m for job {{ $labels.job }}. Verify this is an authorized batch operation."
+          runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
+
