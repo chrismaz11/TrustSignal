@@ -210,3 +210,26 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+  verify-artifact-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Check source syntax
+        working-directory: github-actions/trustsignal-verify-artifact
+        run: npm run check
+
+      - name: Verify dist alignment
+        working-directory: github-actions/trustsignal-verify-artifact
+        run: npm run check:dist
+
+      - name: Run local contract tests
+        working-directory: github-actions/trustsignal-verify-artifact
+        run: npm run test:local

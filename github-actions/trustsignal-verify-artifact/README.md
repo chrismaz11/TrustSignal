@@ -168,42 +168,50 @@ TrustSignal gives security and release teams a consistent way to verify artifact
 
 ## Current Limitations
 
-- Local validation uses a fetch mock rather than a live TrustSignal deployment.
 - GitHub Marketplace publication requires this action to be published from a dedicated public repository root with `action.yml` at the top level.
-- Live end-to-end validation against a deployed TrustSignal API should remain part of the release process.
 
 ## Local Validation
 
-Run the lightweight validation checks with:
+Run the complete validation suite with:
+
+```bash
+npm run validate
+```
+
+This runs a syntax check, a dist alignment check (SHA-256 comparison of `src` and `dist`), and the local contract test. No live API is required.
+
+Individual commands:
 
 ```bash
 node --check src/index.js
 node --check dist/index.js
+node scripts/check-dist.js
 node scripts/test-local.js
 ```
 
-Or use the package scripts:
+## Live Integration Test
+
+To validate against a deployed TrustSignal API:
 
 ```bash
-npm run check
-npm run test:local
-npm run validate:local
+export TRUSTSIGNAL_INTEGRATION_API_BASE_URL=https://api.trustsignal.dev
+export TRUSTSIGNAL_INTEGRATION_API_KEY=<your-api-key>
+npm run test:integration
 ```
+
+The test skips cleanly when the environment variables are not set. See `docs/integration.md` for details.
 
 ## Versioning Guidance
 
 - Follow semantic versioning.
-- Publish immutable release tags for each shipped version.
-- Maintain a major tag such as `v1` for stable consumers.
+- Publish immutable release tags for each shipped version (e.g., `v0.2.0`).
+- Maintain a stable major tag such as `v1` for consumers who want automatic non-breaking updates.
+- See `docs/release-checklist.md` for the complete release process.
 
-## Release Checklist
+## Release Checklist Summary
 
-- Commit the built `dist/index.js` artifact with every release.
-- Create signed or otherwise controlled release tags according to your release process.
-- Update documentation when the public API contract or output mapping changes.
-
-## Roadmap
-
-- Add a live integration test against a deployed TrustSignal verification endpoint
-- Publish the action from a dedicated public repository root
-- Add example workflows for release pipelines and provenance retention patterns
+- Confirm `src/index.js` changes are intentional.
+- Run `npm run build` and then `npm run validate` to confirm dist alignment.
+- Create an immutable version tag and update the stable major tag.
+- Confirm `action.yml` references `dist/index.js` as the action entrypoint.
+- Update documentation when the API contract or output field mapping changes.
