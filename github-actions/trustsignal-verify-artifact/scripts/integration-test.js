@@ -65,7 +65,8 @@ function runAction({ artifactPath, artifactHash, failOnMismatch = true } = {}) {
     GITHUB_REPOSITORY: 'trustsignal-dev/trustsignal-verify-artifact',
     GITHUB_WORKFLOW: 'Integration Test',
     GITHUB_ACTOR: 'integration-test-runner',
-    GITHUB_SHA: sha256('integration-test')
+    // Use a realistic-looking 40-character hex string for the commit SHA context field.
+    GITHUB_SHA: sha256('integration-test').slice(0, 40)
   };
 
   if (artifactPath) {
@@ -106,7 +107,7 @@ function assertNonEmpty(value, name) {
 function main() {
   process.stdout.write(`Integration test running against: ${apiBaseUrl}\n`);
 
-  // Create a deterministic test artifact so the test is repeatable.
+  // Create a unique test artifact per run to avoid stale-cache edge cases on the API side.
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'trustsignal-artifact-'));
   const artifactContent = `trustsignal-integration-test-artifact ${Date.now()}`;
   const artifactPath = path.join(tempDir, 'artifact.txt');
