@@ -21,6 +21,6 @@ jobs:
           persist-credentials: false
 
       - name: Dependency diff review
-        uses: actions/dependency-review-action@da45c9571d1e7cdec26844a76b8e6b89e4f1ee6b # v4.7.1
+        uses: actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9 # v4.7.1
         with:
           fail-on-severity: high
