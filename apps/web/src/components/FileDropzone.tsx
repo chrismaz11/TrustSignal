@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
 import { useRouter } from 'next/navigation';
+import React, { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { createWorker } from 'tesseract.js';
-import { computeFileHash } from '../utils/hashing';
+
 import { extractMetadataFromText, cleanPdfText } from '../utils/extraction';
+import { computeFileHash } from '../utils/hashing';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
@@ -14,30 +15,6 @@ type VerificationReport = {
     checks: Array<{ id: string; status: string; message: string }>;
     evidence: { matchConfidence: number; endpointUsed?: string; reason?: string };
 } | null;
-
-// Polyfill Promise.withResolvers
-declare global {
-    interface PromiseConstructor {
-        withResolvers<T>(): {
-            promise: Promise<T>;
-            resolve: (value: T | PromiseLike<T>) => void;
-            reject: (reason?: any) => void;
-        };
-    }
-}
-
-if (typeof Promise.withResolvers === 'undefined') {
-    // @ts-ignore - Polyfill for missing type definition
-    Promise.withResolvers = function <T>() {
-        let resolve!: (value: T | PromiseLike<T>) => void;
-        let reject!: (reason?: any) => void;
-        const promise = new Promise<T>((res, rej) => {
-            resolve = res;
-            reject = rej;
-        });
-        return { promise, resolve, reject };
-    };
-}
 
 export function FileDropzone() {
     const router = useRouter();
@@ -73,9 +50,9 @@ export function FileDropzone() {
         } as const;
 
 
-        const runOcr = async (input: ImageBitmapSource | string | HTMLCanvasElement | Blob) => {
+        const runOcr = async (input: Blob) => {
             const worker = await createWorker('eng', undefined, workerOptions);
-            const ret = await worker.recognize(input as any);
+            const ret = await worker.recognize(input);
             await worker.terminate();
             return ret.data.text;
         };

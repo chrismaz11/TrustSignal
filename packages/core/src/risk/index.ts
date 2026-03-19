@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+
 import { DocumentRisk, RiskEngineOptions, RiskSignal, RiskBand } from './types.js';
 import { checkPdfForensics } from './forensics.js';
 import { checkLayoutConsistency } from './layout.js';

@@ -55,7 +55,7 @@ export interface AuditEntry {
   bundleId: string;
   decision?: 'ALLOW' | 'FLAG' | 'BLOCK';
   receiptId?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 }
 
 // Controlled Input Types

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+
 import { DeedParsed, AttomProperty } from './types.js';
 
 export function normalizePin(pin: string | null | undefined): string | null {

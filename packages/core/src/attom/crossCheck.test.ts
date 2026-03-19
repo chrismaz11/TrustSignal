@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { attomCrossCheck, MockAttomClient } from './crossCheck.js';
 import { DeedParsed, AttomLookupResult } from './types.js';
 

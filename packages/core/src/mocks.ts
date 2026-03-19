@@ -8,7 +8,7 @@ export class MockCountyVerifier implements CountyVerifier {
         ['DISPUTE-500', { status: 'FLAGGED', details: 'Active quiet title action pending' }]
     ]);
 
-    async verifyParcel(parcelId: string, county: string, state: string): Promise<CountyCheckResult> {
+    async verifyParcel(parcelId: string, _county: string, _state: string): Promise<CountyCheckResult> {
         // Simulate network latency
         await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -23,7 +23,7 @@ export class MockCountyVerifier implements CountyVerifier {
 }
 
 export class MockStateNotaryVerifier {
-    async verifyNotary(state: string, commissionId: string, name: string): Promise<{ status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | 'UNKNOWN'; details?: string }> {
+    async verifyNotary(state: string, commissionId: string, _name: string): Promise<{ status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | 'UNKNOWN'; details?: string }> {
         if (commissionId === '999999') {
             return { status: 'REVOKED' };
         }

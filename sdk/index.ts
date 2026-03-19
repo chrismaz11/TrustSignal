@@ -52,8 +52,15 @@ export class TrustSignalSDK {
       body: JSON.stringify(bundle)
     });
 
-    const { record_id: _recordId, ...combinedResult } = response;
-    return combinedResult;
+    return {
+      non_mem_ok: response.non_mem_ok,
+      revocation_ok: response.revocation_ok,
+      zkml_ok: response.zkml_ok,
+      fraud_score: response.fraud_score,
+      proof_gen_ms: response.proof_gen_ms,
+      timestamp: response.timestamp,
+      bundle_hash: response.bundle_hash
+    };
   }
 
   async revoke(bundleHash: string, reason: string): Promise<RevokeResult> {

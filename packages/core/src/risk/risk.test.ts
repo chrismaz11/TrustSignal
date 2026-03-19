@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer';
+
 import { describe, expect, it } from 'vitest';
+
 import { RiskEngine } from './index.js';
 
 describe('RiskEngine', () => {

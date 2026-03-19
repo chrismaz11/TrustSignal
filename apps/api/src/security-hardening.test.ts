@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Buffer } from 'node:buffer';
+
 import { FastifyInstance } from 'fastify';
 import { Wallet } from 'ethers';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildServer } from './server.js';
 import { buildReceiptSigningConfig } from './security.js';

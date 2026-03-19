@@ -1,5 +1,5 @@
-
 import { describe, it, expect } from 'vitest';
+
 import { extractMetadataFromText, cleanPdfText } from './extraction';
 
 describe('PDF Text Cleaning', () => {
