@@ -764,7 +764,7 @@ async function runLookup(
       status: 'COMPLIANCE_GAP',
       matches: [],
       sourceVersion: null,
-      details: primaryEndpoint.details
+      details: 'details' in primaryEndpoint ? primaryEndpoint.details : 'primary_source_endpoint_invalid'
     };
   }
 
