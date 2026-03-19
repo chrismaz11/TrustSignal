@@ -26,8 +26,8 @@ jobs:
         # Advisory mode — findings are reported but do not fail the job.
         # Maintainers should review and address findings before merging workflow changes.
         run: |
-          zizmor --format plain .github/workflows/
-          EXIT_CODE=$?
+          EXIT_CODE=0
+          zizmor --format plain .github/workflows/ || EXIT_CODE=$?
           if [ $EXIT_CODE -ne 0 ]; then
             echo "::warning::zizmor found workflow security findings (advisory). Review the output above before merging."
           fi
