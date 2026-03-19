@@ -1,5 +1,3 @@
-import { OCRData } from './types.js';
-
 export type NotaryStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | 'UNKNOWN';
 
 export interface NotaryVerifier {

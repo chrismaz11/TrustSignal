@@ -111,6 +111,16 @@ flowchart TD
 - The private verification engine remains non-public.
 - The public outputs are verification signals, signed verification receipts, and verifiable provenance suitable for later verification.
 
+## Local Workflow Note
+
+This repository also contains a local-only Trust Agents orchestration layer for workflow experiments and readiness automation. That subsystem is documented separately in [docs/compliance/trust-agents-workflow.md](compliance/trust-agents-workflow.md).
+
+Important boundary:
+
+- it is local and in-memory
+- it is useful for development and API-level workflow testing
+- it is not proof of deployed orchestration, staging controls, or production workflow execution
+
 ## Current Evaluator Metrics
 
 Recent local benchmark snapshot from [bench/results/latest.md](../bench/results/latest.md) at `2026-03-12T22:30:04.260Z`:
@@ -128,4 +138,5 @@ This benchmark snapshot is from a recent local evaluator run using the current p
 - [docs/partner-eval/overview.md](partner-eval/overview.md)
 - [docs/partner-eval/try-the-api.md](partner-eval/try-the-api.md)
 - [docs/partner-eval/benchmark-summary.md](partner-eval/benchmark-summary.md)
+- [docs/compliance/trust-agents-workflow.md](compliance/trust-agents-workflow.md)
 - [wiki/Claims-Boundary.md](../wiki/Claims-Boundary.md)

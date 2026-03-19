@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+
 import { RiskSignal } from './types.js';
 
 export interface PatternContext {
