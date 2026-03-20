@@ -22,7 +22,7 @@
 | --- | -------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2.1 | Schema uses `postgresql` provider            | ✅     | `apps/api/prisma/schema.prisma` line 6.                                                                                                                 |
 | 2.2 | TLS enforced on DB connections in production | 🔒     | `server.ts` startup guard rejects `DATABASE_URL` without `sslmode=require\|verify-full\|verify-ca` when `NODE_ENV=production`.                          |
-| 2.3 | Encryption at rest on DB volume              | 📋     | Must be verified on the hosting provider (Render, AWS RDS, Supabase, etc.). All major providers support this — enable it.                               |
+| 2.3 | Encryption at rest on DB volume              | 📋     | Must be verified on the hosting provider (Render, AWS RDS, Supabase, etc.). Capture evidence using `docs/ops/db-security-evidence.md` and store the exported proof in private compliance storage. |
 | 2.4 | Separate DB credentials per environment      | 📋     | Production, staging, and development must use distinct credentials with least-privilege grants.                                                         |
 | 2.5 | DB user has minimal required permissions     | 📋     | Production DB user should have `SELECT, INSERT, UPDATE` only — no `DROP`, `CREATE`, or superuser. Prisma Migrate should use a separate privileged user. |
 | 2.6 | Connection pooling configured                | 📋     | Use PgBouncer or Prisma Accelerate for connection management in production.                                                                             |
@@ -94,6 +94,29 @@ These cannot be verified in code and require manual confirmation:
 | 7.7 | **Separate staging/prod credentials** | Ops   | Create distinct DB users and API keys per environment                                                       |
 | 7.8 | **Pre-commit secret scanning**        | Dev   | Install `git-secrets` or `trufflehog` as pre-commit hook (since GitHub secret scanning requires Enterprise) |
 
+### 7.A Rotation Evidence And Cadence
+
+Rotation policy:
+
+- rotate exposed or suspected-exposed secrets immediately
+- rotate standing secrets at least every 90 days unless a stricter provider or customer obligation applies
+- record the operator, timestamp, and validation outcome for every rotation event
+
+Store rotation evidence in:
+
+- Vanta
+- private compliance storage
+- a private audit repository
+
+Recommended evidence bundle for each rotated secret:
+
+| Secret | Cadence | Evidence Required | Evidence Location |
+| --- | --- | --- | --- |
+| `ATTOM_API_KEY` | Immediate if exposed, otherwise every 90 days | provider rotation log, redacted screenshot, post-rotation smoke test result | Vanta or private audit repository |
+| `OPENAI_API_KEY` | Immediate if exposed, otherwise every 90 days | provider rotation log, redacted screenshot, post-rotation smoke test result | Vanta or private audit repository |
+| `PRIVATE_KEY` | Immediate if exposed, otherwise on key-management schedule | key replacement record, redeploy confirmation, receipt verification sample | private audit repository |
+| `DATABASE_URL` / DB password | Immediate if exposed, otherwise every 90 days | password rotation record, redeploy confirmation, database connectivity proof | Vanta or private audit repository |
+
 ---
 
-_Last updated: 2026-02-18T17:25 CST by security remediation session._
+_Last updated: 2026-03-20T00:00 CST by SOC 2 remediation session._

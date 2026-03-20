@@ -93,6 +93,24 @@ export async function ensureDatabase(prisma: PrismaClient) {
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "completedAt" TIMESTAMP(3)
     )`,
+    `CREATE TABLE IF NOT EXISTS "WorkflowEvent" (
+      "id" TEXT PRIMARY KEY,
+      "workflowId" TEXT NOT NULL,
+      "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "operator" TEXT NOT NULL,
+      "action" TEXT NOT NULL,
+      "bundleId" TEXT,
+      "decision" TEXT,
+      "receiptId" TEXT,
+      "eventType" TEXT NOT NULL,
+      "runId" TEXT,
+      "artifactId" TEXT,
+      "packageId" TEXT,
+      "classification" TEXT,
+      "reason" TEXT,
+      "payload" JSONB NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "RegistryCache_sourceId_subjectHash_key"
       ON "RegistryCache" ("sourceId", "subjectHash")`,
     `CREATE INDEX IF NOT EXISTS "RegistryCache_expiresAt_idx"
@@ -103,6 +121,8 @@ export async function ensureDatabase(prisma: PrismaClient) {
       ON "RegistryOracleJob" ("sourceId", "createdAt")`,
     `CREATE INDEX IF NOT EXISTS "RegistryOracleJob_status_idx"
       ON "RegistryOracleJob" ("status")`,
+    `CREATE INDEX IF NOT EXISTS "WorkflowEvent_workflowId_timestamp_idx"
+      ON "WorkflowEvent" ("workflowId", "timestamp")`,
     `CREATE INDEX IF NOT EXISTS "RegistrySource_active_idx"
       ON "RegistrySource" ("active")`
   ];

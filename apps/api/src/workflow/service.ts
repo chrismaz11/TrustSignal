@@ -305,6 +305,7 @@ export class WorkflowService {
       type: 'workflow.artifact.created',
       workflowId: input.workflowId,
       artifactId: artifact.id,
+      actor: input.createdBy,
       classification: artifact.classification,
       timestamp: artifact.createdAt
     });
@@ -320,7 +321,7 @@ export class WorkflowService {
     };
   }
 
-  verifyArtifact(workflowId: string, artifactId: string): VerificationRecord {
+  verifyArtifact(workflowId: string, artifactId: string, actor = 'system'): VerificationRecord {
     const artifact = this.getArtifactForWorkflow(workflowId, artifactId);
     const recomputedHash = keccak256Utf8(canonicalizeJson(artifact.content));
     const verification: VerificationRecord = {
@@ -335,6 +336,7 @@ export class WorkflowService {
       type: 'workflow.artifact.verified',
       workflowId,
       artifactId,
+      actor,
       timestamp: verification.timestamp,
       verified: verification.verified
     });
@@ -345,7 +347,8 @@ export class WorkflowService {
   evaluateReleaseDecision(
     workflowId: string,
     artifactId: string,
-    target: ReleaseTarget
+    target: ReleaseTarget,
+    actor = 'system'
   ): ReleaseDecision {
     const artifact = this.getArtifactForWorkflow(workflowId, artifactId);
     const decision = evaluateReleaseDecisionForArtifact({
@@ -359,6 +362,7 @@ export class WorkflowService {
       type: 'workflow.release.evaluated',
       workflowId,
       artifactId,
+      actor,
       target,
       timestamp: decision.timestamp,
       allowed: decision.allowed
@@ -461,8 +465,8 @@ export class WorkflowService {
     const summaryArtifact = this.toArtifact(this.getArtifactForWorkflow(workflow.id, summaryArtifactId));
 
     const verificationRecords = [
-      this.verifyArtifact(workflow.id, findingArtifact.id),
-      this.verifyArtifact(workflow.id, summaryArtifact.id)
+      this.verifyArtifact(workflow.id, findingArtifact.id, request.createdBy),
+      this.verifyArtifact(workflow.id, summaryArtifact.id, request.createdBy)
     ];
 
     const releaseTargets = request.releaseTargets ?? {
@@ -470,8 +474,8 @@ export class WorkflowService {
       summary: 'customer_shareable' as const
     };
     const releaseDecisions = [
-      this.evaluateReleaseDecision(workflow.id, findingArtifact.id, releaseTargets.findings),
-      this.evaluateReleaseDecision(workflow.id, summaryArtifact.id, releaseTargets.summary)
+      this.evaluateReleaseDecision(workflow.id, findingArtifact.id, releaseTargets.findings, request.createdBy),
+      this.evaluateReleaseDecision(workflow.id, summaryArtifact.id, releaseTargets.summary, request.createdBy)
     ];
 
     const evidenceReferences: EvidenceReference[] = [
@@ -511,6 +515,7 @@ export class WorkflowService {
       type: 'workflow.evidence_package.created',
       workflowId: workflow.id,
       packageId: evidencePackage.id,
+      actor: request.createdBy,
       classification: evidencePackage.classification,
       timestamp: evidencePackage.createdAt
     });
@@ -559,6 +564,7 @@ export class WorkflowService {
       type: 'workflow.run.started',
       workflowId,
       runId: run.id,
+      actor: request.createdBy,
       timestamp: nowIso()
     });
 
@@ -582,7 +588,7 @@ export class WorkflowService {
           classification: stepRequest.classification,
           parameters: stepRequest.parameters ?? {},
           createArtifact: (artifactInput) => this.createArtifact(artifactInput),
-          verifyArtifact: (artifactId) => this.verifyArtifact(workflowId, artifactId)
+          verifyArtifact: (artifactId) => this.verifyArtifact(workflowId, artifactId, request.createdBy)
         });
 
         step.outputArtifactIds = [...result.outputArtifactIds];
@@ -594,6 +600,7 @@ export class WorkflowService {
         type: 'workflow.run.completed',
         workflowId,
         runId: run.id,
+        actor: request.createdBy,
         timestamp: nowIso()
       });
       return {
@@ -610,6 +617,7 @@ export class WorkflowService {
         type: 'workflow.run.failed',
         workflowId,
         runId: run.id,
+        actor: request.createdBy,
         timestamp: nowIso(),
         reason: error instanceof Error ? error.message : 'workflow_run_failed'
       });

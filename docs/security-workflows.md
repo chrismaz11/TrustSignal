@@ -113,5 +113,6 @@ Those controls still require manual verification in GitHub after merge.
 ## Related Documentation
 
 - [GitHub settings checklist](github-settings-checklist.md)
+- [Incident response plan](INCIDENT_RESPONSE_PLAN.md)
 - [Security summary](security-summary.md)
 - [Documentation index](README.md)

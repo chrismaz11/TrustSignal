@@ -46,3 +46,21 @@ When the bundle is generated from staging/prod credentials:
 1. Link the evidence file in `docs/PRODUCTION_GOVERNANCE_TRACKER.md` Workstream `#3`.
 2. Record command date/time and operator.
 3. Mark status as `VERIFIED IN STAGING` only after staging checks pass.
+
+## Provider Evidence Required To Close Audit Findings
+
+In addition to the generated bundle, collect one provider-side proof showing encryption at rest is enabled for the production database volume.
+
+Accepted examples:
+
+- AWS RDS or Aurora screenshot showing `StorageEncrypted = true`
+- Supabase project/database screenshot or support confirmation showing encryption at rest is enabled
+- Render managed Postgres evidence or provider support statement confirming encryption at rest
+
+Store the provider evidence outside this public repository:
+
+- Vanta
+- private compliance storage
+- private audit repository
+
+Do not paste provider account identifiers, screenshots, or raw support transcripts into this public repository.
