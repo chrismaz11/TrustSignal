@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FastifyInstance } from 'fastify';
 
 import { buildServer } from './server.js';
+import { InMemoryWorkflowEventSink } from './workflow/events.js';
 
 describe('Trust Agents workflow orchestration', () => {
   let app: FastifyInstance;
@@ -255,5 +256,62 @@ describe('Trust Agents workflow orchestration', () => {
     } finally {
       await isolatedApp.close();
     }
+  });
+
+  it('returns queryable workflow events after a verification flow', async () => {
+    await app.close();
+
+    const workflowEventSink = new InMemoryWorkflowEventSink();
+    app = await buildServer({
+      logger: false,
+      workflowEventSink
+    });
+
+    const workflowRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/workflows',
+      headers: { 'x-api-key': apiKey },
+      payload: { createdBy: 'operator@trustsignal.test' }
+    });
+    const workflow = workflowRes.json();
+
+    const artifactRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workflows/${workflow.id}/artifacts`,
+      headers: { 'x-api-key': apiKey },
+      payload: {
+        createdBy: 'operator@trustsignal.test',
+        classification: 'internal',
+        parentIds: [],
+        content: {
+          schemaVersion: 'trustsignal.workflow.input.v1',
+          source: 'audit-log-test'
+        }
+      }
+    });
+    const artifact = artifactRes.json();
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/v1/workflows/${workflow.id}/artifacts/${artifact.id}/verify`,
+      headers: { 'x-api-key': apiKey }
+    });
+
+    const eventsRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/workflows/${workflow.id}/events`,
+      headers: { 'x-api-key': apiKey }
+    });
+
+    expect(eventsRes.statusCode).toBe(200);
+    const body = eventsRes.json();
+    expect(body.events.length).toBeGreaterThanOrEqual(3);
+    expect(body.events.map((event: { eventType: string }) => event.eventType)).toEqual([
+      'workflow.created',
+      'workflow.artifact.created',
+      'workflow.artifact.verified'
+    ]);
+    expect(body.events[0].operator).toBe('operator@trustsignal.test');
+    expect(body.events[2].decision).toBe('verified');
   });
 });

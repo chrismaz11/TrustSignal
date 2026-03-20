@@ -60,6 +60,11 @@ import {
   verifyRevocationHeaders
 } from './security.js';
 import { isWorkflowError } from './workflow/errors.js';
+import {
+  NoopWorkflowEventSink,
+  PrismaWorkflowEventSink,
+  type WorkflowEventSink
+} from './workflow/events.js';
 import { WorkflowService } from './workflow/service.js';
 import {
   readinessWorkflowRequestSchema,
@@ -77,6 +82,7 @@ const REQUEST_START = Symbol('requestStartMs');
 type RequestTimerState = {
   [REQUEST_START]?: number;
 };
+type PrismaWorkflowEventDelegate = ConstructorParameters<typeof PrismaWorkflowEventSink>[0];
 const NOTARY_STATUSES = ['ACTIVE', 'SUSPENDED', 'REVOKED', 'UNKNOWN'] as const;
 const registrySourceIdEnum = z.enum(REGISTRY_SOURCE_IDS);
 
@@ -803,6 +809,7 @@ class BlockchainVerifier {
 type BuildServerOptions = {
   fetchImpl?: typeof fetch;
   logger?: boolean | Record<string, unknown>;
+  workflowEventSink?: WorkflowEventSink;
 };
 
 type VerifyRouteInput = BundleInput & {
@@ -817,7 +824,6 @@ export async function buildServer(options: BuildServerOptions = {}) {
   requireProductionVerifierConfig();
   const app = Fastify({ logger: options.logger ?? true });
   const securityConfig = buildSecurityConfig();
-  const workflowService = new WorkflowService();
   const propertyApiKey = resolvePropertyApiKey();
   const registryAdapterService = createRegistryAdapterService(prisma, {
     fetchImpl: options.fetchImpl
@@ -921,6 +927,18 @@ export async function buildServer(options: BuildServerOptions = {}) {
     );
   }
 
+  const workflowEventSink =
+    options.workflowEventSink ??
+    (databaseReady
+      ? new PrismaWorkflowEventSink(
+          (prisma as PrismaClient & { workflowEvent: PrismaWorkflowEventDelegate }).workflowEvent,
+          app.log
+        )
+      : new NoopWorkflowEventSink());
+  const workflowService = new WorkflowService(undefined, {
+    eventSink: workflowEventSink
+  });
+
   const dbOptionalRoutes = new Set([
     '/api/v1/health',
     '/api/v1/status',
@@ -930,6 +948,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     '/api/v1/workflows/readiness-audit',
     '/api/v1/workflows',
     '/api/v1/workflows/:workflowId',
+    '/api/v1/workflows/:workflowId/events',
     '/api/v1/workflows/:workflowId/evidence-package',
     '/api/v1/workflows/:workflowId/artifacts',
     '/api/v1/workflows/:workflowId/artifacts/:artifactId/verify',
@@ -1046,6 +1065,27 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
 
     return reply.send(state);
+  });
+
+  app.get('/api/v1/workflows/:workflowId/events', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = workflowParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_workflow_id' });
+    }
+
+    const state = workflowService.getWorkflowState(parsed.data.workflowId);
+    if (!state) {
+      return reply.code(404).send({ error: 'workflow_not_found' });
+    }
+
+    const events = await workflowEventSink.listByWorkflow(parsed.data.workflowId);
+    return reply.send({
+      workflowId: parsed.data.workflowId,
+      events
+    });
   });
 
   app.get('/api/v1/workflows/:workflowId/evidence-package', {

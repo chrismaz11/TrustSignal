@@ -63,19 +63,38 @@ Reason:
 
 ### 5. Branch Protection Or Rulesets
 
-Configure branch protection or a repository ruleset for `main`:
+Configure branch protection or a repository ruleset for `master`:
 
 - require pull requests before merge
 - require at least one human PR review
 - dismiss stale approvals when new commits are pushed if that matches team policy
-- disable force pushes to `main`
-- restrict direct pushes to `main`
+- disable force pushes to `master`
+- disable branch deletion on `master`
+- restrict direct pushes to `master`
 - optionally require branches to be up to date before merge
 - add a real `CODEOWNERS` file later if the repository has stable maintainer usernames or org team slugs
 
+Recommended baseline for this repository:
+
+- `required_approving_review_count = 1`
+- `strict = true`
+- required status checks:
+  - `lint`
+  - `typecheck`
+  - `test`
+  - `secret-scan`
+  - `dependency-audit`
+  - `signed-receipt-smoke`
+
+Evidence to capture after configuration:
+
+- one `gh api` or GitHub UI export showing branch protection enabled on `master`
+- one screenshot showing the required status checks list
+- one screenshot or JSON export showing force pushes and deletions disabled
+
 ### 6. Required Status Checks
 
-After the workflows have run successfully on `main`, consider requiring these checks before merge:
+After the workflows have run successfully on `master`, consider requiring these checks before merge:
 
 - `typecheck`
 - `web-build`
@@ -100,6 +119,13 @@ Advisory only by default:
 3. Confirm Dependabot is creating update PRs on the expected schedule.
 4. Confirm the Security tab shows dependency graph, Dependabot alerts, and code scanning as enabled where supported.
 5. Add the required status checks only after at least one successful run for each target check.
+6. Save one redacted screenshot or `gh api` response showing the final `master` branch protection settings in private compliance evidence storage.
+
+## Example Verification Command
+
+```bash
+gh api /repos/TrustSignal-dev/TrustSignal/branches/master/protection
+```
 
 ## Related Documentation
 

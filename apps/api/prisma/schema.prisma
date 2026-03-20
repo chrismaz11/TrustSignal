@@ -41,6 +41,27 @@ model VerificationRecord {
   @@index([apiKeyId, createdAt])
 }
 
+model WorkflowEvent {
+  id             String   @id @default(cuid())
+  workflowId     String
+  timestamp      DateTime @default(now())
+  operator       String
+  action         String
+  bundleId       String?
+  decision       String?
+  receiptId      String?
+  eventType      String
+  runId          String?
+  artifactId     String?
+  packageId      String?
+  classification String?
+  reason         String?
+  payload        Json
+  createdAt      DateTime @default(now())
+
+  @@index([workflowId, timestamp])
+}
+
 model Receipt {
   id               String   @id @default(uuid())
   receiptHash      String
