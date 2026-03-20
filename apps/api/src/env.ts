@@ -1,74 +1,70 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-let runtimeEnvLoaded = false;
+import dotenv from 'dotenv';
 
-function parseEnvFile(contents: string): Record<string, string> {
-  const values: Record<string, string> = {};
+let envLoaded = false;
 
-  for (const rawLine of contents.split(/\r?\n/u)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) {
-      continue;
-    }
+export function loadRuntimeEnv(envPathCandidates?: string[]): void {
+  if (envLoaded) return;
 
-    const separatorIndex = line.indexOf('=');
-    if (separatorIndex <= 0) {
-      continue;
-    }
+  const candidates =
+    envPathCandidates ??
+    [
+      path.resolve(process.cwd(), '.env.local'),
+      path.resolve(process.cwd(), '.env'),
+      path.resolve(process.cwd(), '../../.env.local'),
+      path.resolve(process.cwd(), '../../.env')
+    ];
 
-    const key = line.slice(0, separatorIndex).trim();
-    let value = line.slice(separatorIndex + 1).trim();
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    values[key] = value;
+  for (const envPath of candidates) {
+    dotenv.config({ path: envPath, override: false });
   }
 
-  return values;
+  envLoaded = true;
 }
 
-export function loadRuntimeEnv(): void {
-  if (runtimeEnvLoaded) {
-    return;
+export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  const direct = (env.DATABASE_URL || '').trim();
+  if (direct) return direct;
+
+  const candidates = [env.SUPABASE_DB_URL, env.SUPABASE_POOLER_URL, env.SUPABASE_DIRECT_URL];
+
+  for (const candidate of candidates) {
+    const value = (candidate || '').trim();
+    if (value) {
+      env.DATABASE_URL = value;
+      return value;
+    }
   }
 
-  const envFiles = [
-    path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), '../../.env')
-  ];
+  const supabasePassword = (env.SUPABASE_DB_PASSWORD || '').trim();
+  if (supabasePassword) {
+    const poolerCandidates = [
+      path.resolve(process.cwd(), 'supabase/.temp/pooler-url'),
+      path.resolve(process.cwd(), '../../supabase/.temp/pooler-url'),
+      path.resolve(process.env.HOME || '', 'supabase/.temp/pooler-url')
+    ];
 
-  for (const envFile of envFiles) {
-    if (!existsSync(envFile)) {
-      continue;
-    }
+    for (const poolerPath of poolerCandidates) {
+      try {
+        const rawPoolerUrl = readFileSync(poolerPath, 'utf-8').trim();
+        if (!rawPoolerUrl) continue;
 
-    const parsed = parseEnvFile(readFileSync(envFile, 'utf8'));
-    for (const [key, value] of Object.entries(parsed)) {
-      if (process.env[key] === undefined) {
-        process.env[key] = value;
+        const parsed = new URL(rawPoolerUrl);
+        if (!parsed.password) {
+          parsed.password = encodeURIComponent(supabasePassword);
+        }
+        parsed.searchParams.set('sslmode', 'require');
+
+        const resolved = parsed.toString();
+        env.DATABASE_URL = resolved;
+        return resolved;
+      } catch {
+        // Continue searching candidate pooler URLs.
       }
     }
   }
 
-  runtimeEnvLoaded = true;
-}
-
-export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  const databaseUrl =
-    env.DATABASE_URL ||
-    env.SUPABASE_DB_URL ||
-    env.SUPABASE_POOLER_URL ||
-    env.SUPABASE_DIRECT_URL;
-
-  if (databaseUrl && !env.DATABASE_URL) {
-    env.DATABASE_URL = databaseUrl;
-  }
-
-  return env.DATABASE_URL;
+  return null;
 }
