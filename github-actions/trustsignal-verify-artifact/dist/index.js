@@ -200,14 +200,28 @@ async function callVerificationApi({ apiBaseUrl, apiKey, artifactHash, artifactP
   const endpoint = `${apiBaseUrl}/api/v1/verify`;
   const payload = buildVerificationRequest({ artifactHash, artifactPath, source });
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey
-    },
-    body: JSON.stringify(payload)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      throw new Error('TrustSignal API request timed out after 30 seconds');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const responseBody = await parseJsonResponse(response);
 

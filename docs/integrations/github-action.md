@@ -11,7 +11,7 @@ The GitHub Action does not connect to Supabase directly. TrustSignal persists re
 1. The workflow sends an artifact hash or local artifact path through the GitHub Action.
 2. The action calls `POST /api/v1/verify` on `api.trustsignal.dev`.
 3. TrustSignal validates the request, authenticates the caller, issues a signed receipt, and persists the receipt server-side.
-4. The action stores `receiptId` and `receiptSignature` for later verification or audit use.
+4. The action writes `verification_id`, `status`, `receipt_id`, and `receipt_signature` as GitHub Actions outputs.
 5. Public consumers can inspect the stored receipt through `GET /api/v1/receipt/{receiptId}` or render a compact badge from `GET /api/v1/receipt/{receiptId}/summary`.
 6. A later workflow can call `POST /api/v1/receipt/{receiptId}/verify` with an artifact hash to confirm integrity.
 
@@ -26,7 +26,7 @@ x-api-key: <trustsignal-api-key>
 content-type: application/json
 ```
 
-Request body:
+Request body sent by the action:
 
 ```json
 {
@@ -48,20 +48,25 @@ Request body:
 }
 ```
 
-Response fields used by the action:
+Response fields used by the action (both snake_case and camelCase variants are accepted):
 
-- `verificationId`
-- `receiptId`
-- `receiptSignature`
-- `status`
+| Action output | API field(s) read |
+| --- | --- |
+| `verification_id` | `verification_id`, `verificationId`, `id`, `receipt_id`, `receiptId` |
+| `status` | `status`, `verificationStatus`, `result`, `verified`, `valid`, `match` |
+| `receipt_id` | `receipt_id`, `receiptId` |
+| `receipt_signature` | `receipt_signature` (string), `receiptSignature` (string or `{ signature }` object) |
+
+The action request enforces a 30-second timeout. An `AbortError` from the timeout is reported
+as a clean error message without exposing raw headers or internal service details.
 
 ### `GET /api/v1/receipt/{receiptId}`
 
-This public-safe endpoint returns a compact inspection view for artifact receipts. It is intended for receipt drill-down pages and audit references.
+This endpoint returns a compact inspection view for artifact receipts. It is intended for receipt drill-down pages and audit references.
 
 ### `GET /api/v1/receipt/{receiptId}/summary`
 
-This public-safe endpoint returns a compact display payload for trust centers, evidence panels, and partner dashboards.
+This endpoint returns a compact display payload for trust centers, evidence panels, and partner dashboards.
 
 ### `POST /api/v1/receipt/{receiptId}/verify`
 
@@ -96,8 +101,18 @@ Response fields:
 - Row Level Security is enabled on the artifact receipt table as defense in depth.
 - Public lookup and summary endpoints are read-only and return safe receipt fields only.
 - Later verification remains behind TrustSignal API authentication.
+- `fail_on_mismatch: true` (default) provides fail-closed behavior for pipelines that require verified artifacts.
+
+## Validation
+
+- Local contract tests: `npm run test:local` (uses mock fetch, no live API required)
+- Dist alignment check: `npm run check:dist` (SHA-256 comparison of `src` and `dist`)
+- Live integration test: `npm run test:integration` (skips when credentials are absent)
+
+See `github-actions/trustsignal-verify-artifact/docs/integration.md` for the full integration guide.
 
 ## Current Limitations
 
-- The repository includes a local smoke test, but a live deployed integration test remains pending.
 - The public verification contract currently accepts `sha256` only.
+- GitHub Marketplace publication requires extracting this action into a dedicated public repository with `action.yml` at the repository root.
+

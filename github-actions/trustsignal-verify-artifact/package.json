@@ -14,8 +14,11 @@
     "build": "mkdir -p dist && cp src/index.js dist/index.js",
     "package": "npm run build",
     "check": "node --check src/index.js && node --check dist/index.js",
+    "check:dist": "node scripts/check-dist.js",
     "test:local": "node scripts/test-local.js",
-    "validate:local": "npm run check && npm run test:local"
+    "test:integration": "node scripts/integration-test.js",
+    "validate:local": "npm run check && npm run check:dist && npm run test:local",
+    "validate": "npm run check && npm run check:dist && npm run test:local"
   },
   "keywords": [
     "github-action",

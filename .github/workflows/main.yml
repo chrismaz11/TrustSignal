@@ -1,0 +1,37 @@
+name: TrustSignal Verify Artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+
+jobs:
+  verify-artifact:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release artifact
+        run: |
+          mkdir -p dist
+          echo "release-$(git rev-parse --short HEAD)" > dist/release.txt
+
+      - name: Verify artifact with TrustSignal
+        id: trustsignal
+        uses: ./github-actions/trustsignal-verify-artifact
+        with:
+          api_base_url: ${{ secrets.TRUSTSIGNAL_API_BASE_URL }}
+          api_key: ${{ secrets.TRUSTSIGNAL_API_KEY }}
+          artifact_path: dist/release.txt
+          source: github-actions
+          fail_on_mismatch: "true"
+
+      - name: Record verification outputs
+        run: |
+          echo "Verification ID: ${{ steps.trustsignal.outputs.verification_id }}"
+          echo "Status:          ${{ steps.trustsignal.outputs.status }}"
+          echo "Receipt ID:      ${{ steps.trustsignal.outputs.receipt_id }}"
