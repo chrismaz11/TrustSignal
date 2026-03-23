@@ -89,7 +89,7 @@ These cannot be verified in code and require manual confirmation:
 | 7.2 | **Rotate OPENAI_API_KEY**             | Ops   | Was in `.env.local` — revoke old key in OpenAI dashboard                                                    |
 | 7.3 | **Rotate PRIVATE_KEY**                | Ops   | Ethereum wallet key — generate new wallet, transfer any assets, update `PRIVATE_KEY` env var                |
 | 7.4 | **Rotate DATABASE_URL**               | Ops   | Change DB password if it was in any committed file                                                          |
-| 7.5 | **DB encryption at rest**             | Infra | ✅ Confirmed via Supabase platform default (AES-256). Evidence: `docs/evidence/db-security/production-20260323T191949Z.md`. Provider screenshots stored in private compliance storage. |
+| 7.5 | **DB encryption at rest**             | Infra | ✅ Confirmed via Supabase platform default (AES-256). Evidence stored in private compliance storage (bundle “db-security/production-2026-03-23T19:19Z”) and Vanta. Provider screenshots stored in private compliance storage. |
 | 7.6 | **DB TLS certificate**                | Infra | Ensure CA cert is valid, not self-signed, for production                                                    |
 | 7.7 | **Separate staging/prod credentials** | Ops   | Create distinct DB users and API keys per environment                                                       |
 | 7.8 | **Pre-commit secret scanning**        | Dev   | Install `git-secrets` or `trufflehog` as pre-commit hook (since GitHub secret scanning requires Enterprise) |
