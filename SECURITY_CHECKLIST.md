@@ -22,7 +22,7 @@
 | --- | -------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2.1 | Schema uses `postgresql` provider            | ✅     | `apps/api/prisma/schema.prisma` line 6.                                                                                                                 |
 | 2.2 | TLS enforced on DB connections in production | 🔒     | `server.ts` startup guard rejects `DATABASE_URL` without `sslmode=require\|verify-full\|verify-ca` when `NODE_ENV=production`.                          |
-| 2.3 | Encryption at rest on DB volume              | 📋     | Must be verified on the hosting provider (Render, AWS RDS, Supabase, etc.). Capture evidence using `docs/ops/db-security-evidence.md` and store the exported proof in private compliance storage. |
+| 2.3 | Encryption at rest on DB volume              | ✅     | Supabase enforces AES-256 encryption at rest as a platform-level default for all managed PostgreSQL databases. Root-key presence and TLSv1.3 session verified for production. Full evidence bundle: `docs/evidence/db-security/production-20260323T191949Z.md`. Provider screenshots and SOC 2 excerpt stored in private compliance repository (see `docs/ops/db-security-evidence.md`). |
 | 2.4 | Separate DB credentials per environment      | 📋     | Production, staging, and development must use distinct credentials with least-privilege grants.                                                         |
 | 2.5 | DB user has minimal required permissions     | 📋     | Production DB user should have `SELECT, INSERT, UPDATE` only — no `DROP`, `CREATE`, or superuser. Prisma Migrate should use a separate privileged user. |
 | 2.6 | Connection pooling configured                | 📋     | Use PgBouncer or Prisma Accelerate for connection management in production.                                                                             |
@@ -89,7 +89,7 @@ These cannot be verified in code and require manual confirmation:
 | 7.2 | **Rotate OPENAI_API_KEY**             | Ops   | Was in `.env.local` — revoke old key in OpenAI dashboard                                                    |
 | 7.3 | **Rotate PRIVATE_KEY**                | Ops   | Ethereum wallet key — generate new wallet, transfer any assets, update `PRIVATE_KEY` env var                |
 | 7.4 | **Rotate DATABASE_URL**               | Ops   | Change DB password if it was in any committed file                                                          |
-| 7.5 | **DB encryption at rest**             | Infra | Confirm with hosting provider (Render/Supabase/RDS all support this)                                        |
+| 7.5 | **DB encryption at rest**             | Infra | ✅ Confirmed via Supabase platform default (AES-256). Evidence: `docs/evidence/db-security/production-20260323T191949Z.md`. Provider screenshots stored in private compliance storage. |
 | 7.6 | **DB TLS certificate**                | Infra | Ensure CA cert is valid, not self-signed, for production                                                    |
 | 7.7 | **Separate staging/prod credentials** | Ops   | Create distinct DB users and API keys per environment                                                       |
 | 7.8 | **Pre-commit secret scanning**        | Dev   | Install `git-secrets` or `trufflehog` as pre-commit hook (since GitHub secret scanning requires Enterprise) |
@@ -119,4 +119,4 @@ Recommended evidence bundle for each rotated secret:
 
 ---
 
-_Last updated: 2026-03-20T00:00 CST by SOC 2 remediation session._
+_Last updated: 2026-03-23T19:19 UTC by SOC 2 remediation — DB encryption-at-rest evidence (Workstream #3)._
