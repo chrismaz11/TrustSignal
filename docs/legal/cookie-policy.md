@@ -4,7 +4,7 @@
 **Effective Date:** 2026-02-25
 
 ## 1. Purpose
-This policy explains how TrustSignal and Deed Shield use cookies and similar technologies in web-facing service components.
+This policy explains how TrustSignal uses cookies and similar technologies in web-facing service components.
 
 ## 2. Tracking Approach
 Our default model is first-party operational tracking for service delivery and reliability.

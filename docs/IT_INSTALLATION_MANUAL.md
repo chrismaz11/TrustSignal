@@ -2,11 +2,11 @@
 
 ## 1. Environment Configuration
 
-The following environment variables are required for the Deed Shield API and Core services (`apps/api` and `packages/core`).
+The following environment variables are required for the TrustSignal API and Core services (`apps/api` and `packages/core`).
 
 ### System Identity
 
-- `ISSUER_DID`: The decentralized identifier for the Deed Shield instance (e.g., `did:web:deedshield.io`).
+- `ISSUER_DID`: The decentralized identifier for the TrustSignal instance (e.g., `did:web:trustsignal.dev`).
 - `SIGNING_PRIVATE_KEY`: Private key (PKCS8 PEM or Hex) used to sign receipts.
 
 ### Database (PostgreSQL required)
@@ -38,17 +38,17 @@ The following environment variables are required for the Deed Shield API and Cor
 
 ## 2. PRIA XML Schema Mapping (Phase 2)
 
-For the next integration phase, we will map internal Deed Shield JSON Bundle schemas to PRIA (Property Records Industry Association) XML standards.
+For the next integration phase, we will map internal TrustSignal JSON bundle schemas to PRIA (Property Records Industry Association) XML standards.
 
 ### Mapping Table
 
-| Deed Shield Field            | PRIA XML XPath                          | Description                                        |
+| TrustSignal Field           | PRIA XML XPath                          | Description                                        |
 | ---------------------------- | --------------------------------------- | -------------------------------------------------- |
 | `bundle.ron.sealPayload`     | `//Signatures/Signature/Keyinfo`        | Cryptographic evidence of the seal                 |
 | `bundle.doc.docHash`         | `//Document/Hash`                       | Integrity hash of the recorded instrument          |
 | `bundle.property.parcelId`   | `//Property/ParcelID`                   | County-assigned PIN/APN                            |
 | `bundle.ocrData.grantorName` | `//Parties/Party[@Type='Grantor']/Name` | Grantor name extracted or verified                 |
-| `receipt.receiptHash`        | `//Recording/Return/ReceiptHash`        | **New Field**: Deed Shield Receipt Hash            |
+| `receipt.receiptHash`        | `//Recording/Return/ReceiptHash`        | **New Field**: TrustSignal Receipt Hash            |
 | `receipt.decision`           | `//Recording/Status/Code`               | Mapped to `Verified` (ALLOW) or `Rejected` (BLOCK) |
 
 ## 3. Installation Steps

@@ -4,7 +4,7 @@
 Define the minimum incident response workflow and alert/SLO thresholds for pilot-safe operations.
 
 ## Scope
-Applies to TrustSignal / Deed Shield API operations in staging and production-like environments.
+Applies to TrustSignal API operations in staging and production-like environments.
 
 ## Severity Model
 - `SEV-1` Critical security or integrity event.

@@ -5,7 +5,7 @@ Program fit: Applied cryptography, trustworthy AI, and secure digital infrastruc
 
 ## Abstract
 
-TrustSignal is a verification platform that combines zero-knowledge proof systems, machine-learning risk scoring, and auditable API controls to produce tamper-evident trust decisions for document workflows. The initial production wedge is DeedShield (property deed verification), with architecture designed to generalize to additional credential domains. The system is implemented as a modular verification engine with three independent checks: Halo2 non-membership proof verification, Halo2 revocation proof verification, and ZKML-backed fraud signal verification. Session 7 finalization establishes a production-ready documentation and operations baseline with security controls, CI gates, and reproducible artifacts.
+TrustSignal is a verification platform that combines zero-knowledge proof systems, machine-learning risk scoring, and auditable API controls to produce tamper-evident trust decisions for document workflows. The initial production wedge is property deed verification, with architecture designed to generalize to additional credential domains. The system is implemented as a modular verification engine with three independent checks: Halo2 non-membership proof verification, Halo2 revocation proof verification, and ZKML-backed fraud signal verification. Session 7 finalization establishes a production-ready documentation and operations baseline with security controls, CI gates, and reproducible artifacts.
 
 ## Problem Statement
 

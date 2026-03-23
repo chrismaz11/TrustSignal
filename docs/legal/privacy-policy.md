@@ -4,12 +4,12 @@
 **Effective Date:** 2026-02-25
 
 ## 1. Purpose
-This Privacy Policy describes how TrustSignal and its Deed Shield module ("we", "us", "our") handle data when customers use our verification services.
+This Privacy Policy describes how TrustSignal ("we", "us", "our") handles data when customers use our verification services.
 
 ## 2. Scope
 This policy applies to:
 - TrustSignal APIs and web applications
-- Deed Shield pilot and pre-production verification workflows
+- TrustSignal pilot and pre-production verification workflows
 - related support and operational services
 
 ## 3. Data Categories

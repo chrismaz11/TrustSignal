@@ -60,7 +60,7 @@ groups:
   - name: deedshield-api-slo-alerts
     interval: 30s
     rules:
-      - alert: DeedShieldHealthProbeFailuresSEV2
+      - alert: TrustSignalHealthProbeFailuresSEV2
         expr: |
           (
             sum by (job) (increase(deedshield_http_requests_total{route="/api/v1/health"}[3m])) >= 3
@@ -80,7 +80,7 @@ groups:
           description: "No successful /api/v1/health checks observed across the last 3 checks for job {{ $labels.job }}. Start SEV-2 triage."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldHealthProbeFailuresSEV1
+      - alert: TrustSignalHealthProbeFailuresSEV1
         expr: |
           (
             sum by (job) (increase(deedshield_http_requests_total{route="/api/v1/health"}[3m])) >= 3
@@ -100,7 +100,7 @@ groups:
           description: "Health failures persisted for 15 minutes for job {{ $labels.job }}. Escalate incident severity to SEV-1 and open stakeholder timeline updates every 30 minutes."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApi5xxRateWarning
+      - alert: TrustSignalApi5xxRateWarning
         expr: |
           (
             deedshield:api_5xx_ratio:rate5m > 0.02
@@ -120,7 +120,7 @@ groups:
           description: "API error-rate warning threshold breached (>2% 5xx) for job {{ $labels.job }}. Investigate core verification and revocation paths."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApi5xxRateCritical
+      - alert: TrustSignalApi5xxRateCritical
         expr: |
           (
             deedshield:api_5xx_ratio:rate5m > 0.05
@@ -140,7 +140,7 @@ groups:
           description: "API error-rate critical threshold breached (>5% 5xx) for job {{ $labels.job }}. Start SEV-2 incident workflow and contain blast radius."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApiCoreP95LatencyWarning
+      - alert: TrustSignalApiCoreP95LatencyWarning
         expr: |
           (
             deedshield:api_core_p95_latency_seconds:rate5m > 1.0
@@ -160,7 +160,7 @@ groups:
           description: "P95 latency for /api/v1/verify and receipt verification paths exceeded baseline target for job {{ $labels.job }}."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApiCoreP95LatencyCritical
+      - alert: TrustSignalApiCoreP95LatencyCritical
         expr: |
           (
             deedshield:api_core_p95_latency_seconds:rate5m > 2.5
@@ -180,7 +180,7 @@ groups:
           description: "Critical latency regression on core verification flow for job {{ $labels.job }}. Start SEV-2 incident escalation."
           runbook: "docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md"
 
-      - alert: DeedShieldApiTrafficDropBusinessHours
+      - alert: TrustSignalApiTrafficDropBusinessHours
         expr: |
           (
             deedshield:api_traffic_ratio_to_24h_baseline < 0.30

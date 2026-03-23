@@ -4,7 +4,7 @@
 **Effective Date:** 2026-02-25
 
 ## 1. Pilot Scope
-These terms govern participation in the TrustSignal / Deed Shield pilot program. The pilot is intended to validate integrations, verification workflows, and operational readiness.
+These terms govern participation in the TrustSignal pilot program. The pilot is intended to validate integrations, verification workflows, and operational readiness.
 
 ## 2. Pilot Nature
 Participants acknowledge that pilot services are pre-production and may include incomplete features, control changes, or service interruptions while the platform matures.

@@ -7,7 +7,7 @@
 
 ## 1. Welcome
 
-Welcome to the Deed Shield **Verifier Simulator Pilot**. This handbook will guide you through testing the pre-recording verification workflow.
+Welcome to the TrustSignal **Verifier Simulator Pilot**. This handbook will guide you through testing the pre-recording verification workflow.
 
 ## 2. Accessing the Simulator
 

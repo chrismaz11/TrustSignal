@@ -1,7 +1,7 @@
-# TrustSignal / Deed Shield Executive Summary
+# TrustSignal Executive Summary
 
 ## Product Position
-TrustSignal is a verification platform with Deed Shield as the property-records module. The immediate business objective is production-ready operation for title and lender pilots, followed by ICE Mortgage Technology / Encompass marketplace integration.
+TrustSignal is a verification platform whose initial wedge is property-record verification. The immediate business objective is production-ready operation for title and lender pilots, followed by ICE Mortgage Technology / Encompass marketplace integration.
 
 ## Current Priority
 The priority is operational and security readiness over feature expansion:

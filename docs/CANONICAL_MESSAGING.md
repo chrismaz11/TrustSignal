@@ -45,7 +45,7 @@ TrustSignal is evidence integrity infrastructure for existing workflows. It acts
 
 ### Entity Confusion
 
-- Do not collapse TrustSignal, DeedShield, Vanta, healthcare, and future marketplaces into one undifferentiated story
+- Do not collapse TrustSignal, Vanta, healthcare, and future marketplaces into one undifferentiated story
 - Do not let the deed wedge define the entire product
 - Do not describe TrustSignal as a replacement for the system that collected the evidence
 

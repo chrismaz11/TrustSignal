@@ -4,7 +4,7 @@
 **Effective Date:** 2026-02-25
 
 ## 1. Acceptance
-These Terms govern access to and use of TrustSignal and the Deed Shield module (the "Service"). By using the Service, you agree to these Terms and the Privacy Policy.
+These Terms govern access to and use of TrustSignal and its verification modules (the "Service"). By using the Service, you agree to these Terms and the Privacy Policy.
 
 ## 2. Service Posture
 Unless otherwise stated in a signed agreement:

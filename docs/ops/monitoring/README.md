@@ -1,6 +1,6 @@
 # TrustSignal Monitoring Baseline (Staging)
 
-This directory contains the minimum monitoring artifacts for DeedShield API pilot operations, aligned to:
+This directory contains the minimum monitoring artifacts for TrustSignal API pilot operations, aligned to:
 - `docs/final/10_INCIDENT_ESCALATION_AND_SLO_BASELINE.md`
 
 ## Files
@@ -30,7 +30,7 @@ Copy this repository file to the configured rules path and reload Prometheus.
 - Dashboards -> New -> Import
 - Upload `docs/ops/monitoring/grafana-dashboard-deedshield-api.json`
 - Select the staging Prometheus datasource
-- Set `job` variable to the DeedShield API scrape job (or keep `All`)
+- Set `job` variable to the TrustSignal API scrape job (or keep `All`)
 
 5. Confirm baseline panels populate:
 - Health Success Ratio (5m)

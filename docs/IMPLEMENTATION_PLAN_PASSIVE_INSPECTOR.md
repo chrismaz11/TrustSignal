@@ -8,7 +8,7 @@ Implement a "Passive Inspector" workflow that monitors a directory, cryptographi
 
 ### A. `apps/watcher` (The Inspector)
 
-- **Dependencies**: Add `chokidar`, `axios`, `pdf-lib`, `dotenv`, `form-data` (if sending files), and link `@deed-shield/core`.
+- **Dependencies**: Add `chokidar`, `axios`, `pdf-lib`, `dotenv`, `form-data` (if sending files), and link `@trustsignal/core`.
 - **Configuration**: Load `SOURCE_DIR` and `API_URL` from `.env`.
 - **Ingest Logic**:
   - Monitor `SOURCE_DIR` for new `.pdf` files.
@@ -42,7 +42,7 @@ Implement a "Passive Inspector" workflow that monitors a directory, cryptographi
   - Modify `POST /verify`.
   - If `decision` is `FLAG` or `BLOCK`:
     - Query the _Logic assumes single tenant or default_ `Organization`.
-    - "Send" Email: Log a structured alert to stdout simulating an email to `adminEmail` with the subject "Deed Shield Alert: [Risk Score] [Reasons]".
+    - "Send" Email: Log a structured alert to stdout simulating an email to `adminEmail` with the subject "TrustSignal Alert: [Risk Score] [Reasons]".
 
 ### C. `packages/core` (The Standard)
 
