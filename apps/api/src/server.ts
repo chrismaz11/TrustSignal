@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 
 import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { JsonRpcProvider, keccak256, toUtf8Bytes } from 'ethers';
@@ -435,7 +436,7 @@ function receiptFromDb(record: ReceiptRecord) {
     decision: record.decision as 'ALLOW' | 'FLAG' | 'BLOCK',
     reasons: JSON.parse(record.reasons) as string[],
     riskScore: record.riskScore,
-    verifierId: 'deed-shield',
+    verifierId: 'trustsignal',
     ...(record.signingKeyId ? { signing_key_id: record.signingKeyId } : {}),
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
@@ -474,6 +475,25 @@ function parseReceiptIdParam(
     return null;
   }
   return parsed.data.receiptId;
+}
+
+function requireRevocationAuthorization(config: SecurityConfig) {
+  return async function revocationPreHandler(request: FastifyRequest, reply: FastifyReply) {
+    const receiptId = parseReceiptIdParam(request, reply);
+    if (!receiptId) return;
+
+    const revocationVerification = verifyRevocationHeaders(request, receiptId, config);
+    if ('error' in revocationVerification) {
+      const statusCode = revocationVerification.error === 'issuer_not_allowed' ? 403 : 401;
+      reply.code(statusCode).send({ error: revocationVerification.error });
+      return;
+    }
+
+    request.revocationAuth = {
+      receiptId,
+      issuerId: revocationVerification.issuerId
+    };
+  };
 }
 
 function hasUnexpectedBody(body: unknown): boolean {
@@ -973,7 +993,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const forwardedProto = normalizeForwardedProto(request.headers['x-forwarded-proto']);
     return {
       status: 'ok',
-      service: 'deed-shield-api',
+      service: 'trustsignal-api',
       environment: process.env.NODE_ENV || 'development',
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
@@ -1399,7 +1419,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       canonicalDocumentBase64: input.doc.pdfBase64
     });
 
-    const receipt = buildReceipt(input, verification, 'deed-shield', {
+    const receipt = buildReceipt(input, verification, 'trustsignal', {
       signing_key_id: securityConfig.receiptSigning.current.kid,
       fraudRisk,
       zkpAttestation
@@ -1662,19 +1682,17 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
-    preHandler: [requireApiKeyScope(securityConfig, 'revoke')],
+    preHandler: [requireApiKeyScope(securityConfig, 'revoke'), requireRevocationAuthorization(securityConfig)],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
     }
-    const receiptId = parseReceiptIdParam(request, reply);
-    if (!receiptId) return;
-    const revocationVerification = verifyRevocationHeaders(request, receiptId, securityConfig);
-    if ('error' in revocationVerification) {
-      const statusCode = revocationVerification.error === 'issuer_not_allowed' ? 403 : 401;
-      return reply.code(statusCode).send({ error: revocationVerification.error });
+    const revocationAuth = request.revocationAuth;
+    if (!revocationAuth) {
+      return reply.code(401).send({ error: 'revocation_authorization_required' });
     }
+    const { receiptId, issuerId } = revocationAuth;
 
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
@@ -1696,12 +1714,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
         event: 'receipt_revoked',
         request_id: request.id,
         receipt_id: receiptId,
-        issuer_id: revocationVerification.issuerId
+        issuer_id: issuerId
       },
       'receipt_revoked'
     );
 
-    return reply.send({ status: 'REVOKED', issuerId: revocationVerification.issuerId });
+    return reply.send({ status: 'REVOKED', issuerId });
   });
 
   app.get('/api/v1/receipts', {

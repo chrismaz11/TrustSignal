@@ -5,11 +5,12 @@ pub mod revocation;
 use halo2_proofs::{
     arithmetic::Field,
     circuit::{Layouter, SimpleFloorPlanner, Value},
-    dev::MockProver,
-    pasta::Fp,
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
-    poly::Rotation,
+    pasta::{EqAffine, Fp},
+    plonk::{create_proof, keygen_pk, keygen_vk, verify_proof, Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector, SingleVerifier},
+    poly::{commitment::Params, Rotation},
+    transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
+use rand_core::OsRng;
 use std::time::Instant;
 
 use merkle::{MerklePath, NON_MEM_DOMAIN_TAG};
@@ -229,11 +230,43 @@ impl Circuit<Fp> for NonMembershipCircuit {
     }
 }
 
+fn prove_and_verify_circuit(
+    circuit: impl Circuit<Fp>,
+    instances: &[Vec<Fp>],
+    k: u32,
+) -> Result<(), String> {
+    let params = Params::<EqAffine>::new(k);
+    let vk = keygen_vk(&params, &circuit).map_err(|e| e.to_string())?;
+    let pk = keygen_pk(&params, vk, &circuit).map_err(|e| e.to_string())?;
+    let instance_refs: Vec<&[Fp]> = instances.iter().map(|column| column.as_slice()).collect();
+    let proof_instances = [instance_refs.as_slice()];
+
+    let mut transcript = Blake2bWrite::<Vec<u8>, EqAffine, Challenge255<EqAffine>>::init(vec![]);
+    create_proof(
+        &params,
+        &pk,
+        &[circuit],
+        &proof_instances,
+        OsRng,
+        &mut transcript,
+    )
+    .map_err(|e| e.to_string())?;
+    let proof = transcript.finalize();
+
+    let strategy = SingleVerifier::new(&params);
+    let mut read_transcript = Blake2bRead::<_, EqAffine, Challenge255<EqAffine>>::init(&proof[..]);
+    verify_proof(
+        &params,
+        pk.get_vk(),
+        strategy,
+        &proof_instances,
+        &mut read_transcript,
+    )
+    .map_err(|e| e.to_string())
+}
+
 pub fn prove_non_membership(circuit: NonMembershipCircuit, root: Fp, k: u32) -> Result<(), String> {
-    let prover = MockProver::run(k, &circuit, vec![vec![root]]).map_err(|e| e.to_string())?;
-    prover
-        .verify()
-        .map_err(|errs| format!("proof failed: {errs:?}"))
+    prove_and_verify_circuit(circuit, &[vec![root]], k)
 }
 
 #[derive(Clone, Debug)]
@@ -319,16 +352,12 @@ pub fn prove_and_verify(
     validate_nullifier(&circuit.revocation)?;
 
     let started_at = Instant::now();
-    let prover = MockProver::run(
+    prove_and_verify_circuit(
+        circuit,
+        &[vec![non_membership_root, revocation_root]],
         k,
-        &circuit,
-        vec![vec![non_membership_root, revocation_root]],
     )
-    .map_err(|e| CombinedProofError::ProofFailed(e.to_string()))?;
-
-    prover.verify().map_err(|errs| {
-        CombinedProofError::ProofFailed(format!("combined proof failed: {errs:?}"))
-    })?;
+    .map_err(CombinedProofError::ProofFailed)?;
 
     Ok(CombinedProofResult {
         k,

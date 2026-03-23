@@ -1,9 +1,8 @@
-use crate::merkle::{MerklePath, NON_MEM_DOMAIN_TAG};
+use crate::{merkle::{MerklePath, NON_MEM_DOMAIN_TAG}, prove_and_verify_circuit};
 use halo2_poseidon::{ConstantLength, Hash, P128Pow5T3};
 use halo2_proofs::{
     arithmetic::Field,
     circuit::{Layouter, SimpleFloorPlanner, Value},
-    dev::MockProver,
     pasta::Fp,
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
     poly::Rotation,
@@ -298,7 +297,6 @@ pub fn prove_revocation(
 ) -> Result<(), RevocationError> {
     validate_nullifier(&circuit.witness)?;
 
-    let prover = MockProver::run(k, &circuit, vec![vec![root]])
-        .map_err(|_| RevocationError::NullifierSpent)?;
-    prover.verify().map_err(|_| RevocationError::NullifierSpent)
+    prove_and_verify_circuit(circuit, &[vec![root]], k)
+        .map_err(|_| RevocationError::NullifierSpent)
 }

@@ -28,18 +28,23 @@ interface OperatorProviderProps {
 export function OperatorProvider({ children }: OperatorProviderProps) {
   const [operator, setOperator] = useState<OperatorContextType | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const storageKey = 'trustsignal-operator';
+  const legacyStorageKey = 'deed-shield-operator';
 
   useEffect(() => {
-    // Check for existing session on mount
-    const savedOperator = localStorage.getItem('deed-shield-operator');
+    // Check for existing session on mount and migrate legacy branding.
+    const savedOperator = localStorage.getItem(storageKey) || localStorage.getItem(legacyStorageKey);
     if (savedOperator) {
       try {
         const parsedOperator = JSON.parse(savedOperator);
         setOperator(parsedOperator);
         setIsAuthenticated(true);
+        localStorage.setItem(storageKey, JSON.stringify(parsedOperator));
+        localStorage.removeItem(legacyStorageKey);
       } catch (error) {
         console.error('Failed to parse saved operator context:', error);
-        localStorage.removeItem('deed-shield-operator');
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem(legacyStorageKey);
       }
     }
   }, []);
@@ -47,13 +52,15 @@ export function OperatorProvider({ children }: OperatorProviderProps) {
   const login = (operatorData: OperatorContextType) => {
     setOperator(operatorData);
     setIsAuthenticated(true);
-    localStorage.setItem('deed-shield-operator', JSON.stringify(operatorData));
+    localStorage.setItem(storageKey, JSON.stringify(operatorData));
+    localStorage.removeItem(legacyStorageKey);
   };
 
   const logout = () => {
     setOperator(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('deed-shield-operator');
+    localStorage.removeItem(storageKey);
+    localStorage.removeItem(legacyStorageKey);
   };
 
   const value: OperatorState = {

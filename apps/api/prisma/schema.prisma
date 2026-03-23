@@ -115,6 +115,7 @@ model RegistrySource {
   id                   String          @id
   name                 String
   category             String
+  accessType           String          @default("API")
   endpoint             String
   zkCircuit            String
   active               Boolean         @default(true)
@@ -151,10 +152,13 @@ model RegistryOracleJob {
   subjectHash     String
   zkCircuit       String
   inputCommitment String
+  jobType         String         @default("VERIFY")
   status          String
   resultStatus    String?
   proofUri        String?
   error           String?
+  snapshotCapturedAt DateTime?
+  snapshotSourceVersion String?
   createdAt       DateTime       @default(now())
   completedAt     DateTime?
   source          RegistrySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)

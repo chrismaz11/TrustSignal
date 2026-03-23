@@ -315,7 +315,7 @@ function startServer({ port }) {
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Deed Shield Demo</title>
+<title>TrustSignal Demo</title>
 <style>
 body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width:820px; margin:24px auto; padding:0 12px}
 .row{margin:12px 0}
@@ -329,7 +329,7 @@ button{padding:8px 12px}
 </style>
 </head>
 <body>
-<h1>Deed Shield Demo</h1>
+<h1>TrustSignal Demo</h1>
 
 <section class="row">
   <h2>1) Generate Receipt</h2>

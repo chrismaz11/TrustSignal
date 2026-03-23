@@ -29,6 +29,11 @@ export type AuthContext = {
   scopes: Set<string>;
 };
 
+export type RevocationAuthContext = {
+  receiptId: string;
+  issuerId: string;
+};
+
 export type SecurityConfig = {
   apiKeys: Map<string, Set<string>>;
   revocationIssuers: Map<string, string>;
@@ -54,6 +59,7 @@ export type ReceiptSigningConfig = {
 declare module 'fastify' {
   interface FastifyRequest {
     authContext?: AuthContext;
+    revocationAuth?: RevocationAuthContext;
   }
 }
 

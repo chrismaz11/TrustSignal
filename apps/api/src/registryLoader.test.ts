@@ -1,9 +1,8 @@
 import * as fsPromises from 'fs/promises';
 
-import { generateRegistryKeypair, signRegistry } from '@deed-shield/core';
-import { afterEach, beforeEach, describe, expect, it, vi, type MockedFunction } from 'vitest';
-
 import { loadRegistry } from './registryLoader.js';
+import { generateRegistryKeypair, signRegistry } from '@trustsignal/core';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockedFunction } from 'vitest';
 
 type RegistryFixture = {
   version: string;

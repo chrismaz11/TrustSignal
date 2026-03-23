@@ -232,9 +232,21 @@ describeWithDatabase('Security hardening: auth, scopes, and per-key throttling',
     expect(verifyRes.statusCode).toBe(200);
     const receiptId = verifyRes.json().receiptId as string;
 
+    const revokeUrl = `/api/v1/receipt/${receiptId}/revoke`;
+
+    const missingKey = await app.inject({ method: 'POST', url: revokeUrl });
+    expect(missingKey.statusCode).toBe(401);
+
+    const invalidKey = await app.inject({
+      method: 'POST',
+      url: revokeUrl,
+      headers: { 'x-api-key': 'invalid-key' }
+    });
+    expect(invalidKey.statusCode).toBe(403);
+
     const missingHeaders = await app.inject({
       method: 'POST',
-      url: `/api/v1/receipt/${receiptId}/revoke`,
+      url: revokeUrl,
       headers: { 'x-api-key': apiKeyVerify }
     });
     expect(missingHeaders.statusCode).toBe(401);
@@ -243,9 +255,35 @@ describeWithDatabase('Security hardening: auth, scopes, and per-key throttling',
     const validMessage = `revoke:${receiptId}:${timestamp}`;
     const validSignature = await revocationSigner.signMessage(validMessage);
 
+    const staleTimestamp = (Date.now() - 600_000).toString();
+    const staleSignature = await revocationSigner.signMessage(`revoke:${receiptId}:${staleTimestamp}`);
+    const staleTimestampRes = await app.inject({
+      method: 'POST',
+      url: revokeUrl,
+      headers: {
+        'x-api-key': apiKeyVerify,
+        'x-issuer-id': 'issuer-a',
+        'x-signature-timestamp': staleTimestamp,
+        'x-issuer-signature': staleSignature
+      }
+    });
+    expect(staleTimestampRes.statusCode).toBe(401);
+
+    const unknownIssuer = await app.inject({
+      method: 'POST',
+      url: revokeUrl,
+      headers: {
+        'x-api-key': apiKeyVerify,
+        'x-issuer-id': 'issuer-unknown',
+        'x-signature-timestamp': timestamp,
+        'x-issuer-signature': validSignature
+      }
+    });
+    expect(unknownIssuer.statusCode).toBe(403);
+
     const badSignature = await app.inject({
       method: 'POST',
-      url: `/api/v1/receipt/${receiptId}/revoke`,
+      url: revokeUrl,
       headers: {
         'x-api-key': apiKeyVerify,
         'x-issuer-id': 'issuer-a',
@@ -257,7 +295,7 @@ describeWithDatabase('Security hardening: auth, scopes, and per-key throttling',
 
     const valid = await app.inject({
       method: 'POST',
-      url: `/api/v1/receipt/${receiptId}/revoke`,
+      url: revokeUrl,
       headers: {
         'x-api-key': apiKeyVerify,
         'x-issuer-id': 'issuer-a',

@@ -1,9 +1,5 @@
-import ArtifactVerifyClient from './ArtifactVerifyClient';
+import { redirect } from 'next/navigation';
 
-export default function VerifyArtifactPage() {
-  return (
-    <div className="grid">
-      <ArtifactVerifyClient />
-    </div>
-  );
+export default function VerifyArtifactAliasPage() {
+  redirect('/verify');
 }

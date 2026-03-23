@@ -1,4 +1,4 @@
-# Deed Shield API — Developer Setup
+# TrustSignal API — Developer Setup
 
 ## Prerequisites
 
@@ -67,7 +67,7 @@ npx prisma db seed
 
 ```bash
 docker run -d \
-  --name deed-shield-pg \
+  --name trustsignal-pg \
   -e POSTGRES_DB=deed_shield \
   -e POSTGRES_PASSWORD=localdev \
   -p 5432:5432 \

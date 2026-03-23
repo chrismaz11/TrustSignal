@@ -58,6 +58,7 @@ export async function ensureDatabase(prisma: PrismaClient) {
       "id" TEXT PRIMARY KEY,
       "name" TEXT NOT NULL,
       "category" TEXT NOT NULL,
+      "accessType" TEXT NOT NULL DEFAULT 'API',
       "endpoint" TEXT NOT NULL,
       "zkCircuit" TEXT NOT NULL,
       "active" BOOLEAN NOT NULL DEFAULT TRUE,
@@ -86,10 +87,13 @@ export async function ensureDatabase(prisma: PrismaClient) {
       "subjectHash" TEXT NOT NULL,
       "zkCircuit" TEXT NOT NULL,
       "inputCommitment" TEXT NOT NULL,
+      "jobType" TEXT NOT NULL DEFAULT 'VERIFY',
       "status" TEXT NOT NULL,
       "resultStatus" TEXT,
       "proofUri" TEXT,
       "error" TEXT,
+      "snapshotCapturedAt" TIMESTAMP(3),
+      "snapshotSourceVersion" TEXT,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "completedAt" TIMESTAMP(3)
     )`,
@@ -111,6 +115,10 @@ export async function ensureDatabase(prisma: PrismaClient) {
       "payload" JSONB NOT NULL,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `ALTER TABLE "RegistrySource" ADD COLUMN IF NOT EXISTS "accessType" TEXT NOT NULL DEFAULT 'API'`,
+    `ALTER TABLE "RegistryOracleJob" ADD COLUMN IF NOT EXISTS "jobType" TEXT NOT NULL DEFAULT 'VERIFY'`,
+    `ALTER TABLE "RegistryOracleJob" ADD COLUMN IF NOT EXISTS "snapshotCapturedAt" TIMESTAMP(3)`,
+    `ALTER TABLE "RegistryOracleJob" ADD COLUMN IF NOT EXISTS "snapshotSourceVersion" TEXT`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "RegistryCache_sourceId_subjectHash_key"
       ON "RegistryCache" ("sourceId", "subjectHash")`,
     `CREATE INDEX IF NOT EXISTS "RegistryCache_expiresAt_idx"

@@ -126,6 +126,24 @@ describeWithDatabase('Registry adapters: free source wiring', () => {
     expect(ids).toContain('nppes_npi_registry');
     expect(ids).toContain('sec_edgar_company_tickers');
     expect(ids).toContain('fdic_bankfind_institutions');
+    expect(ids).toContain('un_consolidated_sanctions');
+    expect(ids).toContain('state_dept_debarred');
+    expect(ids).toContain('state_dept_nonproliferation');
+    expect(ids).toContain('ncua_credit_unions');
+    expect(ids).toContain('finra_brokercheck');
+    expect(ids).toContain('fincen_msb');
+    expect(ids).toContain('ffiec_nic');
+    expect(ids).toContain('gleif_lei');
+    expect(ids).toContain('cms_medicare_optout');
+    expect(ids).toContain('irs_teos');
+    expect(ids).toContain('nyc_acris');
+    expect(ids).toContain('canada_sema_sanctions');
+    expect(ids).toContain('canada_fintrac_msb');
+    expect(ids).toContain('canada_cra_charities');
+    expect(ids).toContain('canada_osfi_fri');
+    expect(ids).toContain('pacer_federal_courts');
+    expect(ids).toContain('canada_bc_registry');
+    expect(ids).toContain('canada_corporations_canada');
   });
 
   it('verifies against OFAC and uses cache on repeated lookups', async () => {
