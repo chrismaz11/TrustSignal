@@ -225,7 +225,7 @@ TrustSignal does not provide:
 
 ## Current Repository Context
 
-TrustSignal is the canonical product and application surface in this repository. The current wedge remains property-record verification, with the platform framed as evidence integrity infrastructure for existing workflows.
+TrustSignal is the core platform and canonical application surface shipped from this repository. DeedShield is the initial property-record verification wedge/module built on top of the TrustSignal platform for property-title and deed workflows. DeedShield-named docs, monitoring rules, and watcher services in this repo refer specifically to that property-record module and do not change that TrustSignal is the primary product and application surface exposed here.
 
 ## Newbie Difficulty Rating
 
