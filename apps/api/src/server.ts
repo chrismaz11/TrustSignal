@@ -1290,7 +1290,13 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/verify/attom', {
     preHandler: [requireApiKeyScope(securityConfig, 'verify')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: {
+      rateLimit: {
+        max: securityConfig.perApiKeyRateLimitMax,
+        timeWindow: securityConfig.rateLimitWindow,
+        keyGenerator: getApiRateLimitKey
+      }
+    }
   }, async (request, reply) => {
     const parsed = deedParsedSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1312,7 +1318,13 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/verify', {
     preHandler: [requireApiKeyScope(securityConfig, 'verify')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: {
+      rateLimit: {
+        max: securityConfig.perApiKeyRateLimitMax,
+        timeWindow: securityConfig.rateLimitWindow,
+        keyGenerator: getApiRateLimitKey
+      }
+    }
   }, async (request, reply) => {
     const verifyStartMs = Date.now();
     const parsed = verifyInputSchema.safeParse(request.body);

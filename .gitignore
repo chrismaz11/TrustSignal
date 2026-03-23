@@ -73,6 +73,8 @@ packages/core/registry/registry.private.jwk
 .vercel
 circuits/non_mem_gadget/target/
 ml/.venv/
+**/__pycache__/
+**/*.py[cod]
 ml/zkml/deed_cnn.pk
 tmp/
 

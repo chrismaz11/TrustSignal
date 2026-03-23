@@ -1,4 +1,4 @@
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { createHmac, generateKeyPairSync } from 'node:crypto';
 
 import { getAddress, verifyMessage } from 'ethers';
 import { FastifyReply, FastifyRequest } from 'fastify';
@@ -13,6 +13,7 @@ const DEFAULT_DEV_CORS_ORIGINS = [
   'http://127.0.0.1:5173'
 ];
 const DEV_RECEIPT_SIGNING_KID = 'dev-local-receipt-signer-v1';
+const DEV_API_KEY_FINGERPRINT_SECRET = 'trustsignal-dev-api-key-fingerprint-v1';
 const DEV_RECEIPT_SIGNING_KEYS = (() => {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   return {
@@ -268,8 +269,11 @@ function readHeader(request: FastifyRequest, headerName: string): string | null 
   return null;
 }
 
-function fingerprintApiKey(apiKey: string): string {
-  return createHash('sha256').update(apiKey).digest('hex').slice(0, 16);
+function fingerprintApiKey(
+  apiKey: string,
+  secret = process.env.API_KEY_FINGERPRINT_SECRET || DEV_API_KEY_FINGERPRINT_SECRET
+): string {
+  return createHmac('sha256', secret).update(apiKey).digest('hex').slice(0, 16);
 }
 
 export function requireApiKeyScope(config: SecurityConfig, requiredScope: AuthScope) {
