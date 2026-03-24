@@ -31,8 +31,8 @@ npx tsx bench/run-bench.ts --scenario batch --batch-size 10
 
 The harness writes:
 
-- [latest.json](results/latest.json)
-- [latest.md](results/latest.md)
+- [latest.json](bench/results/latest.json)
+- [latest.md](bench/results/latest.md)
 
 The JSON contains raw timings plus aggregate metrics. The Markdown report is the public-safe evaluator summary for docs.
 
@@ -40,5 +40,5 @@ The JSON contains raw timings plus aggregate metrics. The Markdown report is the
 
 - The harness starts a temporary local PostgreSQL instance and tears it down after the run.
 - It targets the real local `/api/v1/*` evaluator routes through Fastify injection, so it exercises the same request validation, auth checks, persistence, receipt issuance, and later-verification logic used by the current evaluator path.
-- It uses local fixture artifacts from [bench/fixtures](fixtures) to keep clean and tampered runs deterministic.
+- It uses local fixture artifacts from [bench/fixtures](bench/fixtures) to keep clean and tampered runs deterministic.
 - Current metrics are local benchmark snapshots, not production guarantees.
