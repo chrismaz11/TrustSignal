@@ -7,6 +7,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ApiKey {
+  id               String               @id @default(cuid())
+  userEmail        String?
+  subscriptionId   String?
+  plan             String               @default("FREE")
+  usageLimit       Int                  @default(100)
+  usageCount       Int                  @default(0)
+  seats            Int                  @default(1)
+  keyPrefix        String               @unique
+  keyHash          String               @unique
+  label            String?
+  scopes           String               @default("verify")
+  createdAt        DateTime             @default(now())
+  createdBy        String               @default("system")
+  lastUsedAt       DateTime?
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  verificationLogs VerificationRecord[]
+}
+
+model VerificationRecord {
+  id            String   @id @default(cuid())
+  apiKeyId      String
+  apiKey        ApiKey   @relation(fields: [apiKeyId], references: [id])
+  artifactHash  String
+  repository    String
+  commitSha     String
+  workflowRunId String?
+  timestamp     DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+}
+
+model WorkflowEvent {
+  id             String   @id @default(cuid())
+  workflowId     String
+  timestamp      DateTime @default(now())
+  operator       String
+  action         String
+  bundleId       String?
+  decision       String?
+  receiptId      String?
+  eventType      String
+  runId          String?
+  artifactId     String?
+  packageId      String?
+  classification String?
+  reason         String?
+  payload        Json
+  createdAt      DateTime @default(now())
+
+  @@index([workflowId, timestamp])
+}
+
 model Receipt {
   id               String   @id @default(uuid())
   receiptHash      String
@@ -18,6 +73,7 @@ model Receipt {
   riskScore        Int
   checks           String
   rawInputsHash    String
+  signingKeyId     String?
   createdAt        DateTime @default(now())
   anchorStatus     String   @default("PENDING")
   anchorTxHash     String?

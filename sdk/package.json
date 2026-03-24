@@ -1,6 +1,6 @@
 {
   "name": "@trustsignal/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lightweight TrustSignal API SDK",
   "type": "module",
   "sideEffects": false,

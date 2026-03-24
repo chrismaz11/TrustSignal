@@ -81,6 +81,7 @@ export type UnsignedReceiptPayload = {
   reasons: string[];
   riskScore: number;
   verifierId: string;
+  signing_key_id?: string;
   fraudRisk?: DocumentRisk;
   zkpAttestation?: ZKPAttestation;
 };

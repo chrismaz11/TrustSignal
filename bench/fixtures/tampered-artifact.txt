@@ -1,0 +1,5 @@
+Prepared By: TrustSignal Benchmark Harness
+Mail To: Evaluator Review Queue
+Property Address: 999 Altered Address, Demo City
+Legal Description: Lot 9, Block Z, Modified After Declared Hash
+Narrative: artifact bytes intentionally changed after the original declared hash was established.

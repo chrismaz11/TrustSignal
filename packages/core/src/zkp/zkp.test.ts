@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { chmodSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { Buffer } from 'node:buffer';
+import { chmodSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
 import { generateComplianceProof, verifyComplianceProof } from './index.js';
 
 const slowProofIt = process.env.RUN_SLOW_ZKP_TESTS === '1' ? it : it.skip;

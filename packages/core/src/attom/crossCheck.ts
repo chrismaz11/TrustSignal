@@ -3,8 +3,7 @@ import {
   normalizePin,
   addressSimilarity,
   nameOverlapScore,
-  canonicalDeedHash,
-  redact
+  canonicalDeedHash
 } from './normalize.js';
 
 type ConfidenceContrib = {
@@ -281,7 +280,7 @@ export async function attomCrossCheck(
 // Convenience mock client for tests/offline use
 export class MockAttomClient implements AttomClient {
   constructor(private responses: { parcel?: AttomLookupResult[]; address?: AttomLookupResult[] }) {}
-  async getByParcel(pin: string): Promise<AttomLookupResult[]> {
+  async getByParcel(_pin: string): Promise<AttomLookupResult[]> {
     return this.responses.parcel || [];
   }
   async getByAddress(): Promise<AttomLookupResult[]> {

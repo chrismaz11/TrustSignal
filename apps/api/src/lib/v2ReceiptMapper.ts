@@ -1,5 +1,47 @@
 
 export type RiskBand = "LOW" | "MEDIUM" | "HIGH";
+type FraudRiskPayload = {
+    score?: number;
+    band?: RiskBand;
+    signals?: unknown[];
+};
+type ZkpAttestationPayload = unknown;
+type V2VerifyResponse = {
+    receiptVersion: string;
+    decision: string;
+    reasons: string[];
+    receiptId: string;
+    receiptHash: string;
+    receiptSignature?: {
+        signature: string;
+        alg: 'EdDSA';
+        kid: string;
+    };
+    proofVerified?: boolean;
+    anchor: {
+        status: string;
+        backend: string;
+        anchorId?: string;
+        txHash?: string;
+        chainId?: string;
+        anchoredAt?: string;
+        subjectDigest?: string;
+        subjectVersion?: string;
+    };
+    fraudRisk: {
+        score: number;
+        band: RiskBand;
+        signals: unknown[];
+    };
+    zkpAttestation?: ZkpAttestationPayload;
+    revocation: {
+        status: "REVOKED" | "ACTIVE";
+    };
+    deprecated?: {
+        riskScore: number;
+        revoked: boolean;
+    };
+};
 
 function clamp01(x: number): number {
     if (Number.isNaN(x)) return 0;
@@ -32,8 +74,8 @@ export function toV2VerifyResponse(input: {
         subjectDigest?: string;
         subjectVersion?: string;
     };
-    fraudRisk?: { score?: number; band?: RiskBand; signals?: any[] };
-    zkpAttestation?: any;
+    fraudRisk?: FraudRiskPayload;
+    zkpAttestation?: ZkpAttestationPayload;
     revoked?: boolean;
     riskScore?: number;
     includeDeprecated?: boolean;
@@ -41,7 +83,7 @@ export function toV2VerifyResponse(input: {
     const score = clamp01(input.fraudRisk?.score ?? 0);
     const riskBand = input.fraudRisk?.band ?? band(score);
 
-    const body: any = {
+    const body: V2VerifyResponse = {
         receiptVersion: "2.0",
         decision: input.decision,
         reasons: input.reasons ?? [],

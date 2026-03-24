@@ -1,15 +1,14 @@
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'crypto';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 
+import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import { JsonRpcProvider, keccak256, toUtf8Bytes } from 'ethers';
 import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
-import { keccak256, toUtf8Bytes, JsonRpcProvider, Contract } from 'ethers';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+
 import {
   BundleInput,
   CheckResult,
@@ -30,11 +29,12 @@ import {
   DocumentRisk,
   Receipt,
   ZKPAttestation,
+  attomCrossCheck,
+  DeedParsed,
   NotaryVerifier,
   PropertyVerifier,
   CountyVerifier,
-  nameOverlapScore,
-  normalizeName
+  nameOverlapScore
 } from '../../../packages/core/dist/index.js';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
@@ -42,7 +42,7 @@ import { anchorReceipt, buildAnchorSubject } from './anchor.js';
 import { ensureDatabase } from './db.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
-import { attomCrossCheck, DeedParsed } from '../../../packages/core/dist/index.js';
+import { loadRuntimeEnv, resolveDatabaseUrl } from './env.js';
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 import {
@@ -59,56 +59,31 @@ import {
   type SecurityConfig,
   verifyRevocationHeaders
 } from './security.js';
+import { isWorkflowError } from './workflow/errors.js';
+import {
+  NoopWorkflowEventSink,
+  PrismaWorkflowEventSink,
+  type WorkflowEventSink
+} from './workflow/events.js';
+import { WorkflowService } from './workflow/service.js';
+import {
+  readinessWorkflowRequestSchema,
+  workflowArtifactCreateSchema,
+  workflowArtifactParamsSchema,
+  workflowCreateRequestSchema,
+  workflowParamsSchema,
+  workflowRunRequestSchema
+} from './workflow/types.js';
 
-function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
-  const direct = (env.DATABASE_URL || '').trim();
-  if (direct) return direct;
-
-  const candidates = [
-    env.SUPABASE_DB_URL,
-    env.SUPABASE_POOLER_URL,
-    env.SUPABASE_DIRECT_URL
-  ];
-
-  for (const candidate of candidates) {
-    const value = (candidate || '').trim();
-    if (value) {
-      env.DATABASE_URL = value;
-      return value;
-    }
-  }
-
-  const supabasePassword = (env.SUPABASE_DB_PASSWORD || '').trim();
-  if (supabasePassword) {
-    const poolerCandidates = [
-      path.resolve(process.cwd(), 'supabase/.temp/pooler-url'),
-      path.resolve(process.cwd(), '../../supabase/.temp/pooler-url'),
-      path.resolve(process.env.HOME || '', 'supabase/.temp/pooler-url')
-    ];
-    for (const poolerPath of poolerCandidates) {
-      try {
-        const rawPoolerUrl = readFileSync(poolerPath, 'utf-8').trim();
-        if (!rawPoolerUrl) continue;
-        const parsed = new URL(rawPoolerUrl);
-        if (!parsed.password) {
-          parsed.password = encodeURIComponent(supabasePassword);
-        }
-        parsed.searchParams.set('sslmode', 'require');
-        const resolved = parsed.toString();
-        env.DATABASE_URL = resolved;
-        return resolved;
-      } catch {
-        // continue searching
-      }
-    }
-  }
-
-  return null;
-}
-
+loadRuntimeEnv();
 resolveDatabaseUrl();
 const prisma = new PrismaClient();
 const REQUEST_START = Symbol('requestStartMs');
+type RequestTimerState = {
+  [REQUEST_START]?: number;
+};
+type PrismaWorkflowEventDelegate = ConstructorParameters<typeof PrismaWorkflowEventSink>[0];
+const NOTARY_STATUSES = ['ACTIVE', 'SUSPENDED', 'REVOKED', 'UNKNOWN'] as const;
 const registrySourceIdEnum = z.enum(REGISTRY_SOURCE_IDS);
 
 const bundleSchema = z.object({
@@ -169,7 +144,7 @@ const vantaVerificationResultSchema = z.object({
   generatedAt: z.string().datetime(),
   vendor: z.object({
     name: z.literal('TrustSignal'),
-    module: z.literal('DeedShield'),
+    module: z.literal('TrustSignal'),
     environment: z.string(),
     apiVersion: z.literal('v1')
   }),
@@ -251,7 +226,7 @@ const vantaVerificationResultJsonSchema = {
       required: ['name', 'module', 'environment', 'apiVersion'],
       properties: {
         name: { const: 'TrustSignal' },
-        module: { const: 'DeedShield' },
+        module: { const: 'TrustSignal' },
         environment: { type: 'string' },
         apiVersion: { const: 'v1' }
       }
@@ -406,7 +381,6 @@ const deedParsedSchema = z.object({
 });
 
 type ReceiptRecord = NonNullable<Awaited<ReturnType<typeof prisma.receipt.findUnique>>>;
-type ReceiptListRecord = Awaited<ReturnType<typeof prisma.receipt.findMany>>[number];
 
 function normalizeForwardedProto(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -462,6 +436,7 @@ function receiptFromDb(record: ReceiptRecord) {
     reasons: JSON.parse(record.reasons) as string[],
     riskScore: record.riskScore,
     verifierId: 'deed-shield',
+    ...(record.signingKeyId ? { signing_key_id: record.signingKeyId } : {}),
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
     zkpAttestation: record.zkpAttestation ? JSON.parse(record.zkpAttestation) as ZKPAttestation : undefined,
@@ -506,6 +481,44 @@ function hasUnexpectedBody(body: unknown): boolean {
   if (body === null) return false;
   if (typeof body !== 'object') return true;
   return Object.keys(body as Record<string, unknown>).length > 0;
+}
+
+function sendWorkflowValidationError(
+  reply: { code: (statusCode: number) => { send: (payload: unknown) => unknown } },
+  details: unknown
+) {
+  return reply.code(400).send({ error: 'invalid_workflow_payload', details });
+}
+
+function sendWorkflowError(
+  reply: { code: (statusCode: number) => { send: (payload: unknown) => unknown } },
+  error: unknown,
+  fallbackError: string
+) {
+  if (!isWorkflowError(error)) {
+    return reply.code(500).send({ error: fallbackError });
+  }
+
+  if (
+    error.code === 'workflow_not_found' ||
+    error.code === 'artifact_not_found' ||
+    error.code === 'agent_not_found'
+  ) {
+    return reply.code(404).send({ error: error.code });
+  }
+
+  if (
+    error.code === 'artifact_classification_downgrade_forbidden' ||
+    error.code === 'unknown_source_ref' ||
+    error.code === 'invalid_release_target'
+  ) {
+    return reply.code(400).send({
+      error: error.code,
+      ...(error.metadata ? { details: error.metadata } : {})
+    });
+  }
+
+  return reply.code(500).send({ error: fallbackError });
 }
 
 function buildAnchorState(record: ReceiptRecord, attestation?: ZKPAttestation) {
@@ -568,15 +581,15 @@ async function verifyStoredReceipt(
 async function toVantaVerificationResult(record: ReceiptRecord, securityConfig: SecurityConfig) {
   const receipt = receiptFromDb(record);
   const receiptVerification = await verifyStoredReceipt(receipt, record, securityConfig);
-  const fraudRiskRaw = receipt.fraudRisk as Record<string, unknown> | undefined;
-  const zkpRaw = receipt.zkpAttestation as Record<string, unknown> | undefined;
+  const fraudRiskRaw = receipt.fraudRisk as unknown as Record<string, unknown> | undefined;
+  const zkpRaw = receipt.zkpAttestation as unknown as Record<string, unknown> | undefined;
 
   const payload = {
     schemaVersion: 'trustsignal.vanta.verification_result.v1' as const,
     generatedAt: new Date().toISOString(),
     vendor: {
       name: 'TrustSignal' as const,
-      module: 'DeedShield' as const,
+      module: 'TrustSignal' as const,
       environment: process.env.NODE_ENV || 'development',
       apiVersion: 'v1' as const
     },
@@ -659,7 +672,7 @@ async function toVantaVerificationResult(record: ReceiptRecord, securityConfig: 
 }
 
 class DatabaseCountyVerifier implements CountyVerifier {
-  async verifyParcel(parcelId: string, county: string, state: string): Promise<CountyCheckResult> {
+  async verifyParcel(parcelId: string, _county: string, _state: string): Promise<CountyCheckResult> {
     // 1. Log the check
     console.log(`[DatabaseCountyVerifier] Checking parcel: ${parcelId}`);
 
@@ -687,55 +700,14 @@ class DatabaseNotaryVerifier implements NotaryVerifier {
     console.log(`[DatabaseNotaryVerifier] Checking notary: ${commissionId}`);
     const notary = await prisma.notary.findUnique({ where: { id: commissionId } });
     if (!notary) return { status: 'UNKNOWN', details: 'Notary not found' };
-    if (notary.status !== 'ACTIVE') return { status: notary.status as any, details: 'Notary not active' };
+    if (notary.status !== 'ACTIVE') {
+      const status = NOTARY_STATUSES.includes(notary.status as typeof NOTARY_STATUSES[number])
+        ? (notary.status as typeof NOTARY_STATUSES[number])
+        : 'UNKNOWN';
+      return { status, details: 'Notary not active' };
+    }
     if (notary.commissionState !== state) return { status: 'ACTIVE', details: 'State mismatch (recorded)', };
     return { status: 'ACTIVE', details: `Found ${name}` };
-  }
-}
-
-class DatabasePropertyVerifier {
-  async verify(bundle: BundleInput): Promise<CheckResult> {
-    console.log(`[DatabasePropertyVerifier] Checking property: ${bundle.property.parcelId}`);
-
-    const existing = await prisma.receipt.findFirst({
-      where: {
-        parcelId: bundle.property.parcelId,
-        decision: 'ALLOW',
-        revoked: false
-      }
-    });
-
-    if (existing) {
-      return { checkId: 'property-database', status: 'FLAG', details: `Duplicate Title: Active receipt exists (${existing.id})` } as unknown as CheckResult;
-    }
-
-    // 2. Chain of Title Check (Grantor Verification)
-    if (bundle.ocrData?.grantorName) {
-      const property = await prisma.property.findUnique({
-        where: { parcelId: bundle.property.parcelId }
-      });
-
-      if (property) {
-        const score = nameOverlapScore([bundle.ocrData.grantorName], [property.currentOwner]);
-        const normalizedGrantor = normalizeName(bundle.ocrData.grantorName);
-        const normalizedOwner = normalizeName(property.currentOwner);
-
-        if (score < 0.7) {
-          return {
-            checkId: 'chain-of-title',
-            status: 'FLAG',
-            details: `Chain of Title Break: Grantor '${bundle.ocrData.grantorName}' does not match current owner '${property.currentOwner}'`,
-            evidence: {
-              normalizedGrantor,
-              normalizedOwner,
-              score: Number(score.toFixed(2))
-            } as unknown as Record<string, unknown>
-          } as unknown as CheckResult;
-        }
-      }
-    }
-
-    return { checkId: 'property-database', status: 'PASS', details: 'No duplicate titles found' } as unknown as CheckResult;
   }
 }
 
@@ -764,19 +736,21 @@ class AttomPropertyVerifier implements PropertyVerifier {
         if (ownerName && ownerName !== 'Unknown') {
           const saleDateStr = prop?.sale?.saleTransDate || prop?.assessment?.saleDate;
           const lastSaleDate = saleDateStr ? new Date(saleDateStr) : null;
-          await prisma.property.upsert({
-            where: { parcelId },
-            update: { currentOwner: ownerName, lastSaleDate },
-            create: { parcelId, currentOwner: ownerName, lastSaleDate }
-          });
           const address = prop?.address;
-          if (address?.countrySubd || address?.countrySecondarySubd) {
-            await prisma.countyRecord.upsert({
+          await prisma.$transaction(async (tx) => {
+            await tx.property.upsert({
               where: { parcelId },
-              update: { county: address.countrySecondarySubd, state: address.countrySubd, active: true },
-              create: { parcelId, county: address.countrySecondarySubd || 'Unknown', state: address.countrySubd || 'IL', active: true }
+              update: { currentOwner: ownerName, lastSaleDate },
+              create: { parcelId, currentOwner: ownerName, lastSaleDate }
             });
-          }
+            if (address?.countrySubd || address?.countrySecondarySubd) {
+              await tx.countyRecord.upsert({
+                where: { parcelId },
+                update: { county: address.countrySecondarySubd, state: address.countrySubd, active: true },
+                create: { parcelId, county: address.countrySecondarySubd || 'Unknown', state: address.countrySubd || 'IL', active: true }
+              });
+            }
+          });
         }
       } catch (err) {
         console.error('ATTOM API Error:', err);
@@ -807,8 +781,7 @@ class BlockchainVerifier {
       // 2. Connect to Blockchain
       const provider = new JsonRpcProvider(this.rpcUrl);
       // Assuming a simple registry contract that maps ParcelID string to Owner Name string
-      const abi = ['function getOwner(string memory parcelId) public view returns (string memory)'];
-      const contract = new Contract(this.contractAddress, abi, provider);
+      void provider;
 
       // 3. Query Registry (Read-Only)
       // const onChainOwner = await contract.getOwner(bundle.property.parcelId);
@@ -835,6 +808,8 @@ class BlockchainVerifier {
 
 type BuildServerOptions = {
   fetchImpl?: typeof fetch;
+  logger?: boolean | Record<string, unknown>;
+  workflowEventSink?: WorkflowEventSink;
 };
 
 type VerifyRouteInput = BundleInput & {
@@ -847,25 +822,51 @@ type VerifyRouteInput = BundleInput & {
 
 export async function buildServer(options: BuildServerOptions = {}) {
   requireProductionVerifierConfig();
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: options.logger ?? true });
   const securityConfig = buildSecurityConfig();
   const propertyApiKey = resolvePropertyApiKey();
   const registryAdapterService = createRegistryAdapterService(prisma, {
     fetchImpl: options.fetchImpl
   });
   const metricsRegistry = new Registry();
-  collectDefaultMetrics({ register: metricsRegistry, prefix: 'deedshield_api_' });
+  collectDefaultMetrics({ register: metricsRegistry, prefix: 'trustsignal_api_' });
   const httpRequestsTotal = new Counter({
-    name: 'deedshield_http_requests_total',
+    name: 'trustsignal_http_requests_total',
     help: 'Total HTTP requests served by the API',
     labelNames: ['method', 'route', 'status_code'] as const,
     registers: [metricsRegistry]
   });
   const httpRequestDurationSeconds = new Histogram({
-    name: 'deedshield_http_request_duration_seconds',
+    name: 'trustsignal_http_request_duration_seconds',
     help: 'HTTP request duration in seconds',
     labelNames: ['method', 'route', 'status_code'] as const,
     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+    registers: [metricsRegistry]
+  });
+  // Business-level verification lifecycle metrics
+  const receiptsIssuedTotal = new Counter({
+    name: 'deedshield_receipts_issued_total',
+    help: 'Total signed receipts issued by decision outcome',
+    labelNames: ['decision', 'policy_profile'] as const,
+    registers: [metricsRegistry]
+  });
+  const receiptVerificationsTotal = new Counter({
+    name: 'deedshield_receipt_verifications_total',
+    help: 'Total post-issuance receipt verifications by outcome',
+    labelNames: ['outcome'] as const,
+    registers: [metricsRegistry]
+  });
+  const revocationsTotal = new Counter({
+    name: 'deedshield_revocations_total',
+    help: 'Total receipt revocations processed',
+    labelNames: [] as const,
+    registers: [metricsRegistry]
+  });
+  const verifyDurationSeconds = new Histogram({
+    name: 'deedshield_verify_duration_seconds',
+    help: 'End-to-end duration of the verification and receipt issuance flow',
+    labelNames: ['decision'] as const,
+    buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10],
     registers: [metricsRegistry]
   });
   const perApiKeyRateLimit = {
@@ -875,14 +876,19 @@ export async function buildServer(options: BuildServerOptions = {}) {
   };
 
   app.addHook('onRequest', async (request) => {
-    (request as any)[REQUEST_START] = Date.now();
+    (request as RequestTimerState)[REQUEST_START] = Date.now();
+  });
+
+  // Propagate Fastify's auto-generated request ID as x-request-id for correlation across logs
+  app.addHook('onSend', async (request, reply) => {
+    reply.header('x-request-id', request.id);
   });
 
   app.addHook('onResponse', async (request, reply) => {
     const route = (request.routeOptions.url || request.url.split('?')[0] || 'unknown').toString();
     const method = request.method;
     const statusCode = String(reply.statusCode);
-    const startedAt = (request as any)[REQUEST_START] as number | undefined;
+    const startedAt = (request as RequestTimerState)[REQUEST_START];
     const durationSeconds = startedAt ? (Date.now() - startedAt) / 1000 : 0;
     httpRequestsTotal.inc({ method, route, status_code: statusCode });
     httpRequestDurationSeconds.observe({ method, route, status_code: statusCode }, durationSeconds);
@@ -911,15 +917,42 @@ export async function buildServer(options: BuildServerOptions = {}) {
     await ensureDatabase(prisma);
   } catch (error) {
     databaseReady = false;
-    databaseInitError = error instanceof Error ? error.message : 'database_initialization_failed';
-    app.log.error({ err: error }, 'database initialization failed; non-DB routes remain available');
+    databaseInitError = 'database_initialization_failed';
+    app.log.error(
+      {
+        error_code: databaseInitError,
+        error_name: error instanceof Error ? error.name : 'UnknownError'
+      },
+      'database initialization failed; non-DB routes remain available'
+    );
   }
+
+  const workflowEventSink =
+    options.workflowEventSink ??
+    (databaseReady
+      ? new PrismaWorkflowEventSink(
+          (prisma as PrismaClient & { workflowEvent: PrismaWorkflowEventDelegate }).workflowEvent,
+          app.log
+        )
+      : new NoopWorkflowEventSink());
+  const workflowService = new WorkflowService(undefined, {
+    eventSink: workflowEventSink
+  });
 
   const dbOptionalRoutes = new Set([
     '/api/v1/health',
     '/api/v1/status',
     '/api/v1/metrics',
-    '/api/v1/integrations/vanta/schema'
+    '/api/v1/integrations/vanta/schema',
+    '/api/v1/trust-agents',
+    '/api/v1/workflows/readiness-audit',
+    '/api/v1/workflows',
+    '/api/v1/workflows/:workflowId',
+    '/api/v1/workflows/:workflowId/events',
+    '/api/v1/workflows/:workflowId/evidence-package',
+    '/api/v1/workflows/:workflowId/artifacts',
+    '/api/v1/workflows/:workflowId/artifacts/:artifactId/verify',
+    '/api/v1/workflows/:workflowId/runs'
   ]);
 
   app.addHook('preHandler', async (request, reply) => {
@@ -971,6 +1004,172 @@ export async function buildServer(options: BuildServerOptions = {}) {
       schemaVersion: 'trustsignal.vanta.verification_result.v1',
       schema: vantaVerificationResultJsonSchema
     };
+  });
+
+  app.get('/api/v1/trust-agents', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async () => {
+    return {
+      generatedAt: new Date().toISOString(),
+      agents: workflowService.listAgents(),
+      registryIntegrity: {
+        mode: 'static-in-memory',
+        deterministicLoad: true
+      }
+    };
+  });
+
+  app.post('/api/v1/workflows', {
+    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = workflowCreateRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return sendWorkflowValidationError(reply, parsed.error.flatten());
+    }
+
+    const workflow = workflowService.createWorkflow(parsed.data.createdBy);
+    return reply.code(201).send(workflow);
+  });
+
+  app.post('/api/v1/workflows/readiness-audit', {
+    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = readinessWorkflowRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return sendWorkflowValidationError(reply, parsed.error.flatten());
+    }
+
+    try {
+      const result = await workflowService.runEnterpriseReadinessAuditWorkflow(parsed.data);
+      return reply.code(201).send(result);
+    } catch (error) {
+      return sendWorkflowError(reply, error, 'workflow_run_failed');
+    }
+  });
+
+  app.get('/api/v1/workflows/:workflowId', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = workflowParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_workflow_id' });
+    }
+
+    const state = workflowService.getWorkflowState(parsed.data.workflowId);
+    if (!state) {
+      return reply.code(404).send({ error: 'workflow_not_found' });
+    }
+
+    return reply.send(state);
+  });
+
+  app.get('/api/v1/workflows/:workflowId/events', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = workflowParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_workflow_id' });
+    }
+
+    const state = workflowService.getWorkflowState(parsed.data.workflowId);
+    if (!state) {
+      return reply.code(404).send({ error: 'workflow_not_found' });
+    }
+
+    const events = await workflowEventSink.listByWorkflow(parsed.data.workflowId);
+    return reply.send({
+      workflowId: parsed.data.workflowId,
+      events
+    });
+  });
+
+  app.get('/api/v1/workflows/:workflowId/evidence-package', {
+    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = workflowParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_workflow_id' });
+    }
+
+    const evidencePackage = workflowService.getEvidencePackage(parsed.data.workflowId);
+    if (!evidencePackage) {
+      return reply.code(404).send({ error: 'evidence_package_not_found' });
+    }
+
+    return reply.send(evidencePackage);
+  });
+
+  app.post('/api/v1/workflows/:workflowId/artifacts', {
+    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const params = workflowParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_workflow_id' });
+    }
+
+    const parsed = workflowArtifactCreateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return sendWorkflowValidationError(reply, parsed.error.flatten());
+    }
+
+    try {
+      const artifact = workflowService.createArtifact({
+        workflowId: params.data.workflowId,
+        createdBy: parsed.data.createdBy,
+        parentIds: parsed.data.parentIds,
+        classification: parsed.data.classification,
+        content: parsed.data.content
+      });
+      return reply.code(201).send(artifact);
+    } catch (error) {
+      return sendWorkflowError(reply, error, 'workflow_artifact_creation_failed');
+    }
+  });
+
+  app.post('/api/v1/workflows/:workflowId/runs', {
+    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const params = workflowParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_workflow_id' });
+    }
+
+    const parsed = workflowRunRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return sendWorkflowValidationError(reply, parsed.error.flatten());
+    }
+
+    try {
+      const run = await workflowService.runWorkflow(params.data.workflowId, parsed.data);
+      return reply.code(201).send(run);
+    } catch (error) {
+      return sendWorkflowError(reply, error, 'workflow_run_failed');
+    }
+  });
+
+  app.post('/api/v1/workflows/:workflowId/artifacts/:artifactId/verify', {
+    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = workflowArtifactParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_workflow_artifact_id' });
+    }
+
+    try {
+      const verification = workflowService.verifyArtifact(parsed.data.workflowId, parsed.data.artifactId);
+      return reply.send(verification);
+    } catch (error) {
+      return sendWorkflowError(reply, error, 'workflow_verification_failed');
+    }
   });
 
   app.get('/api/v1/integrations/vanta/verification/:receiptId', {
@@ -1095,6 +1294,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireApiKeyScope(securityConfig, 'verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
+    const verifyStartMs = Date.now();
     const parsed = verifyInputSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
@@ -1200,6 +1400,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     });
 
     const receipt = buildReceipt(input, verification, 'deed-shield', {
+      signing_key_id: securityConfig.receiptSigning.current.kid,
       fraudRisk,
       zkpAttestation
     });
@@ -1224,6 +1425,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
         riskScore: signedReceipt.riskScore,
         checks: JSON.stringify(signedReceipt.checks),
         rawInputsHash: signedReceipt.inputsCommitment,
+        signingKeyId: signedReceipt.signing_key_id,
         createdAt: new Date(signedReceipt.createdAt),
         fraudRisk: signedReceipt.fraudRisk ? JSON.stringify(signedReceipt.fraudRisk) : undefined,
         zkpAttestation: signedReceipt.zkpAttestation ? JSON.stringify(signedReceipt.zkpAttestation) : undefined,
@@ -1247,6 +1449,20 @@ export async function buildServer(options: BuildServerOptions = {}) {
       revoked: record.revoked,
       riskScore: signedReceipt.riskScore
     });
+
+    receiptsIssuedTotal.inc({ decision: signedReceipt.decision, policy_profile: input.policy.profile });
+    verifyDurationSeconds.observe({ decision: signedReceipt.decision }, (Date.now() - verifyStartMs) / 1000);
+    app.log.info(
+      {
+        event: 'receipt_issued',
+        request_id: request.id,
+        receipt_id: record.id,
+        decision: signedReceipt.decision,
+        policy_profile: input.policy.profile,
+        duration_ms: Date.now() - verifyStartMs
+      },
+      'receipt_issued'
+    );
 
     return reply.send(body);
   });
@@ -1365,6 +1581,19 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return reply.code(500).send({ error: 'Receipt reconstruction failed' });
     }
     const verificationResult = await verifyStoredReceipt(receipt, record, securityConfig);
+    const verificationOutcome = verificationResult.verified ? 'verified' : 'not_verified';
+    receiptVerificationsTotal.inc({ outcome: verificationOutcome });
+    app.log.info(
+      {
+        event: 'receipt_verified',
+        request_id: request.id,
+        receipt_id: receiptId,
+        outcome: verificationOutcome,
+        signature_verified: verificationResult.signatureVerified,
+        integrity_verified: verificationResult.integrityVerified
+      },
+      'receipt_verified'
+    );
 
     return reply.send({
       verified: verificationResult.verified,
@@ -1461,16 +1690,38 @@ export async function buildServer(options: BuildServerOptions = {}) {
       data: { revoked: true }
     });
 
+    revocationsTotal.inc();
+    app.log.info(
+      {
+        event: 'receipt_revoked',
+        request_id: request.id,
+        receipt_id: receiptId,
+        issuer_id: revocationVerification.issuerId
+      },
+      'receipt_revoked'
+    );
+
     return reply.send({ status: 'REVOKED', issuerId: revocationVerification.issuerId });
   });
 
   app.get('/api/v1/receipts', {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
     config: { rateLimit: perApiKeyRateLimit }
-  }, async () => {
-    const records: ReceiptListRecord[] = await prisma.receipt.findMany({
+  }, async (request) => {
+    const query = request.query as { limit?: string };
+    const rawLimit = query.limit !== undefined ? Number.parseInt(query.limit, 10) : NaN;
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(rawLimit, 200)) : 50;
+    const records = await prisma.receipt.findMany({
+      select: {
+        id: true,
+        decision: true,
+        riskScore: true,
+        createdAt: true,
+        anchorStatus: true,
+        revoked: true
+      },
       orderBy: { createdAt: 'desc' },
-      take: 100
+      take: limit
     });
     return records.map((record) => ({
       receiptId: record.id,

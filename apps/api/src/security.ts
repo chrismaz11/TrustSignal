@@ -155,7 +155,10 @@ function parseJsonJwk(value: string | undefined, envName: string): JWK | null {
   }
 }
 
-function parsePublicJwkMap(value: string | undefined): Map<string, JWK> {
+function parsePublicJwkMap(
+  value: string | undefined,
+  envName = 'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS'
+): Map<string, JWK> {
   const raw = (value || '').trim();
   if (!raw) return new Map();
 
@@ -163,17 +166,17 @@ function parsePublicJwkMap(value: string | undefined): Map<string, JWK> {
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    throw new Error(`TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`${envName} must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS must be a JSON object keyed by kid');
+    throw new Error(`${envName} must be a JSON object keyed by kid`);
   }
 
   const keyMap = new Map<string, JWK>();
   for (const [kid, jwk] of Object.entries(parsed)) {
     if (!kid || typeof jwk !== 'object' || jwk === null || Array.isArray(jwk) || typeof (jwk as JWK).kty !== 'string') {
-      throw new Error(`TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS contains invalid JWK for kid "${kid}"`);
+      throw new Error(`${envName} contains invalid JWK for kid "${kid}"`);
     }
     keyMap.set(kid, jwk as JWK);
   }
@@ -183,18 +186,31 @@ function parsePublicJwkMap(value: string | undefined): Map<string, JWK> {
 
 export function buildReceiptSigningConfig(env: NodeJS.ProcessEnv = process.env): ReceiptSigningConfig {
   const nodeEnv = (env.NODE_ENV || 'development').toLowerCase();
-  const privateJwk = parseJsonJwk(env.TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK, 'TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK');
-  const publicJwk = parseJsonJwk(env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK, 'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK');
-  const kid = (env.TRUSTSIGNAL_RECEIPT_SIGNING_KID || '').trim();
-  const verificationKeys = parsePublicJwkMap(env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS);
+  const privateJwkRaw = env.TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK ?? env.TRUSTSIGNAL_SIGNING_PRIVATE_JWK;
+  const publicJwkRaw = env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK;
+  const kid = (env.TRUSTSIGNAL_RECEIPT_SIGNING_KID || env.TRUSTSIGNAL_SIGNING_KEY_ID || '').trim();
+  const publicJwksRaw = env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS ?? env.TRUSTSIGNAL_PUBLIC_JWKS;
 
-  if (privateJwk && publicJwk && kid) {
-    verificationKeys.set(kid, publicJwk);
+  const privateJwk = parseJsonJwk(
+    privateJwkRaw,
+    env.TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK ? 'TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK' : 'TRUSTSIGNAL_SIGNING_PRIVATE_JWK'
+  );
+  const publicJwk = parseJsonJwk(publicJwkRaw, 'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK');
+  const verificationKeys = parsePublicJwkMap(
+    publicJwksRaw,
+    env.TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS ? 'TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWKS' : 'TRUSTSIGNAL_PUBLIC_JWKS'
+  );
+
+  const publicFromJwks = kid ? verificationKeys.get(kid) : undefined;
+  const resolvedPublicJwk = publicJwk ?? publicFromJwks ?? null;
+
+  if (privateJwk && resolvedPublicJwk && kid) {
+    verificationKeys.set(kid, resolvedPublicJwk);
     return {
       mode: 'configured',
       current: {
         privateJwk,
-        publicJwk,
+        publicJwk: resolvedPublicJwk,
         kid,
         alg: 'EdDSA'
       },
@@ -204,7 +220,7 @@ export function buildReceiptSigningConfig(env: NodeJS.ProcessEnv = process.env):
 
   if (nodeEnv === 'production') {
     throw new Error(
-      'Missing required production receipt-signing env vars: TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK, TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK, TRUSTSIGNAL_RECEIPT_SIGNING_KID'
+      'Missing required production receipt-signing env vars: TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK (or TRUSTSIGNAL_SIGNING_PRIVATE_JWK), TRUSTSIGNAL_RECEIPT_SIGNING_PUBLIC_JWK (or TRUSTSIGNAL_PUBLIC_JWKS containing the signing key), TRUSTSIGNAL_RECEIPT_SIGNING_KID (or TRUSTSIGNAL_SIGNING_KEY_ID)'
     );
   }
 

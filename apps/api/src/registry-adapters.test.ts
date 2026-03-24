@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 
 import { buildServer } from './server.js';
 
@@ -25,6 +26,7 @@ describeWithDatabase('Registry adapters: free source wiring', () => {
   let app: FastifyInstance;
   let envSnapshot: EnvSnapshot;
   let fetchCalls = 0;
+  let prisma: PrismaClient;
 
   const mockFetch: typeof fetch = async (input) => {
     fetchCalls += 1;
@@ -90,11 +92,16 @@ describeWithDatabase('Registry adapters: free source wiring', () => {
     process.env.RATE_LIMIT_WINDOW = '1 minute';
     delete process.env.SAM_API_KEY;
 
+    prisma = new PrismaClient();
+    await prisma.registryOracleJob.deleteMany();
+    await prisma.registryCache.deleteMany();
+
     app = await buildServer({ fetchImpl: mockFetch });
   });
 
   afterAll(async () => {
     await app.close();
+    await prisma.$disconnect();
     restoreEnv(envSnapshot);
   });
 

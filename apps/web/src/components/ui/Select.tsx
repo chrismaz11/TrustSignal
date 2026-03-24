@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { DropdownOption } from '../../types';
 
 interface SelectProps<T> extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'value' | 'onChange'> {

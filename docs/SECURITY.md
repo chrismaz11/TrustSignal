@@ -18,3 +18,8 @@ The pre-commit hook rejects:
 
 ## Reporting
 If you discover a secret leak, notify the repo owner and rotate the credential.
+
+## Related Response Documentation
+
+- [Incident Response Plan](INCIDENT_RESPONSE_PLAN.md)
+- [Security workflows](security-workflows.md)

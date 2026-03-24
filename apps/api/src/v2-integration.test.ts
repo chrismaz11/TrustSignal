@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { buildServer } from './server.js';
 import { Buffer } from 'node:buffer';
+
 import { FastifyInstance } from 'fastify';
 import { Wallet } from 'ethers';
 import { PrismaClient } from '@prisma/client';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { buildServer } from './server.js';
 
 const hasDatabaseUrl =
   Boolean(process.env.DATABASE_URL) ||

@@ -19,13 +19,13 @@ Use this playground when you want to test the golden path quickly:
 
 Canonical assets:
 
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
-- [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
-- [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
-- [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
-- [TrustSignal.postman_collection.json](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [OpenAPI contract](../../openapi.yaml)
+- [Evaluator quickstart](quickstart.md)
+- [verification-request.json](../../examples/verification-request.json)
+- [verification-response.json](../../examples/verification-response.json)
+- [verification-receipt.json](../../examples/verification-receipt.json)
+- [verification-status.json](../../examples/verification-status.json)
+- [TrustSignal.postman_collection.json](../../postman/TrustSignal.postman_collection.json)
 
 ## Integration Fit
 
