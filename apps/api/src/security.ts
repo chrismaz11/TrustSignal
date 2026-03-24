@@ -6,6 +6,7 @@ import { type JWK } from 'jose';
 
 const DEFAULT_API_KEY = 'example_local_key_id';
 const DEFAULT_SCOPES = ['verify', 'read', 'anchor', 'revoke'];
+const DEFAULT_TRUSTSIGNAL_API_KEY_SCOPES = ['verify', 'read'];
 const DEFAULT_DEV_CORS_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -74,6 +75,18 @@ function parseList(value: string | undefined): string[] {
 function parseScopes(value: string | undefined): Set<string> {
   const scopes = parseList(value);
   return scopes.length ? new Set(scopes) : new Set(DEFAULT_SCOPES);
+}
+
+function parsePipeSeparatedScopes(value: string | undefined, fallback: string[]): Set<string> {
+  const raw = (value || '').trim();
+  if (!raw) return new Set(fallback);
+
+  const scopes = raw
+    .split('|')
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+
+  return scopes.length ? new Set(scopes) : new Set(fallback);
 }
 
 function parseApiKeyScopeMapping(value: string | undefined): Map<string, Set<string>> {
@@ -214,16 +227,28 @@ export function buildSecurityConfig(env: NodeJS.ProcessEnv = process.env): Secur
   const nodeEnv = env.NODE_ENV || 'development';
   const defaultScopes = parseScopes(env.API_KEY_DEFAULT_SCOPES);
   const scopedMappings = parseApiKeyScopeMapping(env.API_KEY_SCOPES);
+  const trustSignalApiKey = (env.TRUSTSIGNAL_API_KEY || '').trim();
+  const trustSignalApiKeyScopes = parsePipeSeparatedScopes(
+    env.TRUSTSIGNAL_API_KEY_SCOPES,
+    DEFAULT_TRUSTSIGNAL_API_KEY_SCOPES
+  );
 
   const apiKeys = parseList(env.API_KEYS);
+  if (trustSignalApiKey && !apiKeys.includes(trustSignalApiKey)) {
+    apiKeys.push(trustSignalApiKey);
+  }
   const resolvedApiKeys = apiKeys.length > 0 ? apiKeys : nodeEnv === 'production' ? [] : [DEFAULT_API_KEY];
 
   if (nodeEnv === 'production' && resolvedApiKeys.length === 0) {
-    throw new Error('API_KEYS is required in production');
+    throw new Error('API_KEYS or TRUSTSIGNAL_API_KEY is required in production');
   }
 
   const keyMap = new Map<string, Set<string>>();
   for (const key of resolvedApiKeys) {
+    if (key === trustSignalApiKey) {
+      keyMap.set(key, scopedMappings.get(key) ?? trustSignalApiKeyScopes);
+      continue;
+    }
     keyMap.set(key, scopedMappings.get(key) ?? new Set(defaultScopes));
   }
 

@@ -200,6 +200,18 @@ The local evaluator path is intentionally constrained. Local development default
 
 Authentication is `x-api-key` with scoped access. Revocation additionally requires issuer authorization headers: `x-issuer-id`, `x-signature-timestamp`, and `x-issuer-signature`.
 
+For the public TrustSignal verification surface, the simplest production setup is now:
+
+- `TRUSTSIGNAL_API_KEY=<live-key>`
+- optional `TRUSTSIGNAL_API_KEY_SCOPES=verify|read`
+
+Multi-key deployments can still use:
+
+- `API_KEYS`
+- `API_KEY_SCOPES`
+
+When `TRUSTSIGNAL_API_KEY` is set, the API accepts that key even if it is not duplicated in `API_KEYS`. This avoids drift between GitHub Actions secrets and backend allowlists for the common single-key deployment path.
+
 The repository also still includes a legacy JWT-authenticated `/v1/*` surface used by the current JavaScript SDK:
 
 - `POST /v1/verify-bundle`
