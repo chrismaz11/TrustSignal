@@ -11,6 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import type { DeedParsed } from '../../../packages/public-contracts/dist/index.js';
 
 import {
+  type ArtifactVerificationRequest,
   getArtifactReceiptById,
   issueArtifactReceipt,
   toArtifactReceiptPublicView,
@@ -756,10 +757,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const artifactParsed = artifactVerificationRequestSchema.safeParse(request.body);
     if (artifactParsed.success) {
       try {
+        const artifactRequest = artifactParsed.data as ArtifactVerificationRequest;
         const issued = await issueArtifactReceipt(
           prisma,
           securityConfig,
-          artifactParsed.data
+          artifactRequest
         );
         return reply.send(issued);
       } catch (error) {
@@ -914,7 +916,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
           prisma,
           securityConfig,
           receiptId,
-          parsedArtifactBody.data.artifact
+          parsedArtifactBody.data.artifact as ArtifactVerificationRequest['artifact']
         );
         if (!verificationResult) {
           return reply.code(404).send({ error: 'Receipt not found' });

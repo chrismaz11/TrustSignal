@@ -713,11 +713,12 @@ async function runLookup(
 
   const primaryEndpoint = validatePrimarySourceEndpoint(seed, source.endpoint);
   if (!primaryEndpoint.ok) {
+    const { details } = primaryEndpoint;
     return {
       status: 'COMPLIANCE_GAP',
       matches: [],
       sourceVersion: null,
-      details: primaryEndpoint.details
+      details
     };
   }
 

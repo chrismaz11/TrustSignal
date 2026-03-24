@@ -702,8 +702,9 @@ export class LocalVerificationEngine implements VerificationEngine {
       record,
       this.options.securityConfig
     );
-    const fraudRiskRaw = receipt.fraudRisk as Record<string, unknown> | undefined;
-    const zkpRaw = receipt.zkpAttestation as Record<string, unknown> | undefined;
+    const fraudRiskRaw = receipt.fraudRisk as unknown as Record<string, unknown> | undefined;
+    const zkpRaw =
+      receipt.zkpAttestation as unknown as Record<string, unknown> | undefined;
 
     return {
       schemaVersion: 'trustsignal.vanta.verification_result.v1',
