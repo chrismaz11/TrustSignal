@@ -10,7 +10,7 @@ This repository is maintained as proprietary TrustSignal software and documentat
 
 ## Repository Consistency Rules
 
-- Root ownership and license notices must remain consistent with the proprietary repository license in [`LICENSE`](/Users/christopher/Projects/TrustSignal/LICENSE).
+- Root ownership and license notices must remain consistent with the proprietary repository license in [`LICENSE`](LICENSE).
 - File-level license headers that conflict with the repository ownership position must be reviewed deliberately and documented before they are included in any ownership or registration claim.
 - If a contribution was created with material AI assistance, external templates, copied snippets, contractor input, or third-party source material, that provenance must be recorded before the file is treated as a registration candidate.
 
@@ -31,10 +31,10 @@ The following categories are excluded from the initial copyright registration ca
 
 ## Open License Decision
 
-- [`packages/contracts/contracts/AnchorRegistry.sol`](/Users/christopher/Projects/TrustSignal/packages/contracts/contracts/AnchorRegistry.sol) currently carries an `Apache-2.0` SPDX header.
+- [`packages/contracts/contracts/AnchorRegistry.sol`](packages/contracts/contracts/AnchorRegistry.sol) currently carries an `Apache-2.0` SPDX header.
 - That file must be treated as a deliberate license-decision item and excluded from the initial proprietary registration bundle until its licensing intent is explicitly resolved.
 
 ## Notices and Attribution
 
-- If you add third-party code or assets, include any required attribution or notice material in [`NOTICE`](/Users/christopher/Projects/TrustSignal/NOTICE) or in file-level notices as appropriate.
+- If you add third-party code or assets, include any required attribution or notice material in [`NOTICE`](NOTICE) or in file-level notices as appropriate.
 - Do not remove or alter third-party license notices without confirming the applicable license obligations.
