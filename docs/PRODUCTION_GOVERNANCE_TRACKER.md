@@ -27,7 +27,7 @@ Scope: Repository-wide (`TrustSignal`)
 | Remove `.env` secrets from git history | `IN PROGRESS` | Current tracked secret files removed from index; ignore rules hardened; remediation scripts and runbook exist; GitHub Support purge request submitted 2026-03-16 (`docs/evidence/security/github-support-purge-request-2026-03-16.md`) | Need credential rotation evidence and GitHub Support confirmation of hidden-ref/cached-object purge |
 | JSON/Zod validation on all API endpoints | `VERIFIED IN TEST` | Route schema hardening in `apps/api/src/server.ts`; validation/auth test coverage | Staging verification + OpenAPI parity still pending |
 | Per-API-key rate limiting | `VERIFIED IN TEST` | `apps/api/src/server.ts`, security hardening tests | Needs staging verification under load |
-| PostgreSQL + TLS DB path | `VERIFIED IN PRODUCTION` | PostgreSQL datasource/migrations in `apps/api/prisma/`; staging Vercel/Supabase evidence captured; production DB encryption-at-rest evidence captured 2026-03-23 (`docs/evidence/db-security/production-20260323T191949Z.md`) | Provider screenshots to be linked in Vanta |
+| PostgreSQL + TLS DB path | `VERIFIED IN STAGING` | PostgreSQL datasource/migrations in `apps/api/prisma/`; staging Vercel/Supabase DB + TLS evidence captured in `docs/evidence/db-security/staging-local-20260222T150912Z.md`; production DB encryption-at-rest evidence pending | Provider screenshots to be linked in Vanta |
 | TLS certificates / HTTPS in production | `IN PROGRESS` | HTTPS runtime guard in `apps/api/src/server.ts`; staging TLS probe evidence exists | Need forwarded-proto and certificate/TLS policy evidence for deployed ingress |
 
 ## 13 Workstream Checklist
