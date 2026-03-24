@@ -576,6 +576,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   }
 
   const dbOptionalRoutes = new Set([
+    '/health',
     '/api/v1/health',
     '/api/v1/status',
     '/api/v1/metrics',
@@ -589,13 +590,16 @@ export async function buildServer(options: BuildServerOptions = {}) {
     return reply.code(503).send({ error: 'Database unavailable' });
   });
 
-  app.get('/api/v1/health', async () => ({
+  const healthResponse = async () => ({
     status: databaseReady ? 'ok' : 'degraded',
     database: {
       ready: databaseReady,
       initError: databaseInitError
     }
-  }));
+  });
+
+  app.get('/health', healthResponse);
+  app.get('/api/v1/health', healthResponse);
   app.get('/api/v1/status', async (request) => {
     const forwardedProto = normalizeForwardedProto(request.headers['x-forwarded-proto']);
     return {
