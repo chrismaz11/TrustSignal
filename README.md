@@ -8,7 +8,7 @@
 
 Website: https://trustsignal.dev
 
-TrustSignal is evidence integrity infrastructure for existing workflows. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability without replacing the upstream system of record.
+TrustSignal is evidence-integrity infrastructure that operates as an integrity layer for existing workflows. It issues **signed verification receipts**, verification signals, and verifiable provenance metadata — enabling **later verification** and auditability without replacing the upstream system of record. TrustSignal’s public integration boundary intentionally avoids exposing signing internals or proof internals and focuses on returning durable verification artifacts that integrators can store alongside their own evidence.
 
 ## Problem
 
