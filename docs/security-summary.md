@@ -1,18 +1,15 @@
 # TrustSignal Public Security Summary
 
-> TrustSignal is evidence integrity infrastructure for signed verification receipts and later verification.
+TrustSignal provides a public-safe security posture at the integration boundary: scoped API authentication, request validation and rate-limiting at the API gateway, server-side persistence of artifact receipts, fail-closed production defaults, and a claims boundary that avoids exposing signing internals or proof internals.
 
-Short description:
-This public-safe security summary explains the TrustSignal integration boundary, security posture, and claims boundary without exposing non-public implementation details.
-
-Audience:
-- partner security reviewers
-- evaluators
-- developers
+## Audience
+- Partner security reviewers
+- Evaluators
+- Developers
 
 ## Problem / Context
 
-Partners and evaluators need a public-safe security summary that explains the attack surface without exposing internal implementation details. In high-stakes workflows, evidence can be challenged after collection through tampered evidence, provenance loss, artifact substitution, or stale records that are no longer independently verifiable.
+Partners and evaluators need a public-safe security summary that explains the attack surface and the integration-facing guarantees without exposing non-public implementation details.
 
 ## Integrity Model
 

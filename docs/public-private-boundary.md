@@ -1,34 +1,22 @@
 # Public / Private Boundary
 
-This repository is currently a single codebase, but it is being organized so a
-future split into:
+This codebase is organized to make it straightforward to operate a **public integration layer** and a **private verification engine** with a narrow engine interface.
 
-- a public integration-layer repository
-- a private verification-engine repository or service
+## Public integration layer
+The public integration layer contains API, SDK, public docs, and public route/middleware code. It is responsible for:
+- Authentication and authorization
+- Request validation and tenant scoping
+- Rate limiting and exposure controls
+- Response shaping and partner-facing contracts
 
-is straightforward.
+Public code must not import or orchestrate engine-private helpers or signing internals.
 
-## Public-Oriented Surfaces
+## Private verification engine
+The private verification engine owns proof orchestration, signing internals, revocation/anchoring workflows, ZKP/circuits, and compliance evaluation. Engine code is intentionally internal; integrators should depend on the API contract and receipt model rather than internal implementation details.
 
-These directories are intended to remain part of the public integration layer:
-
-- `api/`
-- `sdk/`
-- `docs/`
-- `security/`
-- `apps/web/`
-- `apps/watcher/`
-- `packages/public-contracts/`
-- public-facing route, middleware, and response-mapping code in `apps/api/src/`
-
-Public code should own:
-
-- authentication and authorization
-- request validation
-- tenant scoping
-- rate limiting
-- idempotency and request lifecycle concerns
-- response shaping and partner-facing contracts
+## Guardrails
+- Route handlers must call the narrow engine interface and must not import engine internals directly.
+- Public gateway code uses import restrictions and checks (e.g., `npm run check:api-boundary`) to prevent accidental leakage of private engine code.
 
 ## Private Engine Candidates
 

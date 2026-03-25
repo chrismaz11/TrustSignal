@@ -8,7 +8,7 @@
 
 Website: https://trustsignal.dev
 
-TrustSignal is evidence integrity infrastructure for existing workflows. It acts as an integrity layer that returns signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability without replacing the upstream system of record.
+TrustSignal is evidence-integrity infrastructure that operates as an integrity layer for existing workflows. It issues **signed verification receipts**, verification signals, and verifiable provenance metadata — enabling **later verification** and auditability without replacing the upstream system of record. TrustSignal’s public integration boundary intentionally avoids exposing signing internals or proof internals and focuses on returning durable verification artifacts that integrators can store alongside their own evidence.
 
 ## Problem
 
@@ -72,6 +72,19 @@ The fastest path in this repository is the public `/api/v1/*` evaluator flow. It
 
 The current partner-facing lifecycle in this repository is:
 
+- `POST /api/v1/clients`
+- `POST /api/v1/auth/register`
+- `GET /api/v1/auth/login`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/oauth/authorize`
+- `POST /api/v1/oauth/authorize/consent`
+- `GET /api/v1/clients/:clientId/keys`
+- `POST /api/v1/clients/:clientId/keys`
+- `DELETE /api/v1/clients/:clientId/keys/:kid`
+- `POST /api/v1/clients/:clientId/revoke`
+- `POST /api/v1/token`
+- `POST /api/v1/introspect`
 - `POST /api/v1/verify`
 - `GET /api/v1/receipt/:receiptId`
 - `GET /api/v1/receipt/:receiptId/pdf`
@@ -124,10 +137,32 @@ Default local ports:
 
 Once the local API is running, use the evaluator quickstart or the public examples directly:
 
+Preferred machine flow:
+
+1. register a client with a public JWK at `POST /api/v1/clients`
+2. rotate local public keys with `POST /api/v1/clients/:clientId/keys` and `DELETE /api/v1/clients/:clientId/keys/:kid` as needed
+3. exchange a signed `private_key_jwt` assertion at `POST /api/v1/token`
+4. optionally introspect or self-revoke machine clients with `POST /api/v1/introspect` and `POST /api/v1/clients/:clientId/revoke`
+5. call the verification API with `Authorization: Bearer $TRUSTSIGNAL_ACCESS_TOKEN`
+
+Set `TRUSTSIGNAL_REPLAY_REDIS_URL` in multi-instance deployments so assertion replay protection is shared across API nodes. Without Redis, replay protection falls back to the database nonce table.
+
+Legacy `x-api-key` auth is still accepted during the migration window.
+
+Preferred browser OAuth flow:
+
+1. create a user with `POST /api/v1/auth/register`
+2. sign in through `GET /api/v1/auth/login` or `POST /api/v1/auth/login`
+3. register a browser client with `POST /api/v1/clients` using `clientType: browser` and exact `redirectUris`
+4. start Authorization Code + PKCE with `GET /api/v1/oauth/authorize`
+5. approve consent at `POST /api/v1/oauth/authorize/consent`
+6. exchange the one-time code at `POST /api/v1/token` with `grant_type=authorization_code`
+7. call protected API routes with the delegated bearer token
+
 ```bash
 curl -X POST "http://localhost:3001/api/v1/verify" \
   -H "Content-Type: application/json" \
-  -H "x-api-key: $TRUSTSIGNAL_API_KEY" \
+  -H "Authorization: Bearer $TRUSTSIGNAL_ACCESS_TOKEN" \
   --data @examples/verification-request.json
 ```
 
@@ -135,10 +170,10 @@ Then retrieve the stored receipt and run later verification:
 
 ```bash
 curl "http://localhost:3001/api/v1/receipt/$RECEIPT_ID" \
-  -H "x-api-key: $TRUSTSIGNAL_API_KEY"
+  -H "Authorization: Bearer $TRUSTSIGNAL_ACCESS_TOKEN"
 
 curl -X POST "http://localhost:3001/api/v1/receipt/$RECEIPT_ID/verify" \
-  -H "x-api-key: $TRUSTSIGNAL_API_KEY"
+  -H "Authorization: Bearer $TRUSTSIGNAL_ACCESS_TOKEN"
 ```
 
 ## What The Developer Trial Proves
@@ -165,7 +200,9 @@ The upstream platform remains the system of record. TrustSignal adds an integrit
 
 The local evaluator path is intentionally constrained. Local development defaults are a deliberate evaluator and development path, and they fail closed where production trust assumptions are not satisfied.
 
-Authentication is `x-api-key` with scoped access. Revocation additionally requires issuer authorization headers: `x-issuer-id`, `x-signature-timestamp`, and `x-issuer-signature`.
+Authentication prefers short-lived bearer access tokens minted from registered client keys at `POST /api/v1/token`. Legacy scoped `x-api-key` auth remains available during the migration. Revocation additionally requires issuer authorization headers: `x-issuer-id`, `x-signature-timestamp`, and `x-issuer-signature`.
+
+Browser Authorization Code + PKCE is implemented in this repository through `/api/v1/auth/*`, `/api/v1/oauth/authorize`, `/api/v1/oauth/authorize/consent`, and the shared `POST /api/v1/token` endpoint. Browser clients are stored as `clientType: browser`, must register exact redirect URIs, and require PKCE `S256`. The same bearer-token validation path is reused for both browser and machine access tokens, while M2M `private_key_jwt` remains intact.
 
 The repository also still includes a legacy JWT-authenticated `/v1/*` surface used by the current JavaScript SDK:
 
@@ -179,7 +216,7 @@ Production deployment requires explicit authentication, signing configuration, a
 
 For production use, plan for at least:
 
-- explicit API-key and JWT configuration
+- explicit machine-client registration and access-token signing configuration
 - signing configuration and key management through environment setup
 - receipt lifecycle checks before downstream reliance
 - database and network security controls appropriate for the deployment environment
@@ -205,6 +242,7 @@ These artifacts document the public verification lifecycle only. They intentiona
 Public-facing security properties for this repository are:
 
 - scoped API authentication for the integration-facing API
+- browser Authorization Code + PKCE with exact redirect URI matching and consent persistence
 - request validation and rate limiting at the gateway
 - signed verification receipts returned with verification responses
 - later verification of stored receipt integrity and status
