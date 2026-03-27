@@ -27,6 +27,141 @@ model ApiKey {
   verificationLogs VerificationRecord[]
 }
 
+model Client {
+  id               String                @id @default(cuid())
+  name             String?
+  userEmail        String?
+  clientType       String                @default("machine")
+  scopes           String                @default("verify read")
+  jwks             Json?
+  jwksUrl          String?
+  ownerUserId      String?
+  ownerUser        UserAccount?           @relation("ClientOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  subscriptionId   String?
+  plan             String                @default("FREE")
+  usageLimit       Int                   @default(100)
+  usageCount       Int                   @default(0)
+  createdAt        DateTime              @default(now())
+  createdBy        String                @default("self-service")
+  revokedAt        DateTime?
+  lastUsedAt       DateTime?
+  assertionNonces  ClientAssertionNonce[]
+  redirectUris     ClientRedirectUri[]
+  authRequests     OAuthAuthorizationRequest[]
+  authCodes        OAuthAuthorizationCode[]
+  consentGrants    OAuthConsentGrant[]
+
+  @@index([ownerUserId])
+}
+
+model ClientRedirectUri {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  redirectUri String
+  createdAt   DateTime @default(now())
+
+  @@unique([clientId, redirectUri])
+  @@index([clientId])
+}
+
+model ClientAssertionNonce {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  jtiHash    String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@unique([clientId, jtiHash])
+  @@index([expiresAt])
+}
+
+model UserAccount {
+  id              String                   @id @default(cuid())
+  email           String                   @unique
+  displayName     String?
+  passwordHash    String
+  passwordSalt    String
+  disabledAt      DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  lastLoginAt     DateTime?
+  ownedClients    Client[]                 @relation("ClientOwner")
+  browserSessions BrowserSession[]
+  consentGrants   OAuthConsentGrant[]
+  authRequests    OAuthAuthorizationRequest[]
+  authCodes       OAuthAuthorizationCode[]
+}
+
+model BrowserSession {
+  id               String      @id @default(cuid())
+  userId           String
+  user             UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionTokenHash String      @unique
+  createdAt        DateTime    @default(now())
+  lastUsedAt       DateTime    @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+
+  @@index([expiresAt])
+  @@index([userId, expiresAt])
+}
+
+model OAuthConsentGrant {
+  id            String      @id @default(cuid())
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId        String
+  user          UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grantedScopes String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  revokedAt     DateTime?
+
+  @@unique([clientId, userId])
+  @@index([clientId])
+  @@index([userId])
+}
+
+model OAuthAuthorizationRequest {
+  id                  String       @id @default(cuid())
+  clientId            String
+  client              Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId              String?
+  user                UserAccount? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri         String
+  scope               String
+  state               String?
+  codeChallenge       String
+  codeChallengeMethod String       @default("S256")
+  expiresAt           DateTime
+  createdAt           DateTime     @default(now())
+  consumedAt          DateTime?
+
+  @@index([clientId, expiresAt])
+  @@index([userId, expiresAt])
+}
+
+model OAuthAuthorizationCode {
+  id                  String      @id @default(cuid())
+  clientId            String
+  client              Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId              String
+  user                UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash            String      @unique
+  redirectUri         String
+  scope               String
+  codeChallenge       String
+  codeChallengeMethod String      @default("S256")
+  expiresAt           DateTime
+  createdAt           DateTime    @default(now())
+  usedAt              DateTime?
+
+  @@index([clientId, expiresAt])
+  @@index([userId, expiresAt])
+}
+
 model VerificationRecord {
   id            String   @id @default(cuid())
   apiKeyId      String
@@ -63,31 +198,31 @@ model WorkflowEvent {
 }
 
 model Receipt {
-  id               String   @id @default(uuid())
-  receiptHash      String
-  inputsCommitment String
-  policyProfile    String
-  parcelId         String?
-  decision         String
-  reasons          String
-  riskScore        Int
-  checks           String
-  rawInputsHash    String
-  signingKeyId     String?
-  createdAt        DateTime @default(now())
-  anchorStatus     String   @default("PENDING")
-  anchorTxHash     String?
-  anchorChainId    String?
-  anchorId         String?
-  anchorSubjectDigest  String?
-  anchorSubjectVersion String?
-  anchorAnchoredAt     DateTime?
-  fraudRisk        String?  // JSON
-  zkpAttestation   String?  // JSON
-  receiptSignature String?  // Compact JWS
-  receiptSignatureAlg String?
-  receiptSignatureKid String?
-  revoked          Boolean  @default(false)
+  id                    String   @id @default(uuid())
+  receiptHash           String
+  inputsCommitment      String
+  policyProfile         String
+  parcelId              String?
+  decision              String
+  reasons               String
+  riskScore             Int
+  checks                String
+  rawInputsHash         String
+  signingKeyId          String?
+  createdAt             DateTime @default(now())
+  anchorStatus          String   @default("PENDING")
+  anchorTxHash          String?
+  anchorChainId         String?
+  anchorId              String?
+  anchorSubjectDigest   String?
+  anchorSubjectVersion  String?
+  anchorAnchoredAt      DateTime?
+  fraudRisk             String?  // JSON
+  zkpAttestation        String?  // JSON
+  receiptSignature      String?  // Compact JWS
+  receiptSignatureAlg   String?
+  receiptSignatureKid   String?
+  revoked               Boolean  @default(false)
 }
 
 model Property {
@@ -132,36 +267,36 @@ model RegistrySource {
 }
 
 model RegistryCache {
-  id           String         @id @default(cuid())
-  sourceId     String
-  subjectHash  String
-  responseJson String
-  status       String
-  fetchedAt    DateTime       @default(now())
-  expiresAt    DateTime
+  id            String         @id @default(cuid())
+  sourceId      String
+  subjectHash   String
+  responseJson  String
+  status        String
+  fetchedAt     DateTime       @default(now())
+  expiresAt     DateTime
   sourceVersion String?
-  source       RegistrySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source        RegistrySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([sourceId, subjectHash])
   @@index([expiresAt])
 }
 
 model RegistryOracleJob {
-  id              String         @id @default(cuid())
-  sourceId        String
-  subjectHash     String
-  zkCircuit       String
-  inputCommitment String
-  jobType         String         @default("VERIFY")
-  status          String
-  resultStatus    String?
-  proofUri        String?
-  error           String?
-  snapshotCapturedAt DateTime?
-  snapshotSourceVersion String?
-  createdAt       DateTime       @default(now())
-  completedAt     DateTime?
-  source          RegistrySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  id                     String         @id @default(cuid())
+  sourceId               String
+  subjectHash            String
+  zkCircuit              String
+  inputCommitment        String
+  jobType                String         @default("VERIFY")
+  status                 String
+  resultStatus           String?
+  proofUri               String?
+  error                  String?
+  snapshotCapturedAt     DateTime?
+  snapshotSourceVersion  String?
+  createdAt              DateTime       @default(now())
+  completedAt            DateTime?
+  source                 RegistrySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@index([sourceId, createdAt])
   @@index([status])

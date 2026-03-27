@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 
 import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
@@ -44,6 +44,24 @@ import { ensureDatabase } from './db.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
 import { loadRuntimeEnv, resolveDatabaseUrl } from './env.js';
+import {
+  hashOpaqueToken,
+  hashPasswordRecord,
+  clientRegistrationSchema,
+  issueAccessToken,
+  issueOpaqueToken,
+  normalizeJwks,
+  oauthAuthorizeDecisionSchema,
+  oauthAuthorizeQuerySchema,
+  oauthLoginSchema,
+  oauthUserRegistrationSchema,
+  resolveGrantedScopes,
+  tokenRequestSchema,
+  verifyPasswordHash,
+  verifyPkceCodeVerifier,
+  verifyClientAssertion
+} from './auth.js';
+import { buildAssertionReplayStore, type AssertionReplayStore } from './replayStore.js';
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 import {
@@ -57,6 +75,7 @@ import {
   getApiRateLimitKey,
   isCorsOriginAllowed,
   requireApiKeyScope,
+  verifyAccessTokenPayload,
   type SecurityConfig,
   verifyRevocationHeaders
 } from './security.js';
@@ -138,6 +157,20 @@ const registryVerifyBatchInputSchema = z.object({
 });
 const receiptIdParamSchema = z.object({
   receiptId: z.string().uuid()
+});
+const clientIdParamSchema = z.object({
+  clientId: z.string().min(1)
+});
+const clientKeyParamSchema = z.object({
+  clientId: z.string().min(1),
+  kid: z.string().min(1)
+});
+const clientKeyCreateSchema = z.object({
+  jwk: z.object({ kty: z.string().min(1) }).passthrough()
+});
+const tokenIntrospectionSchema = z.object({
+  token: z.string().trim().min(1),
+  token_type_hint: z.string().trim().optional()
 });
 
 const vantaVerificationResultSchema = z.object({
@@ -388,6 +421,90 @@ function normalizeForwardedProto(value: string | string[] | undefined): string |
   if (!raw) return null;
   const first = raw.split(',')[0]?.trim().toLowerCase();
   return first || null;
+}
+
+function buildExternalUrl(request: FastifyRequest, pathname: string): string | undefined {
+  const host = request.headers.host;
+  if (!host) return undefined;
+
+  const proto =
+    normalizeForwardedProto(request.headers['x-forwarded-proto']) ||
+    ((request.socket as { encrypted?: boolean }).encrypted ? 'https' : 'http');
+  return `${proto}://${host}${pathname}`;
+}
+
+function parseCookieHeader(headerValue: string | undefined): Map<string, string> {
+  const cookies = new Map<string, string>();
+  if (!headerValue) {
+    return cookies;
+  }
+
+  for (const part of headerValue.split(';')) {
+    const [name, ...rest] = part.trim().split('=');
+    if (!name) {
+      continue;
+    }
+    const raw = rest.join('=');
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(raw);
+    } catch {
+      decoded = raw;
+    }
+    cookies.set(name, decoded);
+  }
+
+  return cookies;
+}
+
+function serializeCookie(name: string, value: string, options: {
+  httpOnly?: boolean;
+  maxAgeSeconds?: number;
+  path?: string;
+  sameSite?: 'Lax' | 'Strict' | 'None';
+  secure?: boolean;
+} = {}): string {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  parts.push(`Path=${options.path || '/'}`);
+  if (typeof options.maxAgeSeconds === 'number') {
+    parts.push(`Max-Age=${Math.max(0, Math.floor(options.maxAgeSeconds))}`);
+  }
+  if (options.httpOnly !== false) {
+    parts.push('HttpOnly');
+  }
+  if (options.sameSite) {
+    parts.push(`SameSite=${options.sameSite}`);
+  }
+  if (options.secure) {
+    parts.push('Secure');
+  }
+  return parts.join('; ');
+}
+
+function appendQueryParams(targetUrl: string, values: Record<string, string | undefined>): string {
+  // new URL() throws on relative paths, so handle them without it
+  const [base, existing] = targetUrl.split('?') as [string, string | undefined];
+  const params = new URLSearchParams(existing ?? '');
+  for (const [key, value] of Object.entries(values)) {
+    if (typeof value === 'string' && value.length > 0) {
+      params.set(key, value);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+function buildHtmlPage(title: string, body: string): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head><body>${body}</body></html>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function databaseUrlHasRequiredSslMode(databaseUrl: string | undefined): boolean {
@@ -827,6 +944,7 @@ class BlockchainVerifier {
 }
 
 type BuildServerOptions = {
+  assertionReplayStore?: AssertionReplayStore;
   fetchImpl?: typeof fetch;
   logger?: boolean | Record<string, unknown>;
   workflowEventSink?: WorkflowEventSink;
@@ -844,6 +962,16 @@ export async function buildServer(options: BuildServerOptions = {}) {
   requireProductionVerifierConfig();
   const app = Fastify({ logger: options.logger ?? true });
   const securityConfig = buildSecurityConfig();
+  const assertionReplayStore = options.assertionReplayStore ?? buildAssertionReplayStore(prisma);
+  const browserSessionStore = (prisma as PrismaClient & { browserSession: any }).browserSession;
+  const oauthConsentGrantStore = (prisma as PrismaClient & { oAuthConsentGrant: any }).oAuthConsentGrant;
+  const oauthAuthorizationRequestStore = (prisma as PrismaClient & { oAuthAuthorizationRequest: any }).oAuthAuthorizationRequest;
+  const oauthAuthorizationCodeStore = (prisma as PrismaClient & { oAuthAuthorizationCode: any }).oAuthAuthorizationCode;
+  const userAccountStore = (prisma as PrismaClient & { userAccount: any }).userAccount;
+  const oauthSessionCookieName = (process.env.TRUSTSIGNAL_OAUTH_SESSION_COOKIE_NAME || 'trustsignal_oauth_session').trim();
+  const oauthSessionTtlSeconds = Math.max(300, Number.parseInt(process.env.TRUSTSIGNAL_OAUTH_SESSION_TTL_SECONDS || '43200', 10) || 43200);
+  const oauthAuthorizationCodeTtlSeconds = Math.max(60, Number.parseInt(process.env.TRUSTSIGNAL_OAUTH_CODE_TTL_SECONDS || '300', 10) || 300);
+  const oauthCookieSecure = (process.env.NODE_ENV || 'development') === 'production';
   const propertyApiKey = resolvePropertyApiKey();
   const registryAdapterService = createRegistryAdapterService(prisma, {
     fetchImpl: options.fetchImpl
@@ -889,10 +1017,99 @@ export async function buildServer(options: BuildServerOptions = {}) {
     buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10],
     registers: [metricsRegistry]
   });
+  const tokenIssuanceTotal = new Counter({
+    name: 'trustsignal_token_issuance_total',
+    help: 'Token issuance attempts by outcome',
+    labelNames: ['outcome'] as const,
+    registers: [metricsRegistry]
+  });
+  const tokenIssuanceFailuresTotal = new Counter({
+    name: 'trustsignal_token_issuance_failures_total',
+    help: 'Token issuance failures by reason',
+    labelNames: ['reason'] as const,
+    registers: [metricsRegistry]
+  });
+  const tokenReplayRejectionsTotal = new Counter({
+    name: 'trustsignal_token_replay_rejections_total',
+    help: 'Rejected replayed client assertion attempts',
+    labelNames: [] as const,
+    registers: [metricsRegistry]
+  });
+  const clientRevocationsTotal = new Counter({
+    name: 'trustsignal_client_revocations_total',
+    help: 'Client revocations processed',
+    labelNames: [] as const,
+    registers: [metricsRegistry]
+  });
+  const oauthLoginTotal = new Counter({
+    name: 'trustsignal_oauth_login_total',
+    help: 'Browser OAuth login attempts by outcome',
+    labelNames: ['outcome'] as const,
+    registers: [metricsRegistry]
+  });
+  const oauthAuthorizationCodeTotal = new Counter({
+    name: 'trustsignal_oauth_authorization_code_total',
+    help: 'OAuth authorization code issuance attempts by outcome',
+    labelNames: ['outcome'] as const,
+    registers: [metricsRegistry]
+  });
   const perApiKeyRateLimit = {
     max: securityConfig.perApiKeyRateLimitMax,
     timeWindow: securityConfig.rateLimitWindow,
     keyGenerator: getApiRateLimitKey
+  };
+  const requireActiveClient = async (request: FastifyRequest, reply: FastifyReply) => {
+    const clientId = request.authContext?.clientId;
+    if (!clientId) {
+      return;
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: { revokedAt: true }
+    });
+    if (!client || client.revokedAt) {
+      await reply.code(403).send({ error: 'client_revoked' });
+      return;
+    }
+
+    if (request.authContext?.userId) {
+      const user = await userAccountStore.findUnique({
+        where: { id: request.authContext.userId },
+        select: { disabledAt: true }
+      });
+      if (!user || user.disabledAt) {
+        await reply.code(403).send({ error: 'user_disabled' });
+      }
+    }
+  };
+  const authPreHandlers = {
+    read: [requireApiKeyScope(securityConfig, 'read'), requireActiveClient],
+    verify: [requireApiKeyScope(securityConfig, 'verify'), requireActiveClient],
+    anchor: [requireApiKeyScope(securityConfig, 'anchor'), requireActiveClient],
+    revoke: [requireApiKeyScope(securityConfig, 'revoke'), requireActiveClient]
+  };
+  const requireClientOwnership = async (request: FastifyRequest, reply: FastifyReply) => {
+    const params = clientIdParamSchema.safeParse(request.params);
+    if (!params.success) {
+      await reply.code(400).send({ error: 'invalid_client_id' });
+      return;
+    }
+
+    const authenticatedClientId = request.authContext?.clientId;
+    if (!authenticatedClientId) {
+      await reply.code(403).send({ error: 'client_token_required' });
+      return;
+    }
+
+    if (authenticatedClientId !== params.data.clientId) {
+      await reply.code(403).send({ error: 'client_mismatch' });
+    }
+  };
+  const requireNoRequestBody = async (request: FastifyRequest, reply: FastifyReply) => {
+    if (hasUnexpectedBody(request.body)) {
+      await reply.code(400).send({ error: 'unexpected_body' });
+    }
   };
 
   app.addHook('onRequest', async (request) => {
@@ -931,6 +1148,17 @@ export async function buildServer(options: BuildServerOptions = {}) {
       requestId: request.id
     })
   });
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    (_request, body, done) => {
+      try {
+        done(null, Object.fromEntries(new URLSearchParams(String(body))));
+      } catch (error) {
+        done(error as Error);
+      }
+    }
+  );
   let databaseReady = true;
   let databaseInitError: string | null = null;
   try {
@@ -958,6 +1186,220 @@ export async function buildServer(options: BuildServerOptions = {}) {
   const workflowService = new WorkflowService(undefined, {
     eventSink: workflowEventSink
   });
+
+  const buildOauthSetCookie = (value: string, maxAgeSeconds = oauthSessionTtlSeconds) =>
+    serializeCookie(oauthSessionCookieName, value, {
+      httpOnly: true,
+      maxAgeSeconds,
+      path: '/',
+      sameSite: 'Lax',
+      secure: oauthCookieSecure
+    });
+
+  const clearOauthSessionCookie = () =>
+    serializeCookie(oauthSessionCookieName, '', {
+      httpOnly: true,
+      maxAgeSeconds: 0,
+      path: '/',
+      sameSite: 'Lax',
+      secure: oauthCookieSecure
+    });
+
+  const getOauthSessionCookie = (request: FastifyRequest): string | null => {
+    const cookieHeader = request.headers.cookie;
+    const raw = parseCookieHeader(typeof cookieHeader === 'string' ? cookieHeader : undefined).get(oauthSessionCookieName);
+    return raw || null;
+  };
+
+  const resolveReturnTo = (request: FastifyRequest, rawValue: string | undefined): string => {
+    const trimmed = (rawValue || '').trim();
+    if (!trimmed) {
+      return '/api/v1/oauth/authorize';
+    }
+    if (trimmed.startsWith('/')) {
+      return trimmed;
+    }
+
+    try {
+      const url = new URL(trimmed);
+      const origin = buildExternalUrl(request, '')?.replace(/\/$/, '');
+      if (origin && `${url.protocol}//${url.host}` === origin) {
+        return `${url.pathname}${url.search}${url.hash}`;
+      }
+    } catch {
+      return '/api/v1/oauth/authorize';
+    }
+
+    return '/api/v1/oauth/authorize';
+  };
+
+  const buildAuthorizationReturnTo = (input: {
+    clientId: string;
+    redirectUri: string;
+    scope: string;
+    state?: string | null;
+    codeChallenge: string;
+    codeChallengeMethod?: string | null;
+  }) =>
+    appendQueryParams('/api/v1/oauth/authorize', {
+      response_type: 'code',
+      client_id: input.clientId,
+      redirect_uri: input.redirectUri,
+      scope: input.scope,
+      state: input.state || undefined,
+      code_challenge: input.codeChallenge,
+      code_challenge_method: input.codeChallengeMethod || 'S256'
+    });
+
+  const issueBrowserSession = async (request: FastifyRequest, userId: string) => {
+    const sessionSecret = issueOpaqueToken(32);
+    const sessionToken = issueOpaqueToken(16);
+    const expiresAt = new Date(Date.now() + oauthSessionTtlSeconds * 1000);
+    const record = await browserSessionStore.create({
+      data: {
+        userId,
+        sessionTokenHash: hashOpaqueToken(`${sessionToken}.${sessionSecret}`),
+        expiresAt
+      }
+    });
+
+    return {
+      cookieValue: `${record.id}.${sessionToken}.${sessionSecret}`,
+      expiresAt
+    };
+  };
+
+  const loadAuthenticatedBrowserSession = async (request: FastifyRequest) => {
+    const rawCookie = getOauthSessionCookie(request);
+    if (!rawCookie) {
+      return null;
+    }
+
+    const [sessionId, sessionToken, sessionSecret] = rawCookie.split('.');
+    if (!sessionId || !sessionToken || !sessionSecret) {
+      return null;
+    }
+
+    const session = await browserSessionStore.findUnique({
+      where: { id: sessionId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+            disabledAt: true
+          }
+        }
+      }
+    });
+    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+      return null;
+    }
+
+    const presentedHash = hashOpaqueToken(`${sessionToken}.${sessionSecret}`);
+    const expectedHash = session.sessionTokenHash;
+    if (
+      presentedHash.length !== expectedHash.length ||
+      !timingSafeEqual(Buffer.from(presentedHash), Buffer.from(expectedHash))
+    ) {
+      return null;
+    }
+
+    await browserSessionStore.update({
+      where: { id: session.id },
+      data: { lastUsedAt: new Date() }
+    });
+
+    return session;
+  };
+
+  const issueAuthorizationCode = async (input: {
+    clientId: string;
+    userId: string;
+    sessionId?: string | null;
+    consentGrantId?: string | null;
+    redirectUri: string;
+    scope: string;
+    state?: string;
+    nonce?: string;
+    codeChallenge: string;
+  }) => {
+    const code = issueOpaqueToken(32);
+    await oauthAuthorizationCodeStore.create({
+      data: {
+        clientId: input.clientId,
+        userId: input.userId,
+        codeHash: hashOpaqueToken(code),
+        redirectUri: input.redirectUri,
+        scope: input.scope,
+        codeChallenge: input.codeChallenge,
+        codeChallengeMethod: 'S256',
+        expiresAt: new Date(Date.now() + oauthAuthorizationCodeTtlSeconds * 1000)
+      }
+    });
+    return code;
+  };
+
+  const findOAuthClientWithRedirects = (clientId: string) =>
+    prisma.client.findUnique({
+      where: { id: clientId },
+      include: {
+        redirectUris: true
+      }
+    });
+
+  const redirectWithOauthResult = (reply: FastifyReply, redirectUri: string, values: Record<string, string | undefined>) =>
+    reply.redirect(appendQueryParams(redirectUri, values), 303);
+
+  const reserveMeteredUsage = async (request: FastifyRequest, reply: FastifyReply) => {
+    const clientId = request.authContext?.clientId;
+    if (!clientId) {
+      return true;
+    }
+    if (request.authContext?.userId) {
+      return true;
+    }
+
+    const reserved = await prisma.$queryRaw<Array<{ id: string; usageLimit: number; usageCount: number }>>`
+      UPDATE "Client"
+      SET "usageCount" = "usageCount" + 1,
+          "lastUsedAt" = CURRENT_TIMESTAMP
+      WHERE "id" = ${clientId}
+        AND "revokedAt" IS NULL
+        AND "usageCount" < "usageLimit"
+      RETURNING "id", "usageLimit", "usageCount"
+    `;
+
+    if (reserved.length > 0) {
+      return true;
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: {
+        revokedAt: true,
+        usageLimit: true,
+        usageCount: true
+      }
+    });
+    if (!client || client.revokedAt) {
+      await reply.code(403).send({ error: 'client_revoked' });
+      return false;
+    }
+
+    if (client.usageCount >= client.usageLimit) {
+      await reply.code(429).send({
+        error: 'usage_limit_exceeded',
+        usageLimit: client.usageLimit,
+        usageCount: client.usageCount
+      });
+      return false;
+    }
+
+    await reply.code(503).send({ error: 'usage_reservation_failed' });
+    return false;
+  };
 
   const dbOptionalRoutes = new Set([
     '/api/v1/health',
@@ -1016,8 +1458,1008 @@ export async function buildServer(options: BuildServerOptions = {}) {
     return reply.send(await metricsRegistry.metrics());
   });
 
+  app.get('/api/v1/clients', {
+    config: {
+      rateLimit: {
+        max: 30,
+        timeWindow: '1 minute',
+        keyGenerator: (request) => request.ip
+      }
+    }
+  }, async (request, reply) => {
+    const { userEmail, clientType } = request.query as { userEmail?: string; clientType?: string };
+    if (!userEmail || typeof userEmail !== 'string' || !userEmail.includes('@')) {
+      return reply.code(400).send({ error: 'userEmail query param is required' });
+    }
+    const where: Record<string, unknown> = { userEmail: userEmail.trim().toLowerCase() };
+    if (clientType) {
+      where.clientType = clientType;
+    }
+    const clients = await prisma.client.findMany({
+      where,
+      select: {
+        id: true,
+        clientType: true,
+        name: true,
+        scopes: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    return reply.send({
+      clients: clients.map((c: { id: string; clientType: string; name: string | null; scopes: string; createdAt: Date }) => ({
+        client_id: c.id,
+        client_type: c.clientType,
+        name: c.name ?? null,
+        scope: c.scopes,
+        created_at: c.createdAt.toISOString()
+      }))
+    });
+  });
+
+  app.post('/api/v1/clients', {
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: '1 minute',
+        keyGenerator: (request) => request.ip
+      }
+    }
+  }, async (request, reply) => {
+    const parsed = clientRegistrationSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_client_registration', details: parsed.error.flatten() });
+    }
+
+    if (parsed.data.clientType === 'browser') {
+      const session = await loadAuthenticatedBrowserSession(request);
+      if (!session) {
+        return reply.code(401).send({ error: 'login_required' });
+      }
+      if (session.user.disabledAt) {
+        reply.header('set-cookie', clearOauthSessionCookie());
+        return reply.code(403).send({ error: 'user_disabled' });
+      }
+
+      const browserClient = await prisma.client.create({
+        data: {
+          name: parsed.data.name || 'Browser OAuth client',
+          userEmail: parsed.data.userEmail || session.user.email || null,
+          clientType: 'browser',
+          scopes: (parsed.data.scopes || ['read']).join(' '),
+          ownerUserId: session.user.id,
+          createdBy: session.user.id,
+          redirectUris: {
+            create: (parsed.data.redirectUris || []).map((redirectUri: string) => ({
+              redirectUri
+            }))
+          }
+        },
+        include: {
+          redirectUris: true
+        }
+      });
+
+      return reply.code(201).send({
+        client_id: browserClient.id,
+        client_type: browserClient.clientType,
+        scope: browserClient.scopes,
+        owner_user_id: session.user.id,
+        redirect_uris: browserClient.redirectUris.map((entry: { redirectUri: string }) => entry.redirectUri),
+        authorization_endpoint: buildExternalUrl(request, '/api/v1/oauth/authorize') || '/api/v1/oauth/authorize',
+        token_endpoint: buildExternalUrl(request, '/api/v1/token') || '/api/v1/token',
+        token_endpoint_auth_method: 'none',
+        grant_types: ['authorization_code'],
+        response_types: ['code'],
+        pkce_required: true
+      });
+    }
+
+    const client = await prisma.client.create({
+      data: {
+        name: parsed.data.name,
+        userEmail: parsed.data.userEmail,
+        clientType: parsed.data.clientType,
+        scopes: (parsed.data.scopes || ['verify', 'read']).join(' '),
+        jwks: parsed.data.jwks ? JSON.parse(JSON.stringify(parsed.data.jwks)) : undefined,
+        jwksUrl: parsed.data.jwksUrl,
+        createdBy: request.ip
+      }
+    });
+
+    return reply.code(201).send({
+      client_id: client.id,
+      client_type: client.clientType,
+      plan: client.plan,
+      usage_limit: client.usageLimit,
+      scope: client.scopes,
+      token_endpoint: buildExternalUrl(request, '/api/v1/token') || '/api/v1/token',
+      token_endpoint_auth_method: 'private_key_jwt',
+      grant_types: ['client_credentials'],
+      legacy_api_key_support: true
+    });
+  });
+
+  app.post('/api/v1/auth/register', {
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: '1 minute',
+        keyGenerator: (request) => request.ip
+      }
+    }
+  }, async (request, reply) => {
+    const parsed = oauthUserRegistrationSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_oauth_registration', details: parsed.error.flatten() });
+    }
+
+    const email = parsed.data.email.trim().toLowerCase();
+    const existing = await userAccountStore.findUnique({
+      where: { email },
+      select: { id: true }
+    });
+    if (existing) {
+      return reply.code(409).send({ error: 'user_already_exists' });
+    }
+
+    const passwordRecord = await hashPasswordRecord(parsed.data.password);
+    const user = await userAccountStore.create({
+      data: {
+        email,
+        displayName: parsed.data.displayName,
+        passwordHash: passwordRecord.passwordHash,
+        passwordSalt: passwordRecord.passwordSalt
+      }
+    });
+
+    return reply.code(201).send({
+      user_id: user.id,
+      email: user.email,
+      display_name: user.displayName
+    });
+  });
+
+  app.get('/api/v1/auth/login', async (request, reply) => {
+    const query = z.object({
+      return_to: z.string().trim().max(4096).optional()
+    }).safeParse(request.query);
+    const returnTo = resolveReturnTo(request, query.success ? query.data.return_to : undefined);
+    reply.type('text/html; charset=utf-8');
+    return reply.send(
+      buildHtmlPage(
+        'TrustSignal Login',
+        `<h1>TrustSignal Login</h1>
+<form method="post" action="/api/v1/auth/login">
+  <input type="hidden" name="return_to" value="${escapeHtml(returnTo)}">
+  <label>Email <input type="email" name="email" autocomplete="username" required></label><br>
+  <label>Password <input type="password" name="password" autocomplete="current-password" required></label><br>
+  <button type="submit">Sign in</button>
+</form>`
+      )
+    );
+  });
+
+  app.post('/api/v1/auth/login', {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
+        keyGenerator: (request) => request.ip
+      }
+    }
+  }, async (request, reply) => {
+    const parsed = oauthLoginSchema.safeParse(request.body);
+    if (!parsed.success) {
+      oauthLoginTotal.inc({ outcome: 'failure' });
+      return reply.code(400).send({ error: 'invalid_oauth_login', details: parsed.error.flatten() });
+    }
+
+    const email = parsed.data.email.trim().toLowerCase();
+    const user = await userAccountStore.findUnique({
+      where: { email }
+    });
+    if (!user || !(await verifyPasswordHash(parsed.data.password, user.passwordHash, user.passwordSalt))) {
+      oauthLoginTotal.inc({ outcome: 'failure' });
+      return reply.code(401).send({ error: 'invalid_credentials' });
+    }
+    if (user.disabledAt) {
+      oauthLoginTotal.inc({ outcome: 'failure' });
+      reply.header('set-cookie', clearOauthSessionCookie());
+      return reply.code(403).send({ error: 'user_disabled' });
+    }
+
+    const session = await issueBrowserSession(request, user.id);
+    await userAccountStore.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
+    reply.header('set-cookie', buildOauthSetCookie(session.cookieValue));
+    oauthLoginTotal.inc({ outcome: 'success' });
+
+    const returnTo = resolveReturnTo(request, parsed.data.return_to);
+    if (parsed.data.return_to) {
+      return reply.redirect(returnTo, 303);
+    }
+
+    return reply.send({
+      status: 'authenticated',
+      user_id: user.id,
+      email: user.email,
+      display_name: user.displayName
+    });
+  });
+
+  app.post('/api/v1/auth/logout', async (request, reply) => {
+    const session = await loadAuthenticatedBrowserSession(request);
+    if (session) {
+      await browserSessionStore.updateMany({
+        where: {
+          id: session.id,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: new Date()
+        }
+      });
+    }
+
+    reply.header('set-cookie', clearOauthSessionCookie());
+    return reply.send({ status: 'signed_out' });
+  });
+
+  app.get('/api/v1/oauth/authorize', async (request, reply) => {
+    const parsed = oauthAuthorizeQuerySchema.safeParse(request.query);
+    if (!parsed.success) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return reply.code(400).send({ error: 'invalid_oauth_authorize_request', details: parsed.error.flatten() });
+    }
+
+    const browserClient = await findOAuthClientWithRedirects(parsed.data.client_id);
+    if (!browserClient || browserClient.revokedAt || browserClient.clientType !== 'browser') {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return reply.code(403).send({ error: 'invalid_client' });
+    }
+
+    const redirectAllowed = browserClient.redirectUris.some((entry: { redirectUri: string }) => entry.redirectUri === parsed.data.redirect_uri);
+    if (!redirectAllowed) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return reply.code(400).send({ error: 'invalid_redirect_uri' });
+    }
+
+    const grantedScope = resolveGrantedScopes(browserClient.scopes, parsed.data.scope);
+    if (!grantedScope) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return reply.code(400).send({ error: 'invalid_scope' });
+    }
+
+    const session = await loadAuthenticatedBrowserSession(request);
+    if (!session) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      if (parsed.data.prompt === 'none') {
+        return redirectWithOauthResult(reply, parsed.data.redirect_uri, {
+          error: 'login_required',
+          state: parsed.data.state
+        });
+      }
+      return reply.redirect(`/api/v1/auth/login?return_to=${encodeURIComponent(request.url)}`, 303);
+    }
+
+    if (session.user.disabledAt) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      reply.header('set-cookie', clearOauthSessionCookie());
+      return reply.code(403).send({ error: 'user_disabled' });
+    }
+
+    const consentGrant = await oauthConsentGrantStore.findUnique({
+      where: {
+        clientId_userId: {
+          clientId: browserClient.id,
+          userId: session.user.id
+        }
+      }
+    });
+    const consentSatisfied =
+      Boolean(consentGrant && !consentGrant.revokedAt && resolveGrantedScopes(consentGrant.grantedScopes, grantedScope) === grantedScope) &&
+      parsed.data.prompt !== 'consent';
+
+    if (consentSatisfied) {
+      const code = await issueAuthorizationCode({
+        clientId: browserClient.id,
+        userId: session.user.id,
+        redirectUri: parsed.data.redirect_uri,
+        scope: grantedScope,
+        state: parsed.data.state,
+        codeChallenge: parsed.data.code_challenge
+      });
+      oauthAuthorizationCodeTotal.inc({ outcome: 'success' });
+      return redirectWithOauthResult(reply, parsed.data.redirect_uri, {
+        code,
+        state: parsed.data.state
+      });
+    }
+
+    if (parsed.data.prompt === 'none') {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return redirectWithOauthResult(reply, parsed.data.redirect_uri, {
+        error: 'consent_required',
+        state: parsed.data.state
+      });
+    }
+
+    const authorizationRequest = await oauthAuthorizationRequestStore.create({
+      data: {
+        clientId: browserClient.id,
+        userId: session.user.id,
+        redirectUri: parsed.data.redirect_uri,
+        scope: grantedScope,
+        state: parsed.data.state,
+        codeChallenge: parsed.data.code_challenge,
+        codeChallengeMethod: parsed.data.code_challenge_method,
+        expiresAt: new Date(Date.now() + oauthAuthorizationCodeTtlSeconds * 1000)
+      }
+    });
+
+    reply.type('text/html; charset=utf-8');
+    return reply.send(
+      buildHtmlPage(
+        'TrustSignal Consent',
+        `<h1>Authorize ${escapeHtml(browserClient.name || browserClient.id)}</h1>
+<p>Signed in as ${escapeHtml(session.user.email)}</p>
+<p>This app is requesting: ${escapeHtml(grantedScope)}</p>
+<form method="post" action="/api/v1/oauth/authorize/consent">
+  <input type="hidden" name="request_id" value="${escapeHtml(authorizationRequest.id)}">
+  <button type="submit" name="decision" value="approve">Approve</button>
+  <button type="submit" name="decision" value="deny">Deny</button>
+</form>`
+      )
+    );
+  });
+
+  app.post('/api/v1/oauth/authorize/consent', async (request, reply) => {
+    const parsed = oauthAuthorizeDecisionSchema.safeParse(request.body);
+    if (!parsed.success) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return reply.code(400).send({ error: 'invalid_oauth_authorize_decision', details: parsed.error.flatten() });
+    }
+
+    const session = await loadAuthenticatedBrowserSession(request);
+    if (!session) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      const authorizationRequest = await oauthAuthorizationRequestStore.findUnique({
+        where: { id: parsed.data.request_id }
+      });
+      if (!authorizationRequest || authorizationRequest.consumedAt || authorizationRequest.expiresAt <= new Date()) {
+        return reply.code(401).send({ error: 'login_required' });
+      }
+
+      return reply.redirect(
+        `/api/v1/auth/login?return_to=${encodeURIComponent(
+          buildAuthorizationReturnTo({
+            clientId: authorizationRequest.clientId,
+            redirectUri: authorizationRequest.redirectUri,
+            scope: authorizationRequest.scope,
+            state: authorizationRequest.state,
+            codeChallenge: authorizationRequest.codeChallenge,
+            codeChallengeMethod: authorizationRequest.codeChallengeMethod
+          })
+        )}`,
+        303
+      );
+    }
+
+    if (session.user.disabledAt) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      reply.header('set-cookie', clearOauthSessionCookie());
+      return reply.code(403).send({ error: 'user_disabled' });
+    }
+
+    const authorizationRequest = await oauthAuthorizationRequestStore.findUnique({
+      where: { id: parsed.data.request_id },
+      include: {
+        client: {
+          include: {
+            redirectUris: true
+          }
+        },
+        user: true
+      }
+    });
+    if (
+      !authorizationRequest ||
+      authorizationRequest.consumedAt ||
+      authorizationRequest.expiresAt <= new Date() ||
+      authorizationRequest.client.revokedAt ||
+      authorizationRequest.client.clientType !== 'browser' ||
+      authorizationRequest.userId !== session.user.id
+    ) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return reply.code(400).send({ error: 'invalid_authorization_request' });
+    }
+
+    const consumed = await oauthAuthorizationRequestStore.updateMany({
+      where: {
+        id: authorizationRequest.id,
+        consumedAt: null
+      },
+      data: {
+        consumedAt: new Date()
+      }
+    });
+    if (consumed.count === 0) {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return reply.code(409).send({ error: 'authorization_request_consumed' });
+    }
+
+    if (parsed.data.decision === 'deny') {
+      oauthAuthorizationCodeTotal.inc({ outcome: 'failure' });
+      return redirectWithOauthResult(reply, authorizationRequest.redirectUri, {
+        error: 'access_denied',
+        state: authorizationRequest.state || undefined
+      });
+    }
+
+    const existingConsentGrant = await oauthConsentGrantStore.findUnique({
+      where: {
+        clientId_userId: {
+          clientId: authorizationRequest.clientId,
+          userId: session.user.id
+        }
+      }
+    });
+    const mergedConsentScopes = Array.from(
+      new Set(`${existingConsentGrant?.grantedScopes || ''} ${authorizationRequest.scope}`.trim().split(/\s+/).filter(Boolean))
+    ).join(' ');
+
+    await oauthConsentGrantStore.upsert({
+      where: {
+        clientId_userId: {
+          clientId: authorizationRequest.clientId,
+          userId: session.user.id
+        }
+      },
+      update: {
+        grantedScopes: mergedConsentScopes,
+        revokedAt: null
+      },
+      create: {
+        clientId: authorizationRequest.clientId,
+        userId: session.user.id,
+        grantedScopes: authorizationRequest.scope
+      }
+    });
+
+    const code = await issueAuthorizationCode({
+      clientId: authorizationRequest.clientId,
+      userId: session.user.id,
+      redirectUri: authorizationRequest.redirectUri,
+      scope: authorizationRequest.scope,
+      state: authorizationRequest.state || undefined,
+      codeChallenge: authorizationRequest.codeChallenge
+    });
+    oauthAuthorizationCodeTotal.inc({ outcome: 'success' });
+    return redirectWithOauthResult(reply, authorizationRequest.redirectUri, {
+      code,
+      state: authorizationRequest.state || undefined
+    });
+  });
+
+  app.get('/api/v1/clients/:clientId/keys', {
+    preHandler: [...authPreHandlers.read, requireClientOwnership],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const params = clientIdParamSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_client_id' });
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: params.data.clientId },
+      select: {
+        id: true,
+        clientType: true,
+        jwks: true,
+        jwksUrl: true
+      }
+    });
+    if (!client) {
+      return reply.code(404).send({ error: 'client_not_found' });
+    }
+    if (client.clientType === 'browser') {
+      return reply.code(409).send({ error: 'browser_client_has_no_keys' });
+    }
+
+    return reply.send({
+      client_id: client.id,
+      management_mode: client.jwksUrl ? 'jwks_url' : 'local_jwks',
+      jwks_url: client.jwksUrl,
+      keys: client.jwks ? normalizeJwks(client.jwks).keys : []
+    });
+  });
+
+  app.post('/api/v1/clients/:clientId/keys', {
+    preHandler: [...authPreHandlers.read, requireClientOwnership],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const params = clientIdParamSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_client_id' });
+    }
+    const parsed = clientKeyCreateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_client_key', details: parsed.error.flatten() });
+    }
+
+    const nextKey = parsed.data.jwk;
+    const nextKid = typeof nextKey.kid === 'string' ? nextKey.kid.trim() : '';
+    if (!nextKid) {
+      return reply.code(400).send({ error: 'client_key_kid_required' });
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: params.data.clientId },
+      select: {
+        clientType: true,
+        jwks: true,
+        jwksUrl: true
+      }
+    });
+    if (!client) {
+      return reply.code(404).send({ error: 'client_not_found' });
+    }
+    if (client.clientType === 'browser') {
+      return reply.code(409).send({ error: 'browser_client_has_no_keys' });
+    }
+    if (client.jwksUrl) {
+      return reply.code(409).send({ error: 'client_uses_jwks_url' });
+    }
+
+    const currentKeys = client.jwks ? normalizeJwks(client.jwks).keys : [];
+    if (currentKeys.some((key) => key.kid === nextKid)) {
+      return reply.code(409).send({ error: 'client_key_kid_conflict' });
+    }
+
+    const keys = [...currentKeys, nextKey];
+    await prisma.client.update({
+      where: { id: params.data.clientId },
+      data: {
+        jwks: JSON.parse(JSON.stringify({ keys }))
+      }
+    });
+
+    return reply.code(201).send({
+      client_id: params.data.clientId,
+      key_count: keys.length,
+      added_kid: nextKid,
+      keys
+    });
+  });
+
+  app.delete('/api/v1/clients/:clientId/keys/:kid', {
+    preHandler: [...authPreHandlers.read, requireClientOwnership],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const params = clientKeyParamSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_client_key_id' });
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: params.data.clientId },
+      select: {
+        clientType: true,
+        jwks: true,
+        jwksUrl: true
+      }
+    });
+    if (!client) {
+      return reply.code(404).send({ error: 'client_not_found' });
+    }
+    if (client.clientType === 'browser') {
+      return reply.code(409).send({ error: 'browser_client_has_no_keys' });
+    }
+    if (client.jwksUrl) {
+      return reply.code(409).send({ error: 'client_uses_jwks_url' });
+    }
+
+    const currentKeys = client.jwks ? normalizeJwks(client.jwks).keys : [];
+    const remainingKeys = currentKeys.filter((key) => key.kid !== params.data.kid);
+    if (remainingKeys.length === currentKeys.length) {
+      return reply.code(404).send({ error: 'client_key_not_found' });
+    }
+    if (remainingKeys.length === 0) {
+      return reply.code(409).send({ error: 'client_must_keep_one_key' });
+    }
+
+    await prisma.client.update({
+      where: { id: params.data.clientId },
+      data: {
+        jwks: JSON.parse(JSON.stringify({ keys: remainingKeys }))
+      }
+    });
+
+    return reply.send({
+      client_id: params.data.clientId,
+      removed_kid: params.data.kid,
+      key_count: remainingKeys.length,
+      keys: remainingKeys
+    });
+  });
+
+  app.post('/api/v1/clients/:clientId/revoke', {
+    preHandler: [...authPreHandlers.revoke, requireClientOwnership, requireNoRequestBody],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const params = clientIdParamSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_client_id' });
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: params.data.clientId },
+      select: {
+        id: true,
+        revokedAt: true
+      }
+    });
+    if (!client) {
+      return reply.code(404).send({ error: 'client_not_found' });
+    }
+    if (client.revokedAt) {
+      return reply.code(409).send({
+        error: 'client_already_revoked',
+        client_id: client.id,
+        revoked_at: client.revokedAt.toISOString()
+      });
+    }
+
+    const revokedAt = new Date();
+    await prisma.client.update({
+      where: { id: client.id },
+      data: {
+        revokedAt,
+        lastUsedAt: revokedAt
+      }
+    });
+    clientRevocationsTotal.inc();
+
+    return reply.send({
+      status: 'REVOKED',
+      client_id: client.id,
+      revoked_at: revokedAt.toISOString()
+    });
+  });
+
+  app.post('/api/v1/token', {
+    config: {
+      rateLimit: {
+        max: 30,
+        timeWindow: '1 minute',
+        keyGenerator: (request) => request.ip
+      }
+    }
+  }, async (request, reply) => {
+    const parsed = tokenRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_token_request', details: parsed.error.flatten() });
+    }
+
+    if (parsed.data.grant_type === 'authorization_code') {
+      const authCodeRequest = parsed.data;
+      const browserClient = await findOAuthClientWithRedirects(authCodeRequest.client_id);
+      if (!browserClient || browserClient.revokedAt || browserClient.clientType !== 'browser') {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'invalid_client' });
+        return reply.code(403).send({ error: 'invalid_client' });
+      }
+      const redirectAllowed = browserClient.redirectUris.some((entry: { redirectUri: string }) => entry.redirectUri === authCodeRequest.redirect_uri);
+      if (!redirectAllowed) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'invalid_redirect_uri' });
+        return reply.code(400).send({ error: 'invalid_redirect_uri' });
+      }
+
+      const codeRecord = await oauthAuthorizationCodeStore.findUnique({
+        where: {
+          codeHash: hashOpaqueToken(parsed.data.code)
+        }
+      });
+      if (!codeRecord || codeRecord.clientId !== browserClient.id) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'invalid_grant' });
+        return reply.code(400).send({ error: 'invalid_grant' });
+      }
+      if (codeRecord.redirectUri !== authCodeRequest.redirect_uri) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'invalid_redirect_uri' });
+        return reply.code(400).send({ error: 'invalid_redirect_uri' });
+      }
+      if (codeRecord.usedAt) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'authorization_code_reused' });
+        return reply.code(409).send({ error: 'authorization_code_reused' });
+      }
+      if (codeRecord.expiresAt <= new Date()) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'authorization_code_expired' });
+        return reply.code(400).send({ error: 'authorization_code_expired' });
+      }
+      if (codeRecord.codeChallengeMethod !== 'S256') {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'invalid_code_challenge_method' });
+        return reply.code(400).send({ error: 'invalid_code_challenge_method' });
+      }
+      if (!verifyPkceCodeVerifier(authCodeRequest.code_verifier, codeRecord.codeChallenge)) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'invalid_code_verifier' });
+        return reply.code(400).send({ error: 'invalid_code_verifier' });
+      }
+
+      const user = await userAccountStore.findUnique({
+        where: { id: codeRecord.userId },
+        select: {
+          id: true,
+          disabledAt: true
+        }
+      });
+      if (!user || user.disabledAt) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'user_disabled' });
+        return reply.code(403).send({ error: 'user_disabled' });
+      }
+
+      const consumeResult = await oauthAuthorizationCodeStore.updateMany({
+        where: {
+          id: codeRecord.id,
+          usedAt: null
+        },
+        data: {
+          usedAt: new Date()
+        }
+      });
+      if (consumeResult.count === 0) {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'authorization_code_reused' });
+        return reply.code(409).send({ error: 'authorization_code_reused' });
+      }
+
+      let issued;
+      try {
+        issued = await issueAccessToken({
+          client: {
+            id: browserClient.id,
+            clientType: browserClient.clientType,
+            scopes: browserClient.scopes,
+            plan: 'BROWSER',
+            usageLimit: 0,
+            usageCount: 0,
+            revokedAt: browserClient.revokedAt,
+            jwks: null,
+            jwksUrl: null
+          },
+          requestedScope: codeRecord.scope,
+          accessTokenConfig: securityConfig.accessTokens,
+          subject: user.id,
+          additionalClaims: {
+            azp: browserClient.id,
+            client_id: browserClient.id,
+            actor_type: 'user',
+            user_id: user.id,
+            grant_type: 'authorization_code'
+          }
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === 'invalid_scope') {
+          tokenIssuanceTotal.inc({ outcome: 'failure' });
+          tokenIssuanceFailuresTotal.inc({ reason: 'invalid_scope' });
+          return reply.code(400).send({ error: 'invalid_scope' });
+        }
+        throw error;
+      }
+
+      await prisma.client.update({
+        where: { id: browserClient.id },
+        data: {
+          lastUsedAt: new Date()
+        }
+      });
+      tokenIssuanceTotal.inc({ outcome: 'success' });
+      return reply.send({
+        access_token: issued.accessToken,
+        token_type: 'Bearer',
+        expires_in: issued.expiresIn,
+        scope: issued.scope,
+        client_id: browserClient.id,
+        user_id: user.id
+      });
+    }
+
+    let assertionPayload: Record<string, unknown> | null = null;
+    try {
+      const [, payloadSegment] = parsed.data.client_assertion.split('.');
+      if (!payloadSegment) {
+        return reply.code(400).send({ error: 'invalid_client_assertion' });
+      }
+      assertionPayload = JSON.parse(Buffer.from(payloadSegment, 'base64url').toString('utf8')) as Record<string, unknown>;
+    } catch {
+      return reply.code(400).send({ error: 'invalid_client_assertion' });
+    }
+
+    const clientId = typeof assertionPayload?.iss === 'string' ? assertionPayload.iss.trim() : '';
+    if (!clientId) {
+      tokenIssuanceTotal.inc({ outcome: 'failure' });
+      tokenIssuanceFailuresTotal.inc({ reason: 'client_assertion_missing_iss' });
+      return reply.code(400).send({ error: 'client_assertion_missing_iss' });
+    }
+
+    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!client || client.revokedAt) {
+      tokenIssuanceTotal.inc({ outcome: 'failure' });
+      tokenIssuanceFailuresTotal.inc({ reason: 'invalid_client' });
+      return reply.code(403).send({ error: 'invalid_client' });
+    }
+
+    if (client.usageCount >= client.usageLimit) {
+      tokenIssuanceTotal.inc({ outcome: 'failure' });
+      tokenIssuanceFailuresTotal.inc({ reason: 'usage_limit_exceeded' });
+      return reply.code(429).send({
+        error: 'usage_limit_exceeded',
+        usageLimit: client.usageLimit,
+        usageCount: client.usageCount
+      });
+    }
+
+    let verifiedAssertion;
+    try {
+      verifiedAssertion = await verifyClientAssertion({
+        client,
+        clientAssertion: parsed.data.client_assertion,
+        tokenAudience: securityConfig.accessTokens.tokenEndpointAudience,
+        requestUrl: buildExternalUrl(request, '/api/v1/token')
+      });
+    } catch {
+      tokenIssuanceTotal.inc({ outcome: 'failure' });
+      tokenIssuanceFailuresTotal.inc({ reason: 'invalid_client_assertion' });
+      return reply.code(403).send({ error: 'invalid_client_assertion' });
+    }
+
+    const assertionJti = typeof verifiedAssertion.payload.jti === 'string' ? verifiedAssertion.payload.jti.trim() : '';
+    if (!assertionJti) {
+      tokenIssuanceTotal.inc({ outcome: 'failure' });
+      tokenIssuanceFailuresTotal.inc({ reason: 'client_assertion_missing_jti' });
+      return reply.code(400).send({ error: 'client_assertion_missing_jti' });
+    }
+
+    const assertionExpiresAt =
+      typeof verifiedAssertion.payload.exp === 'number'
+        ? new Date(verifiedAssertion.payload.exp * 1000)
+        : new Date(Date.now() + 5 * 60 * 1000);
+
+    let assertionReserved = false;
+    try {
+      assertionReserved = await assertionReplayStore.reserve({
+        clientId: client.id,
+        jti: assertionJti,
+        expiresAt: assertionExpiresAt
+      });
+    } catch (error) {
+      request.log.error(
+        {
+          clientId: client.id,
+          error: error instanceof Error ? error.message : 'unknown_error'
+        },
+        'assertion replay store unavailable'
+      );
+      tokenIssuanceTotal.inc({ outcome: 'failure' });
+      tokenIssuanceFailuresTotal.inc({ reason: 'assertion_replay_store_unavailable' });
+      return reply.code(503).send({ error: 'assertion_replay_store_unavailable' });
+    }
+
+    if (!assertionReserved) {
+      tokenIssuanceTotal.inc({ outcome: 'failure' });
+      tokenIssuanceFailuresTotal.inc({ reason: 'client_assertion_replayed' });
+      tokenReplayRejectionsTotal.inc();
+      return reply.code(409).send({ error: 'client_assertion_replayed' });
+    }
+
+    let issued;
+    try {
+      issued = await issueAccessToken({
+        client,
+        requestedScope: parsed.data.scope,
+        accessTokenConfig: securityConfig.accessTokens
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'invalid_scope') {
+        tokenIssuanceTotal.inc({ outcome: 'failure' });
+        tokenIssuanceFailuresTotal.inc({ reason: 'invalid_scope' });
+        return reply.code(400).send({ error: 'invalid_scope' });
+      }
+      throw error;
+    }
+
+    tokenIssuanceTotal.inc({ outcome: 'success' });
+
+    return reply.send({
+      access_token: issued.accessToken,
+      token_type: 'Bearer',
+      expires_in: issued.expiresIn,
+      scope: issued.scope,
+      client_id: client.id
+    });
+  });
+
+  app.post('/api/v1/introspect', {
+    preHandler: authPreHandlers.read,
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = tokenIntrospectionSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_token_introspection_request', details: parsed.error.flatten() });
+    }
+
+    try {
+      const payload = await verifyAccessTokenPayload(parsed.data.token, securityConfig.accessTokens);
+      const subject = typeof payload.sub === 'string' ? payload.sub : '';
+      const clientId =
+        typeof payload.azp === 'string'
+          ? payload.azp
+          : typeof payload.client_id === 'string'
+            ? payload.client_id
+            : payload.actor_type === 'user'
+              ? ''
+              : subject;
+      const userId = payload.actor_type === 'user' ? subject : typeof payload.user_id === 'string' ? payload.user_id : undefined;
+      if (!subject || !clientId) {
+        return reply.send({ active: false });
+      }
+
+      if (
+        request.authContext?.principalType === 'access_token' &&
+        request.authContext.clientId &&
+        request.authContext.clientId !== clientId
+      ) {
+        return reply.code(403).send({ error: 'client_mismatch' });
+      }
+
+      const client = await prisma.client.findUnique({
+        where: { id: clientId },
+        select: {
+          revokedAt: true
+        }
+      });
+      let active = Boolean(client && !client.revokedAt);
+      if (active && userId) {
+        const user = await userAccountStore.findUnique({
+          where: { id: userId },
+          select: {
+            disabledAt: true
+          }
+        });
+        active = Boolean(user && !user.disabledAt);
+      }
+
+      return reply.send({
+        active,
+        client_id: clientId,
+        user_id: userId,
+        scope: typeof payload.scope === 'string' ? payload.scope : '',
+        grant_type: typeof payload.grant_type === 'string' ? payload.grant_type : undefined,
+        actor_type: typeof payload.actor_type === 'string' ? payload.actor_type : undefined,
+        token_type: 'Bearer',
+        iss: typeof payload.iss === 'string' ? payload.iss : securityConfig.accessTokens.issuer,
+        aud: payload.aud,
+        exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+        iat: typeof payload.iat === 'number' ? payload.iat : undefined,
+        sub: subject
+      });
+    } catch {
+      return reply.send({ active: false });
+    }
+  });
+
   app.get('/api/v1/integrations/vanta/schema', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     return {
@@ -1027,7 +2469,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/trust-agents', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     return {
@@ -1041,7 +2483,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowCreateRequestSchema.safeParse(request.body);
@@ -1054,7 +2496,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/readiness-audit', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = readinessWorkflowRequestSchema.safeParse(request.body);
@@ -1071,7 +2513,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1088,7 +2530,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId/events', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1109,7 +2551,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId/evidence-package', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1126,7 +2568,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/artifacts', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const params = workflowParamsSchema.safeParse(request.params);
@@ -1154,7 +2596,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/runs', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const params = workflowParamsSchema.safeParse(request.params);
@@ -1176,7 +2618,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/artifacts/:artifactId/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowArtifactParamsSchema.safeParse(request.params);
@@ -1193,7 +2635,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/integrations/vanta/verification/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1206,7 +2648,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/sources', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     const sources = await registryAdapterService.listSources();
@@ -1217,7 +2659,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = registryVerifyInputSchema.safeParse(request.body);
@@ -1242,7 +2684,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify-batch', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = registryVerifyBatchInputSchema.safeParse(request.body);
@@ -1263,7 +2705,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/jobs', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request) => {
     const limitRaw = (request.query as { limit?: string } | undefined)?.limit;
@@ -1277,7 +2719,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/jobs/:jobId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const { jobId } = request.params as { jobId: string };
@@ -1289,7 +2731,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify/attom', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: {
       rateLimit: {
         max: securityConfig.perApiKeyRateLimitMax,
@@ -1298,6 +2740,10 @@ export async function buildServer(options: BuildServerOptions = {}) {
       }
     }
   }, async (request, reply) => {
+    if (!(await reserveMeteredUsage(request, reply))) {
+      return;
+    }
+
     const parsed = deedParsedSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
@@ -1311,13 +2757,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
       apiKey: propertyApiKey,
       baseUrl: process.env.ATTOM_BASE_URL || 'https://api.gateway.attomdata.com'
     });
-
     const report = await attomCrossCheck(deed, client);
     return reply.send(report);
   });
 
   app.post('/api/v1/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: authPreHandlers.verify,
     config: {
       rateLimit: {
         max: securityConfig.perApiKeyRateLimitMax,
@@ -1326,6 +2771,10 @@ export async function buildServer(options: BuildServerOptions = {}) {
       }
     }
   }, async (request, reply) => {
+    if (!(await reserveMeteredUsage(request, reply))) {
+      return;
+    }
+
     const verifyStartMs = Date.now();
     const parsed = verifyInputSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1500,7 +2949,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/synthetic', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     const registry = await loadRegistry();
@@ -1534,7 +2983,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1575,7 +3024,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId/pdf', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1595,7 +3044,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1648,7 +3097,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/anchor/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'anchor')],
+    preHandler: authPreHandlers.anchor,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1694,7 +3143,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
-    preHandler: [requireApiKeyScope(securityConfig, 'revoke'), requireRevocationAuthorization(securityConfig)],
+    preHandler: [...authPreHandlers.revoke, requireRevocationAuthorization(securityConfig)],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1735,7 +3184,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipts', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: authPreHandlers.read,
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request) => {
     const query = request.query as { limit?: string };
