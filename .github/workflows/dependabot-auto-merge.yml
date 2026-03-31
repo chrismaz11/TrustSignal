@@ -1,5 +1,8 @@
 name: Dependabot auto-merge
-on: pull_request_target
+on:
+  pull_request_target:
+    branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: write
@@ -12,10 +15,13 @@ jobs:
     steps:
       - name: Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@c9c4182bf1b97f5224aee3906afd2aa4e5408c08
+        uses: dependabot/fetch-metadata@c9c4182bf1b97f5224aee3906afd2aa4e5408c08 # v2.3.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
+      # Prerequisites: repo must have "Allow GitHub Actions to create and approve
+      # pull requests" enabled (Settings → Actions → General) and "Allow
+      # auto-merge" enabled (Settings → General → Pull Requests).
       - name: Auto-approve patch and minor updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
         run: gh pr review --approve "$PR_URL"
