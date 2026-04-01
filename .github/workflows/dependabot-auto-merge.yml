@@ -24,14 +24,22 @@ jobs:
       # auto-merge" enabled (Settings → General → Pull Requests).
       - name: Auto-approve patch and minor updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr review --approve "$PR_URL"
+        run: |
+          gh pr review --approve "$PR_URL" || {
+            echo "::error::Auto-approve failed. Ensure 'Allow GitHub Actions to create and approve pull requests' is enabled under Settings → Actions → General."
+            exit 1
+          }
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge for patch and minor updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr merge --auto --squash "$PR_URL"
+        run: |
+          gh pr merge --auto --squash "$PR_URL" || {
+            echo "::error::Enabling auto-merge failed. Ensure 'Allow auto-merge' is enabled under Settings → General → Pull Requests."
+            exit 1
+          }
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
