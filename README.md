@@ -18,7 +18,7 @@ Those risks matter in audit, compliance, partner-review, and trust-sensitive wor
 
 ## Verification Lifecycle
 
-The canonical lifecycle diagram and trust-boundary view are documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+The canonical lifecycle diagram and trust-boundary view are documented in [docs/verification-lifecycle.md](docs/verification-lifecycle.md).
 
 TrustSignal accepts a verification request, returns verification signals, issues a signed verification receipt, and supports later verification against stored receipt state so downstream teams can detect artifact tampering, evidence provenance loss, or stale records during audit review.
 
@@ -47,17 +47,17 @@ It shows the full lifecycle in one run:
 4. later verification
 5. tampered artifact mismatch detection
 
-See [demo/README.md](/Users/christopher/Projects/trustsignal/demo/README.md).
+See [demo/README.md](demo/README.md).
 
 ## Integration Model
 
 Start here if you are evaluating the public verification lifecycle:
 
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
-- [Postman local environment](/Users/christopher/Projects/trustsignal/postman/TrustSignal.local.postman_environment.json)
+- [Evaluator quickstart](docs/partner-eval/quickstart.md)
+- [API playground](docs/partner-eval/api-playground.md)
+- [OpenAPI contract](openapi.yaml)
+- [Postman collection](postman/TrustSignal.postman_collection.json)
+- [Postman local environment](postman/TrustSignal.local.postman_environment.json)
 
 Golden path:
 
@@ -191,12 +191,12 @@ Fail-closed defaults are part of the security posture. They are meant to prevent
 
 The public evaluation artifacts in this repo are:
 
-- [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [verification-request.json](/Users/christopher/Projects/trustsignal/examples/verification-request.json)
-- [verification-response.json](/Users/christopher/Projects/trustsignal/examples/verification-response.json)
-- [verification-receipt.json](/Users/christopher/Projects/trustsignal/examples/verification-receipt.json)
-- [verification-status.json](/Users/christopher/Projects/trustsignal/examples/verification-status.json)
-- [partner evaluation kit](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
+- [openapi.yaml](openapi.yaml)
+- [verification-request.json](examples/verification-request.json)
+- [verification-response.json](examples/verification-response.json)
+- [verification-receipt.json](examples/verification-receipt.json)
+- [verification-status.json](examples/verification-status.json)
+- [partner evaluation kit](docs/partner-eval/overview.md)
 
 These artifacts document the public verification lifecycle only. They intentionally avoid proof internals, model outputs, circuit identifiers, signing infrastructure specifics, and internal service topology.
 
@@ -211,7 +211,7 @@ Public-facing security properties for this repository are:
 - explicit lifecycle boundaries for read, revoke, and provenance-state operations
 - fail-closed defaults where production trust assumptions are not satisfied
 
-See [docs/security-summary.md](/Users/christopher/Projects/trustsignal/docs/security-summary.md), [SECURITY_CHECKLIST.md](/Users/christopher/Projects/trustsignal/SECURITY_CHECKLIST.md), and [docs/SECURITY.md](/Users/christopher/Projects/trustsignal/docs/SECURITY.md) for the current public-safe security summary and repository guardrails.
+See [docs/security-summary.md](docs/security-summary.md), [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md), and [docs/SECURITY.md](docs/SECURITY.md) for the current public-safe security summary and repository guardrails.
 
 ## What TrustSignal Does Not Claim
 
@@ -261,10 +261,10 @@ npm run build
 
 ## Documentation Map
 
-- [docs/partner-eval/overview.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/overview.md)
-- [docs/partner-eval/quickstart.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [docs/partner-eval/api-playground.md](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [wiki/What-is-TrustSignal.md](/Users/christopher/Projects/trustsignal/wiki/What-is-TrustSignal.md)
-- [wiki/API-Overview.md](/Users/christopher/Projects/trustsignal/wiki/API-Overview.md)
-- [wiki/Claims-Boundary.md](/Users/christopher/Projects/trustsignal/wiki/Claims-Boundary.md)
-- [wiki/Verification-Receipts.md](/Users/christopher/Projects/trustsignal/wiki/Verification-Receipts.md)
+- [docs/partner-eval/overview.md](docs/partner-eval/overview.md)
+- [docs/partner-eval/quickstart.md](docs/partner-eval/quickstart.md)
+- [docs/partner-eval/api-playground.md](docs/partner-eval/api-playground.md)
+- [wiki/What-is-TrustSignal.md](wiki/What-is-TrustSignal.md)
+- [wiki/API-Overview.md](wiki/API-Overview.md)
+- [wiki/Claims-Boundary.md](wiki/Claims-Boundary.md)
+- [wiki/Verification-Receipts.md](wiki/Verification-Receipts.md)

@@ -17,7 +17,7 @@ Partners need a stable public contract that explains how TrustSignal fits into a
 
 ## Verification Lifecycle
 
-The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](docs/verification-lifecycle.md).
 
 TrustSignal exposes a public verification lifecycle centered on signed verification receipts, verification signals, verifiable provenance metadata, and later verification.
 
@@ -25,16 +25,16 @@ TrustSignal exposes a public verification lifecycle centered on signed verificat
 
 Start with the local developer trial for the fastest lifecycle walkthrough:
 
-- [5-minute developer trial](/Users/christopher/Projects/trustsignal/demo/README.md)
+- [5-minute developer trial](demo/README.md)
 
 ## Integration Model
 
 Start here to try the public lifecycle:
 
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [OpenAPI contract](openapi.yaml)
+- [Evaluator quickstart](docs/partner-eval/quickstart.md)
+- [API playground](docs/partner-eval/api-playground.md)
+- [Postman collection](postman/TrustSignal.postman_collection.json)
 
 Golden path:
 
@@ -103,4 +103,4 @@ Integrators should expect these broad patterns:
 - `429` for rate limiting
 - `503` when a required dependency is unavailable
 
-The canonical public contract for the verification lifecycle is [openapi.yaml](/Users/christopher/Projects/trustsignal/openapi.yaml).
+The canonical public contract for the verification lifecycle is [openapi.yaml](openapi.yaml).
