@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn, execFile as execFileCallback, type ChildProcess } from 'node:child_process';
+import { execFile as execFileCallback, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { performance } from 'node:perf_hooks';
 
