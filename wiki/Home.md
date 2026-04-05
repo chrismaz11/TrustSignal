@@ -1,13 +1,13 @@
 **Navigation**
 
-- [Home](Home)
-- [What is TrustSignal](What-is-TrustSignal)
-- [Architecture](Evidence-Integrity-Architecture)
-- [Verification Receipts](Verification-Receipts)
-- [API Overview](API-Overview)
-- [Claims Boundary](Claims-Boundary)
-- [Quick Verification Example](Quick-Verification-Example)
-- [Vanta Integration Example](Vanta-Integration-Example)
+- [Home](Home.md)
+- [What is TrustSignal](What-is-TrustSignal.md)
+- [Architecture](Evidence-Integrity-Architecture.md)
+- [Verification Receipts](Verification-Receipts.md)
+- [API Overview](API-Overview.md)
+- [Claims Boundary](Claims-Boundary.md)
+- [Quick Verification Example](Quick-Verification-Example.md)
+- [Vanta Integration Example](Vanta-Integration-Example.md)
 
 # TrustSignal Wiki
 
@@ -27,15 +27,15 @@ TrustSignal provides signed verification receipts, verification signals, verifia
 
 ## Start Here
 
-- [What is TrustSignal](What-is-TrustSignal)
-- [API Overview](API-Overview)
-- [Verification Receipts](Verification-Receipts)
-- [Claims Boundary](Claims-Boundary)
-- [Quick Verification Example](Quick-Verification-Example)
+- [What is TrustSignal](What-is-TrustSignal.md)
+- [API Overview](API-Overview.md)
+- [Verification Receipts](Verification-Receipts.md)
+- [Claims Boundary](Claims-Boundary.md)
+- [Quick Verification Example](Quick-Verification-Example.md)
 
 ## Demo
 
-- [5-minute developer trial](demo/README.md)
+- [5-minute developer trial](../demo/README.md)
 
 ## Integration Model
 
@@ -43,7 +43,7 @@ Use the evaluator docs when you want to see the verification lifecycle before pr
 
 - [Evaluator quickstart](../docs/partner-eval/quickstart.md)
 - [API playground](../docs/partner-eval/api-playground.md)
-- [OpenAPI contract](openapi.yaml)
+- [OpenAPI contract](../openapi.yaml)
 
 ## Technical Details
 

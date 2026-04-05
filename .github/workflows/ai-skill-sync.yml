@@ -12,14 +12,16 @@ on:
           - validate
           - refresh
       target_models:
-        description: "comma-separated models to sync (openai,claude,gemini or leave blank for all)"
+        description: "comma-separated models to sync (openai,claude,gemini); defaults to all models"
         required: false
         default: "openai,claude,gemini"
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -29,7 +31,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "18"
+          node-version: "20"
 
       - name: Validate canonical spec exists
         run: |
@@ -50,7 +52,7 @@ jobs:
           echo "Last Reviewed: $LAST_REVIEWED"
 
       - name: Validate adapter metadata (Claude)
-        if: contains(inputs.target_models, 'claude')
+        if: inputs.target_models == '' || contains(inputs.target_models, 'claude')
         run: |
           if [ ! -f ".ai/skills/claude/adapter.md" ]; then
             echo "⚠️  Claude adapter missing"
@@ -64,7 +66,7 @@ jobs:
           fi
 
       - name: Validate adapter metadata (OpenAI)
-        if: contains(inputs.target_models, 'openai')
+        if: inputs.target_models == '' || contains(inputs.target_models, 'openai')
         run: |
           if [ ! -f ".ai/skills/openai/adapter.md" ]; then
             echo "⚠️  OpenAI adapter missing"
@@ -78,7 +80,7 @@ jobs:
           fi
 
       - name: Validate adapter metadata (Gemini)
-        if: contains(inputs.target_models, 'gemini')
+        if: inputs.target_models == '' || contains(inputs.target_models, 'gemini')
         run: |
           if [ ! -f ".ai/skills/gemini/adapter.md" ]; then
             echo "⚠️  Gemini adapter missing"

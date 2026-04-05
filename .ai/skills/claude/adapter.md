@@ -63,7 +63,7 @@ For all of these: create a proposal with rationale, dependent code analysis, and
 
 ### When running validation
 - Use `Bash` tool to run commands from the canonical spec
-- Always run `npm run ci` before suggesting changes
+- Always run `npm run validate` before suggesting changes
 - Parse test output for failures, don't assume pass from silence
 - Report exit codes and stderr, not just stdout
 

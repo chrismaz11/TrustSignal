@@ -1,13 +1,13 @@
 **Navigation**
 
-- [Home](Home)
-- [What is TrustSignal](What-is-TrustSignal)
-- [Architecture](Evidence-Integrity-Architecture)
-- [Verification Receipts](Verification-Receipts)
-- [API Overview](API-Overview)
-- [Claims Boundary](Claims-Boundary)
-- [Quick Verification Example](Quick-Verification-Example)
-- [Vanta Integration Example](Vanta-Integration-Example)
+- [Home](Home.md)
+- [What is TrustSignal](What-is-TrustSignal.md)
+- [Architecture](Evidence-Integrity-Architecture.md)
+- [Verification Receipts](Verification-Receipts.md)
+- [API Overview](API-Overview.md)
+- [Claims Boundary](Claims-Boundary.md)
+- [Quick Verification Example](Quick-Verification-Example.md)
+- [Vanta Integration Example](Vanta-Integration-Example.md)
 
 # Evidence Integrity Architecture
 

@@ -85,12 +85,11 @@ Risk surfaces: None (tests only, no source changes)
 Before submitting:
 
 ```
-npm run lint              # code quality
-npm run type-check       # TypeScript
-npm test                 # unit tests
-npm run compliance:check # compliance rules validation
-npm run evidence:verify  # evidence integrity checks
-npm run validate              # full suite
+npm run lint           # code quality
+npm run typecheck      # TypeScript
+npm test               # unit tests
+npm run security:audit # security/compliance validation
+npm run validate       # full suite
 ```
 
 **All checks must pass.** If any fail:
