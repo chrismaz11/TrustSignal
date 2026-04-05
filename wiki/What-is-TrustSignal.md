@@ -25,7 +25,7 @@ TrustSignal is evidence integrity infrastructure. It provides signed verificatio
 
 The fastest local evaluator path is the 5-minute developer trial:
 
-- [5-minute developer trial](demo/README.md)
+- [5-minute developer trial](../demo/README.md)
 
 ## Integration
 

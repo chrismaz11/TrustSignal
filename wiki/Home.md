@@ -21,7 +21,7 @@ High-loss environments create incentives for these attack paths because downstre
 
 ## Verification Lifecycle
 
-The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](docs/verification-lifecycle.md).
+The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](../docs/verification-lifecycle.md).
 
 TrustSignal provides signed verification receipts, verification signals, verifiable provenance metadata, and later verification capability as an integrity layer for an existing system of record.
 
@@ -41,8 +41,8 @@ TrustSignal provides signed verification receipts, verification signals, verifia
 
 Use the evaluator docs when you want to see the verification lifecycle before production integration detail:
 
-- [Evaluator quickstart](docs/partner-eval/quickstart.md)
-- [API playground](docs/partner-eval/api-playground.md)
+- [Evaluator quickstart](../docs/partner-eval/quickstart.md)
+- [API playground](../docs/partner-eval/api-playground.md)
 - [OpenAPI contract](openapi.yaml)
 
 ## Technical Details

@@ -57,9 +57,9 @@ Risk surfaces: None (tests only, no source changes)
 ## Execution Flow
 
 1. **State the plan.** Restate approved scope, touched files, and success criteria.
-2. **Run diagnostics.** Execute `npm run ci` to verify baseline.
+2. **Run diagnostics.** Execute `npm run validate` to verify baseline.
 3. **Make edits.** Apply changes strictly within approved scope.
-4. **Validate.** Run `npm run ci` again before submitting.
+4. **Validate.** Run `npm run validate` again before submitting.
 5. **Summarize.** Report what changed, test results, any issues.
 6. **Provide rollback.** State exact commit hash and revert procedure.
 
@@ -90,7 +90,7 @@ npm run type-check       # TypeScript
 npm test                 # unit tests
 npm run compliance:check # compliance rules validation
 npm run evidence:verify  # evidence integrity checks
-npm run ci              # full suite
+npm run validate              # full suite
 ```
 
 **All checks must pass.** If any fail:

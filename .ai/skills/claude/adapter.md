@@ -22,7 +22,7 @@ This adapter translates the canonical project spec into Claude-specific instruct
 ### During task execution
 - Stop after 3 failed validations; propose human review instead of retrying
 - Stop immediately if evidence-integrity or compliance logic is involved; escalate
-- Run `npm run ci` before suggesting changes (all checks must pass)
+- Run `npm run validate` before suggesting changes (all checks must pass)
 - Do not override test failures with `--force` or skip validation
 - Do not mix source and generated artifact edits in one pass
 - Surface uncertainty instead of guessing

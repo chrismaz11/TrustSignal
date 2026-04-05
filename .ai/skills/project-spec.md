@@ -82,15 +82,14 @@ Core validation:
 ```bash
 npm test                    # full test suite
 npm run lint              # code quality checks
-npm run type-check        # TypeScript validation
-npm run audit             # npm security audit
-npm run compliance:check  # compliance rules validation
-npm run evidence:verify   # evidence integrity checks
+npm run typecheck         # TypeScript validation
+npm run security:audit    # npm security audit
+npm run validate          # runs all core validation scripts
 ```
 
 PR validation:
 ```bash
-npm run ci                # all of the above plus coverage
+npm run validate          # all of the above plus coverage
 ```
 
 ## Decision Rights and Approval Policy

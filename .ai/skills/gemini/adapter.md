@@ -24,7 +24,7 @@ Every task must begin with:
 
 ### Task Execution Rules
 
-- Before submitting: run full CI suite (`npm run ci`)
+- Before submitting: run full validation suite (`npm run validate`)
 - All tests must pass; no exceptions
 - If you hit 3 consecutive validation failures, stop and escalate
 - Evidence integrity or compliance logic → immediate human escalation

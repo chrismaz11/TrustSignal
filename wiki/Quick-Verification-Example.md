@@ -17,7 +17,7 @@ This example is for partner engineers who want the smallest realistic TrustSigna
 
 ## Verification Lifecycle
 
-The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](docs/verification-lifecycle.md).
+The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](../docs/verification-lifecycle.md).
 
 This example uses the current integration-facing lifecycle to create a verification, return verification signals plus a signed verification receipt, store the receipt with the workflow record, and later verify stored receipt state during audit review.
 
@@ -25,9 +25,9 @@ This example uses the current integration-facing lifecycle to create a verificat
 
 Start here for the full evaluator path:
 
-- [Evaluator quickstart](docs/partner-eval/quickstart.md)
-- [API playground](docs/partner-eval/api-playground.md)
-- [OpenAPI contract](openapi.yaml)
+- [Evaluator quickstart](../docs/partner-eval/quickstart.md)
+- [API playground](../docs/partner-eval/api-playground.md)
+- [OpenAPI contract](../openapi.yaml)
 - [Postman collection](postman/TrustSignal.postman_collection.json)
 
 ## Integration Model

@@ -22,7 +22,7 @@ This adapter translates the canonical project spec into OpenAI-specific instruct
 
 ### During execution
 
-- Run `npm run ci` before submitting changes (all checks must pass)
+- Run `npm run validate` before submitting changes (all checks must pass)
 - Stop if any test fails; do not use `--force` or skip validation
 - Stop after 3 validation failures; ask for human guidance
 - If evidence-integrity, compliance logic, or audit trail is involved, escalate to human
