@@ -30,7 +30,7 @@
   "devDependencies": {
     "@types/pdf-parse": "^1.1.5",
     "@types/pdfkit": "^0.17.4",
-    "prisma": "^5.17.0",
+    "prisma": "^7.6.0",
     "tsx": "^4.15.7",
     "typescript": "^5.9.3"
   }
