@@ -609,6 +609,78 @@ describe('Fastify verification routes', () => {
     expect(blocked.headers.retryafter ?? blocked.headers['retry-after']).toBeDefined();
   });
 
+  it('handles notary_present false and maps to 0 in feature vector', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({ notary_present: false })
+    });
+
+    expect(response.statusCode).toBe(200);
+    const firstCall = vi.mocked(verifyBundleMock).mock.calls.at(0);
+    expect(firstCall?.[0].deed_features[2]).toBe(0);
+  });
+
+  it('returns 500 when verify throws a non-Error value', async () => {
+    vi.mocked(verifyBundleMock).mockRejectedValueOnce('string-rejection');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody()
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json().error).toBe('Verification failed');
+  });
+
+  it('returns 500 when status lookup throws an Error instance', async () => {
+    vi.spyOn(store, 'findByBundleHash').mockRejectedValueOnce(new Error('db crashed'));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/status/bundle-db-crashed',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      }
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json().error).toBe('Internal Server Error');
+  });
+
+  it('accepts revoke when JWT has is_admin=true claim', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/v1/verify-bundle',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'partner-user' })}`
+      },
+      payload: buildVerifyBody({ deed_hash: 'bundle-is-admin-flag' })
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/revoke',
+      headers: {
+        authorization: `Bearer ${createJwt({ sub: 'admin-user', is_admin: true })}`
+      },
+      payload: {
+        bundle_hash: 'bundle-is-admin-flag',
+        reason: 'is_admin flag test'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().revoked).toBe(true);
+  });
+
   it('returns 400 for malformed verify body', async () => {
     const response = await app.inject({
       method: 'POST',
@@ -627,5 +699,39 @@ describe('Fastify verification routes', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json().error).toBe('Invalid request body');
+  });
+});
+
+describe('buildApiServer – LOG_LEVEL fallback', () => {
+  const savedLogLevel = process.env.LOG_LEVEL;
+  const savedJwtSecret = process.env.TRUSTSIGNAL_JWT_SECRET;
+  const savedJwtSecrets = process.env.TRUSTSIGNAL_JWT_SECRETS;
+
+  afterEach(async () => {
+    if (savedLogLevel === undefined) {
+      delete process.env.LOG_LEVEL;
+    } else {
+      process.env.LOG_LEVEL = savedLogLevel;
+    }
+    if (savedJwtSecret === undefined) {
+      delete process.env.TRUSTSIGNAL_JWT_SECRET;
+    } else {
+      process.env.TRUSTSIGNAL_JWT_SECRET = savedJwtSecret;
+    }
+    if (savedJwtSecrets === undefined) {
+      delete process.env.TRUSTSIGNAL_JWT_SECRETS;
+    } else {
+      process.env.TRUSTSIGNAL_JWT_SECRETS = savedJwtSecrets;
+    }
+  });
+
+  it('builds successfully when LOG_LEVEL is not set (falls back to info)', async () => {
+    delete process.env.LOG_LEVEL;
+    process.env.TRUSTSIGNAL_JWT_SECRET = 'test-secret';
+    process.env.TRUSTSIGNAL_JWT_SECRETS = 'test-secret';
+
+    const server = await buildApiServer({});
+    expect(server).toBeDefined();
+    await server.close();
   });
 });

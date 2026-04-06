@@ -13,7 +13,14 @@ export default defineConfig({
       include: [
         'src/core/**/*.ts',
         'src/middleware/**/*.ts',
-        'src/routes/**/*.ts'
+        'src/routes/**/*.ts',
+        'src/verifiers/revocationVerifier.ts',
+        'src/verifiers/zkProofVerifier.ts',
+        'src/services/**/*.ts',
+        'src/adapters/**/*.ts',
+        'packages/core/src/receipt.ts',
+        'packages/core/src/attom/normalize.ts',
+        'packages/core/src/anchor/portable.ts'
       ],
       exclude: ['**/*.d.ts'],
       thresholds: {
