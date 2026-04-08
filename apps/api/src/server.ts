@@ -1063,6 +1063,26 @@ export async function buildServer(options: BuildServerOptions = {}) {
     buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10],
     registers: [metricsRegistry]
   });
+  const receiptLookupDurationSeconds = new Histogram({
+    name: 'deedshield_receipt_lookup_duration_seconds',
+    help: 'Duration of receipt retrieval from database (GET /receipt/:id)',
+    labelNames: [] as const,
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+    registers: [metricsRegistry]
+  });
+  const anchorDurationSeconds = new Histogram({
+    name: 'deedshield_anchor_duration_seconds',
+    help: 'Duration of receipt anchoring operation by chain',
+    labelNames: ['chain'] as const,
+    buckets: [0.1, 0.5, 1, 2, 5, 10, 30],
+    registers: [metricsRegistry]
+  });
+  const httpErrorsTotal = new Counter({
+    name: 'deedshield_http_errors_total',
+    help: 'Total HTTP error responses (4xx/5xx) by route and status code',
+    labelNames: ['method', 'route', 'status_code'] as const,
+    registers: [metricsRegistry]
+  });
   const perApiKeyRateLimit = {
     max: securityConfig.perApiKeyRateLimitMax,
     timeWindow: securityConfig.rateLimitWindow,
@@ -1086,6 +1106,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const durationSeconds = startedAt ? (Date.now() - startedAt) / 1000 : 0;
     httpRequestsTotal.inc({ method, route, status_code: statusCode });
     httpRequestDurationSeconds.observe({ method, route, status_code: statusCode }, durationSeconds);
+    if (reply.statusCode >= 400) {
+      httpErrorsTotal.inc({ method, route, status_code: statusCode });
+    }
 
     if (request.authContext?.apiKeyId) {
       const userAgent = request.headers['user-agent'];
@@ -1170,6 +1193,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     return {
       status: 'ok',
       service: 'deed-shield-api',
+      version: process.env.TRUSTSIGNAL_VERSION || 'dev',
       environment: process.env.NODE_ENV || 'development',
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
@@ -1725,7 +1749,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    const lookupStart = Date.now();
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
+    receiptLookupDurationSeconds.observe((Date.now() - lookupStart) / 1000);
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
@@ -1871,7 +1897,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
       // (cross-chain: receipt may be anchored on multiple chains)
     }
 
+    const anchorStart = Date.now();
     const result = await anchorReceiptOnChain(record.receiptHash, chain, receipt.zkpAttestation);
+    anchorDurationSeconds.observe({ chain }, (Date.now() - anchorStart) / 1000);
     const updated = await prisma.receipt.update({
       where: { id: receiptId },
       data: {
@@ -1982,7 +2010,15 @@ const isDirectExecution = (() => {
 if (isDirectExecution) {
   const port = Number(process.env.PORT || 3001);
   buildServer()
-    .then((app) => app.listen({ port, host: '0.0.0.0' }))
+    .then((app) => {
+      app.log.info({
+        event: 'server_start',
+        version: process.env.TRUSTSIGNAL_VERSION || 'dev',
+        environment: process.env.NODE_ENV || 'development',
+        port
+      }, 'TrustSignal API starting');
+      return app.listen({ port, host: '0.0.0.0' });
+    })
     .catch((error) => {
       console.error(error);
       process.exit(1);
