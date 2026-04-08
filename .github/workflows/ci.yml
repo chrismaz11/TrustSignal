@@ -132,11 +132,19 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Build Halo2 verifier
+      - name: Build Halo2 ZKP service
         run: cargo build --release
 
       - name: Run Halo2 tests
         run: cargo test
+
+      - name: Upload zkp_service binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: zkp_service-linux-x64
+          path: circuits/non_mem_gadget/target/release/zkp_service
+          if-no-files-found: error
+          retention-days: 30
 
   secret-scan:
     runs-on: ubuntu-latest

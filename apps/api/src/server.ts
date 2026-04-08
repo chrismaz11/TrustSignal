@@ -34,7 +34,9 @@ import {
   NotaryVerifier,
   PropertyVerifier,
   CountyVerifier,
-  nameOverlapScore
+  nameOverlapScore,
+  generateFraudScoreProof,
+  type ZkmlFraudAttestation
 } from '../../../packages/core/dist/index.js';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
@@ -887,7 +889,7 @@ function buildGitHubVerifyInput(input: GitHubVerificationInput): VerifyRouteInpu
 type ReceiptIssueResult = {
   record: ReceiptRecord;
   signedReceipt: Receipt;
-  responseBody: ReturnType<typeof toV2VerifyResponse>;
+  responseBody: ReturnType<typeof toV2VerifyResponse> & { zkmlAttestation?: ZkmlFraudAttestation };
 };
 
 async function issueReceiptRecord(
@@ -898,6 +900,7 @@ async function issueReceiptRecord(
     fraudRisk?: DocumentRisk;
   } = {}
 ): Promise<ReceiptIssueResult> {
+  // Generate Halo2 compliance proof (dev-only unless TRUSTSIGNAL_ZKP_BACKEND=external).
   const zkpAttestation = await generateComplianceProof({
     policyProfile: input.policy.profile,
     checksResult: verification.decision === 'ALLOW',
@@ -905,6 +908,18 @@ async function issueReceiptRecord(
     docHash: input.doc.docHash,
     canonicalDocumentBase64: input.doc.pdfBase64
   });
+
+  // Generate ezkl ZKML fraud score proof (dev-only unless TRUSTSIGNAL_ZKML_EZKL_BIN is set).
+  let zkmlAttestation: ZkmlFraudAttestation | undefined;
+  if (options.fraudRisk) {
+    try {
+      const features = [options.fraudRisk.score, options.fraudRisk.score > 0.5 ? 1 : 0];
+      zkmlAttestation = await generateFraudScoreProof(features, options.fraudRisk.score);
+    } catch (err) {
+      // Non-fatal: log and continue without ZKML attestation.
+      console.warn('[zkml] proof generation skipped:', err instanceof Error ? err.message : String(err));
+    }
+  }
 
   const receipt = buildReceipt(input, verification, 'deed-shield', {
     signing_key_id: securityConfig.receiptSigning.current.kid,
@@ -957,10 +972,14 @@ async function issueReceiptRecord(
     riskScore: signedReceipt.riskScore
   });
 
+  const responseWithZkml = zkmlAttestation
+    ? { ...responseBody, zkmlAttestation }
+    : responseBody;
+
   return {
     record,
     signedReceipt,
-    responseBody
+    responseBody: responseWithZkml
   };
 }
 
