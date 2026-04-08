@@ -449,3 +449,58 @@ export function verifyRevocationHeaders(
 
   return { ok: true, issuerId };
 }
+
+// ─── Plan quota enforcement ───────────────────────────────────────────────────
+
+const PLAN_MONTHLY_LIMITS: Record<string, number> = {
+  free: 1_000,
+  pro: 100_000,
+  enterprise: Infinity
+};
+
+/**
+ * Check whether the API key owner is within their monthly verification quota.
+ * Returns { allowed: true } or { allowed: false, plan, used, limit }.
+ *
+ * Queries public.verification_log for the current calendar month.
+ * Falls back to allowing the request if the customers table is not yet configured.
+ */
+export async function checkPlanQuota(
+  prisma: PrismaClient,
+  userId: string | null
+): Promise<{ allowed: true } | { allowed: false; plan: string; used: number; limit: number }> {
+  if (!userId) return { allowed: true }; // local-dev keys have no quota
+
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const result = await prisma.$queryRaw<Array<{ plan: string | null; used: bigint }>>`
+      select
+        c.plan,
+        count(vl.id) as used
+      from public.verification_log vl
+      left join public.customers c on c.user_id = ${userId}::uuid
+      where
+        vl.user_id = ${userId}::uuid
+        and vl.created_at >= ${monthStart}::timestamptz
+      group by c.plan
+    `;
+
+    const row = result[0];
+    const plan = row?.plan ?? 'free';
+    const used = Number(row?.used ?? 0);
+    const limit = PLAN_MONTHLY_LIMITS[plan] ?? PLAN_MONTHLY_LIMITS['free'];
+
+    if (!Number.isFinite(limit)) return { allowed: true }; // enterprise = unlimited
+
+    if (used >= limit) {
+      return { allowed: false, plan, used, limit };
+    }
+
+    return { allowed: true };
+  } catch {
+    // If the customers table does not exist yet, allow the request.
+    return { allowed: true };
+  }
+}

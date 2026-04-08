@@ -54,6 +54,7 @@ import {
 import {
   type AuthScope,
   buildSecurityConfig,
+  checkPlanQuota,
   getApiRateLimitKey,
   isCorsOriginAllowed,
   requireApiKeyScope,
@@ -1467,6 +1468,18 @@ export async function buildServer(options: BuildServerOptions = {}) {
     preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
+    // Enforce plan quota before running any verification work.
+    const quota = await checkPlanQuota(prisma, request.authContext?.userId ?? null);
+    if (!quota.allowed) {
+      return reply.code(429).send({
+        error: 'plan_quota_exceeded',
+        plan: quota.plan,
+        used: quota.used,
+        limit: quota.limit,
+        message: `Monthly verification limit reached for plan '${quota.plan}'. Upgrade to continue.`
+      });
+    }
+
     const verifyStartMs = Date.now();
     const parsed = verifyInputSchema.safeParse(request.body);
     if (!parsed.success) {
