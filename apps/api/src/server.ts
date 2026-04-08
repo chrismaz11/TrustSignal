@@ -38,6 +38,7 @@ import {
 } from '../../../packages/core/dist/index.js';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
+import { mapInternalStatusToExternal, type ExternalReceiptStatus } from './receipts.js';
 import { anchorReceipt, buildAnchorSubject } from './anchor.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
@@ -843,14 +844,7 @@ type VerifyRouteInput = BundleInput & {
 
 type GitHubVerificationInput = z.infer<typeof githubVerificationInputSchema>;
 
-function mapDecisionToPilotStatus(decision: 'ALLOW' | 'FLAG' | 'BLOCK', revoked = false): 'clean' | 'failure' | 'revoked' | 'compliance_gap' {
-  if (revoked) return 'revoked';
-  if (decision === 'ALLOW') return 'clean';
-  if (decision === 'BLOCK') return 'failure';
-  return 'compliance_gap';
-}
-
-function mapGitHubConclusion(status: ReturnType<typeof mapDecisionToPilotStatus>): 'success' | 'failure' | 'neutral' {
+function mapGitHubConclusion(status: ExternalReceiptStatus): 'success' | 'failure' | 'neutral' {
   if (status === 'clean') return 'success';
   if (status === 'failure' || status === 'revoked') return 'failure';
   return 'neutral';
@@ -1640,15 +1634,16 @@ export async function buildServer(options: BuildServerOptions = {}) {
       verification,
       securityConfig
     );
-    const status = mapDecisionToPilotStatus(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK', record.revoked);
-    const conclusion = mapGitHubConclusion(status);
+    const receiptStatus = mapInternalStatusToExternal(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK', record.revoked);
+    const conclusion = mapGitHubConclusion(receiptStatus);
 
     return reply.send({
       receiptId: record.id,
-      status: 'completed',
+      checkRunStatus: 'completed',
+      receiptStatus,
       conclusion,
       title: conclusion === 'success' ? 'TrustSignal verification passed' : 'TrustSignal verification needs review',
-      summary: `${input.subject.summary} (${input.repository.fullName}) -> ${status}`,
+      summary: `${input.subject.summary} (${input.repository.fullName}) -> ${receiptStatus}`,
       verificationTimestamp: record.createdAt.toISOString(),
       provenanceNote: `Verified ${input.provenance.eventName} provenance for ${input.repository.fullName}`,
       detailsUrl: input.detailsUrl || repositoryUrl
@@ -1870,7 +1865,10 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
 
     if (record.revoked) {
-      return reply.send({ status: 'ALREADY_REVOKED' });
+      return reply.send({
+        receiptStatus: 'revoked' satisfies ExternalReceiptStatus,
+        result: 'ALREADY_REVOKED'
+      });
     }
 
     await prisma.receipt.update({
@@ -1889,7 +1887,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
       'receipt_revoked'
     );
 
-    return reply.send({ status: 'REVOKED', issuerId: revocationVerification.issuerId });
+    return reply.send({
+      receiptStatus: 'revoked' satisfies ExternalReceiptStatus,
+      result: 'REVOKED',
+      issuerId: revocationVerification.issuerId
+    });
   });
 
   app.get('/api/v1/receipts', {
@@ -1913,6 +1915,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     });
     return records.map((record) => ({
       receiptId: record.id,
+      status: mapInternalStatusToExternal(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK', record.revoked),
       decision: record.decision,
       riskScore: record.riskScore,
       createdAt: record.createdAt,
