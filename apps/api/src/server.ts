@@ -58,6 +58,7 @@ import {
   buildSecurityConfig,
   checkPlanQuota,
   getApiRateLimitKey,
+  getMonthlyUsageStats,
   isCorsOriginAllowed,
   requireApiKeyScope,
   type SecurityConfig,
@@ -1214,6 +1215,22 @@ export async function buildServer(options: BuildServerOptions = {}) {
   app.get('/api/v1/metrics', async (_request, reply) => {
     reply.header('Content-Type', metricsRegistry.contentType);
     return reply.send(await metricsRegistry.metrics());
+  });
+
+  app.get('/api/v1/usage', {
+    preHandler: [requireScope('read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const userId = request.authContext?.userId ?? null;
+    if (!userId) {
+      // local-dev keys: return unlimited placeholder
+      return reply.send({ plan: 'dev', used: 0, limit: null, remaining: null, resetAt: null });
+    }
+    const stats = await getMonthlyUsageStats(prisma, userId);
+    if (!stats) {
+      return reply.code(404).send({ error: 'Usage data not available — customer record not found' });
+    }
+    return reply.send(stats);
   });
 
   app.get('/api/v1/integrations/vanta/schema', {

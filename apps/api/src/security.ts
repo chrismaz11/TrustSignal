@@ -452,11 +452,58 @@ export function verifyRevocationHeaders(
 
 // ─── Plan quota enforcement ───────────────────────────────────────────────────
 
-const PLAN_MONTHLY_LIMITS: Record<string, number> = {
+export const PLAN_MONTHLY_LIMITS: Record<string, number> = {
   free: 1_000,
   pro: 100_000,
   enterprise: Infinity
 };
+
+export type UsageStats = {
+  plan: string;
+  used: number;
+  limit: number | null;   // null = unlimited (enterprise)
+  remaining: number | null;
+  resetAt: string;        // ISO date of next monthly reset
+};
+
+/**
+ * Return the current month's verification usage for the given userId.
+ * Returns null if the user has no customer record.
+ */
+export async function getMonthlyUsageStats(
+  prisma: PrismaClient,
+  userId: string
+): Promise<UsageStats | null> {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    // First day of next month
+    const resetAt = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const result = await prisma.$queryRaw<Array<{ plan: string | null; used: bigint }>>`
+      select
+        c.plan,
+        count(vl.id) as used
+      from public.verification_log vl
+      left join public.customers c on c.user_id = ${userId}::uuid
+      where
+        vl.user_id = ${userId}::uuid
+        and vl.created_at >= ${monthStart}::timestamptz
+      group by c.plan
+    `;
+
+    const row = result[0];
+    const plan = row?.plan ?? 'free';
+    const used = Number(row?.used ?? 0);
+    const rawLimit = PLAN_MONTHLY_LIMITS[plan] ?? PLAN_MONTHLY_LIMITS['free'];
+    const limit = Number.isFinite(rawLimit) ? rawLimit : null;
+    const remaining = limit !== null ? Math.max(0, limit - used) : null;
+
+    return { plan, used, limit, remaining, resetAt };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Check whether the API key owner is within their monthly verification quota.
