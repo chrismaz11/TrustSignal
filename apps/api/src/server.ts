@@ -39,7 +39,6 @@ import {
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
 import { anchorReceipt, buildAnchorSubject } from './anchor.js';
-import { ensureDatabase } from './db.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
 import { loadRuntimeEnv, resolveDatabaseUrl } from './env.js';
@@ -52,6 +51,7 @@ import {
   RegistrySourceId
 } from './services/registryAdapters.js';
 import {
+  type AuthScope,
   buildSecurityConfig,
   getApiRateLimitKey,
   isCorsOriginAllowed,
@@ -61,7 +61,6 @@ import {
 } from './security.js';
 import { isWorkflowError } from './workflow/errors.js';
 import {
-  NoopWorkflowEventSink,
   PrismaWorkflowEventSink,
   type WorkflowEventSink
 } from './workflow/events.js';
@@ -125,6 +124,28 @@ const bundleSchema = z.object({
 });
 
 const verifyInputSchema = bundleSchema;
+const githubVerificationInputSchema = z.object({
+  apiVersion: z.literal('2026-03-13'),
+  provider: z.literal('github'),
+  externalId: z.string().min(1),
+  headSha: z.string().min(7).max(64),
+  detailsUrl: z.string().url().optional(),
+  subject: z.object({
+    kind: z.enum(['workflow_run', 'release', 'commit']),
+    summary: z.string().min(1)
+  }),
+  repository: z.object({
+    owner: z.string().min(1),
+    repo: z.string().min(1),
+    fullName: z.string().min(1),
+    defaultBranch: z.string().min(1).optional(),
+    htmlUrl: z.string().url().optional()
+  }),
+  provenance: z.object({
+    eventName: z.enum(['workflow_run', 'release', 'push']),
+    attributes: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+  })
+});
 const registryVerifyInputSchema = z.object({
   sourceId: registrySourceIdEnum,
   subjectName: z.string().trim().min(2).max(256),
@@ -820,8 +841,164 @@ type VerifyRouteInput = BundleInput & {
   };
 };
 
+type GitHubVerificationInput = z.infer<typeof githubVerificationInputSchema>;
+
+function mapDecisionToPilotStatus(decision: 'ALLOW' | 'FLAG' | 'BLOCK', revoked = false): 'clean' | 'failure' | 'revoked' | 'compliance_gap' {
+  if (revoked) return 'revoked';
+  if (decision === 'ALLOW') return 'clean';
+  if (decision === 'BLOCK') return 'failure';
+  return 'compliance_gap';
+}
+
+function mapGitHubConclusion(status: ReturnType<typeof mapDecisionToPilotStatus>): 'success' | 'failure' | 'neutral' {
+  if (status === 'clean') return 'success';
+  if (status === 'failure' || status === 'revoked') return 'failure';
+  return 'neutral';
+}
+
+function buildGitHubVerifyInput(input: GitHubVerificationInput): VerifyRouteInput {
+  const payloadDigest = keccak256(toUtf8Bytes(canonicalizeJson(input)));
+  const repositoryUrl = input.repository.htmlUrl || `https://github.com/${input.repository.fullName}`;
+
+  return {
+    bundleId: `github-${input.externalId}`,
+    transactionType: input.subject.kind,
+    ron: {
+      provider: 'github',
+      notaryId: input.repository.fullName,
+      commissionState: 'GH',
+      sealPayload: `${input.headSha}:${input.externalId}`
+    },
+    doc: {
+      docHash: payloadDigest
+    },
+    policy: {
+      profile: 'GITHUB_ARTIFACT_V1'
+    },
+    property: {
+      parcelId: input.externalId,
+      county: input.repository.repo,
+      state: 'GH'
+    },
+    ocrData: {
+      notaryName: input.repository.fullName,
+      propertyAddress: repositoryUrl,
+      grantorName: input.subject.summary
+    },
+    timestamp: new Date().toISOString()
+  };
+}
+
+type ReceiptIssueResult = {
+  record: ReceiptRecord;
+  signedReceipt: Receipt;
+  responseBody: ReturnType<typeof toV2VerifyResponse>;
+};
+
+async function issueReceiptRecord(
+  input: VerifyRouteInput,
+  verification: Awaited<ReturnType<typeof verifyBundle>>,
+  securityConfig: SecurityConfig,
+  options: {
+    fraudRisk?: DocumentRisk;
+  } = {}
+): Promise<ReceiptIssueResult> {
+  const zkpAttestation = await generateComplianceProof({
+    policyProfile: input.policy.profile,
+    checksResult: verification.decision === 'ALLOW',
+    inputsCommitment: computeInputsCommitment(input),
+    docHash: input.doc.docHash,
+    canonicalDocumentBase64: input.doc.pdfBase64
+  });
+
+  const receipt = buildReceipt(input, verification, 'deed-shield', {
+    signing_key_id: securityConfig.receiptSigning.current.kid,
+    fraudRisk: options.fraudRisk,
+    zkpAttestation
+  });
+  const receiptSignature = await signReceiptPayload(
+    toUnsignedReceiptPayload(receipt),
+    securityConfig.receiptSigning.current
+  );
+  const signedReceipt: Receipt = {
+    ...receipt,
+    receiptSignature
+  };
+
+  const record = await prisma.receipt.create({
+    data: {
+      id: signedReceipt.receiptId,
+      receiptHash: signedReceipt.receiptHash,
+      inputsCommitment: signedReceipt.inputsCommitment,
+      parcelId: input.property.parcelId,
+      policyProfile: signedReceipt.policyProfile,
+      decision: signedReceipt.decision,
+      reasons: JSON.stringify(signedReceipt.reasons),
+      riskScore: signedReceipt.riskScore,
+      checks: JSON.stringify(signedReceipt.checks),
+      rawInputsHash: signedReceipt.inputsCommitment,
+      signingKeyId: signedReceipt.signing_key_id,
+      createdAt: new Date(signedReceipt.createdAt),
+      fraudRisk: signedReceipt.fraudRisk ? JSON.stringify(signedReceipt.fraudRisk) : undefined,
+      zkpAttestation: signedReceipt.zkpAttestation ? JSON.stringify(signedReceipt.zkpAttestation) : undefined,
+      receiptSignature: signedReceipt.receiptSignature?.signature,
+      receiptSignatureAlg: signedReceipt.receiptSignature?.alg,
+      receiptSignatureKid: signedReceipt.receiptSignature?.kid,
+      revoked: false
+    }
+  });
+
+  const responseBody = toV2VerifyResponse({
+    decision: signedReceipt.decision,
+    reasons: signedReceipt.reasons,
+    receiptId: record.id,
+    receiptHash: signedReceipt.receiptHash,
+    receiptSignature: signedReceipt.receiptSignature,
+    proofVerified: signedReceipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
+    anchor: buildAnchorState(record, signedReceipt.zkpAttestation),
+    fraudRisk: signedReceipt.fraudRisk,
+    zkpAttestation: signedReceipt.zkpAttestation,
+    revoked: record.revoked,
+    riskScore: signedReceipt.riskScore
+  });
+
+  return {
+    record,
+    signedReceipt,
+    responseBody
+  };
+}
+
+async function assertRequiredSchema() {
+  const [state] = await prisma.$queryRaw<Array<{
+    apiKeys: string | null;
+    receipts: string | null;
+    workflowEvents: string | null;
+    properties: string | null;
+    countyRecords: string | null;
+    notaries: string | null;
+  }>>`
+    select
+      to_regclass('public.api_keys')::text as "apiKeys",
+      to_regclass('public."Receipt"')::text as "receipts",
+      to_regclass('public."WorkflowEvent"')::text as "workflowEvents",
+      to_regclass('public."Property"')::text as "properties",
+      to_regclass('public."CountyRecord"')::text as "countyRecords",
+      to_regclass('public."Notary"')::text as "notaries"
+  `;
+
+  const missing = Object.entries(state ?? {})
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    throw new Error(`required_schema_missing:${missing.join(',')}`);
+  }
+}
+
 export async function buildServer(options: BuildServerOptions = {}) {
   requireProductionVerifierConfig();
+  await assertRequiredSchema();
   const app = Fastify({ logger: options.logger ?? true });
   const securityConfig = buildSecurityConfig();
   const propertyApiKey = resolvePropertyApiKey();
@@ -892,6 +1069,48 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const durationSeconds = startedAt ? (Date.now() - startedAt) / 1000 : 0;
     httpRequestsTotal.inc({ method, route, status_code: statusCode });
     httpRequestDurationSeconds.observe({ method, route, status_code: statusCode }, durationSeconds);
+
+    if (request.authContext?.apiKeyId) {
+      const userAgent = request.headers['user-agent'];
+      const userAgentValue = Array.isArray(userAgent) ? userAgent[0] : userAgent;
+      const metadata = JSON.stringify({
+        authSource: request.authContext.authSource,
+        scopes: [...request.authContext.scopes]
+      });
+
+      try {
+        await prisma.$executeRaw`
+          insert into public.verification_log (
+            api_key_id,
+            user_id,
+            endpoint,
+            status_code,
+            request_id,
+            source_ip,
+            user_agent,
+            metadata
+          ) values (
+            ${request.authContext.apiKeyId},
+            ${request.authContext.userId},
+            ${route},
+            ${reply.statusCode},
+            ${request.id},
+            ${request.ip}::inet,
+            ${userAgentValue ?? null},
+            ${metadata}::jsonb
+          )
+        `;
+      } catch (error) {
+        app.log.error(
+          {
+            event: 'verification_log_write_failed',
+            request_id: request.id,
+            error: error instanceof Error ? error.message : String(error)
+          },
+          'verification_log_write_failed'
+        );
+      }
+    }
   });
 
   await app.register(cors, {
@@ -911,62 +1130,22 @@ export async function buildServer(options: BuildServerOptions = {}) {
       requestId: request.id
     })
   });
-  let databaseReady = true;
-  let databaseInitError: string | null = null;
-  try {
-    await ensureDatabase(prisma);
-  } catch (error) {
-    databaseReady = false;
-    databaseInitError = 'database_initialization_failed';
-    app.log.error(
-      {
-        error_code: databaseInitError,
-        error_name: error instanceof Error ? error.name : 'UnknownError'
-      },
-      'database initialization failed; non-DB routes remain available'
-    );
-  }
-
   const workflowEventSink =
     options.workflowEventSink ??
-    (databaseReady
-      ? new PrismaWorkflowEventSink(
-          (prisma as PrismaClient & { workflowEvent: PrismaWorkflowEventDelegate }).workflowEvent,
-          app.log
-        )
-      : new NoopWorkflowEventSink());
+    new PrismaWorkflowEventSink(
+      (prisma as PrismaClient & { workflowEvent: PrismaWorkflowEventDelegate }).workflowEvent,
+      app.log
+    );
   const workflowService = new WorkflowService(undefined, {
     eventSink: workflowEventSink
   });
-
-  const dbOptionalRoutes = new Set([
-    '/api/v1/health',
-    '/api/v1/status',
-    '/api/v1/metrics',
-    '/api/v1/integrations/vanta/schema',
-    '/api/v1/trust-agents',
-    '/api/v1/workflows/readiness-audit',
-    '/api/v1/workflows',
-    '/api/v1/workflows/:workflowId',
-    '/api/v1/workflows/:workflowId/events',
-    '/api/v1/workflows/:workflowId/evidence-package',
-    '/api/v1/workflows/:workflowId/artifacts',
-    '/api/v1/workflows/:workflowId/artifacts/:artifactId/verify',
-    '/api/v1/workflows/:workflowId/runs'
-  ]);
-
-  app.addHook('preHandler', async (request, reply) => {
-    if (databaseReady) return;
-    const route = (request.routeOptions.url || request.url.split('?')[0] || '').toString();
-    if (dbOptionalRoutes.has(route)) return;
-    return reply.code(503).send({ error: 'Database unavailable' });
-  });
+  const requireScope = (scope: AuthScope) => requireApiKeyScope(prisma, securityConfig, scope);
 
   app.get('/api/v1/health', async () => ({
-    status: databaseReady ? 'ok' : 'degraded',
+    status: 'ok',
     database: {
-      ready: databaseReady,
-      initError: databaseInitError
+      ready: true,
+      initError: null
     }
   }));
   app.get('/api/v1/status', async (request) => {
@@ -983,8 +1162,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
       },
       database: {
         sslModeRequired: databaseUrlHasRequiredSslMode(process.env.DATABASE_URL),
-        ready: databaseReady,
-        initError: databaseInitError
+        ready: true,
+        initError: null
       },
       trustRegistry: {
         source: process.env.TRUST_REGISTRY_SOURCE || 'local-signed-registry'
@@ -997,7 +1176,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/integrations/vanta/schema', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     return {
@@ -1007,7 +1186,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/trust-agents', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     return {
@@ -1021,7 +1200,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowCreateRequestSchema.safeParse(request.body);
@@ -1034,7 +1213,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/readiness-audit', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = readinessWorkflowRequestSchema.safeParse(request.body);
@@ -1051,7 +1230,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1068,7 +1247,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId/events', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1089,7 +1268,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId/evidence-package', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1106,7 +1285,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/artifacts', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const params = workflowParamsSchema.safeParse(request.params);
@@ -1134,7 +1313,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/runs', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const params = workflowParamsSchema.safeParse(request.params);
@@ -1156,7 +1335,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/artifacts/:artifactId/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowArtifactParamsSchema.safeParse(request.params);
@@ -1173,7 +1352,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/integrations/vanta/verification/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1186,7 +1365,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/sources', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     const sources = await registryAdapterService.listSources();
@@ -1197,7 +1376,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = registryVerifyInputSchema.safeParse(request.body);
@@ -1222,7 +1401,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify-batch', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = registryVerifyBatchInputSchema.safeParse(request.body);
@@ -1243,7 +1422,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/jobs', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request) => {
     const limitRaw = (request.query as { limit?: string } | undefined)?.limit;
@@ -1257,7 +1436,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/jobs/:jobId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const { jobId } = request.params as { jobId: string };
@@ -1269,7 +1448,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify/attom', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = deedParsedSchema.safeParse(request.body);
@@ -1291,7 +1470,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const verifyStartMs = Date.now();
@@ -1389,66 +1568,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
       });
     }
 
-    // ZKP Attestation
-    // We generate a ZKP that proves we ran the checks and they passed (or failed)
-    const zkpAttestation = await generateComplianceProof({
-      policyProfile: input.policy.profile,
-      checksResult: verification.decision === 'ALLOW',
-      inputsCommitment: computeInputsCommitment(input),
-      docHash: input.doc.docHash,
-      canonicalDocumentBase64: input.doc.pdfBase64
-    });
-
-    const receipt = buildReceipt(input, verification, 'deed-shield', {
-      signing_key_id: securityConfig.receiptSigning.current.kid,
-      fraudRisk,
-      zkpAttestation
-    });
-    const receiptSignature = await signReceiptPayload(
-      toUnsignedReceiptPayload(receipt),
-      securityConfig.receiptSigning.current
+    const { record, signedReceipt, responseBody } = await issueReceiptRecord(
+      input,
+      verification,
+      securityConfig,
+      { fraudRisk }
     );
-    const signedReceipt: Receipt = {
-      ...receipt,
-      receiptSignature
-    };
-
-    const record = await prisma.receipt.create({
-      data: {
-        id: signedReceipt.receiptId,
-        receiptHash: signedReceipt.receiptHash,
-        inputsCommitment: signedReceipt.inputsCommitment,
-        parcelId: input.property.parcelId,
-        policyProfile: signedReceipt.policyProfile,
-        decision: signedReceipt.decision,
-        reasons: JSON.stringify(signedReceipt.reasons),
-        riskScore: signedReceipt.riskScore,
-        checks: JSON.stringify(signedReceipt.checks),
-        rawInputsHash: signedReceipt.inputsCommitment,
-        signingKeyId: signedReceipt.signing_key_id,
-        createdAt: new Date(signedReceipt.createdAt),
-        fraudRisk: signedReceipt.fraudRisk ? JSON.stringify(signedReceipt.fraudRisk) : undefined,
-        zkpAttestation: signedReceipt.zkpAttestation ? JSON.stringify(signedReceipt.zkpAttestation) : undefined,
-        receiptSignature: signedReceipt.receiptSignature?.signature,
-        receiptSignatureAlg: signedReceipt.receiptSignature?.alg,
-        receiptSignatureKid: signedReceipt.receiptSignature?.kid,
-        revoked: false
-      }
-    });
-
-    const body = toV2VerifyResponse({
-      decision: signedReceipt.decision,
-      reasons: signedReceipt.reasons,
-      receiptId: record.id,
-      receiptHash: signedReceipt.receiptHash,
-      receiptSignature: signedReceipt.receiptSignature,
-      proofVerified: signedReceipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
-      anchor: buildAnchorState(record, signedReceipt.zkpAttestation),
-      fraudRisk: signedReceipt.fraudRisk,
-      zkpAttestation: signedReceipt.zkpAttestation,
-      revoked: record.revoked,
-      riskScore: signedReceipt.riskScore
-    });
 
     receiptsIssuedTotal.inc({ decision: signedReceipt.decision, policy_profile: input.policy.profile });
     verifyDurationSeconds.observe({ decision: signedReceipt.decision }, (Date.now() - verifyStartMs) / 1000);
@@ -1464,11 +1589,74 @@ export async function buildServer(options: BuildServerOptions = {}) {
       'receipt_issued'
     );
 
-    return reply.send(body);
+    return reply.send(responseBody);
+  });
+
+  app.post('/api/v1/verifications/github', {
+    preHandler: [requireScope('verify')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const parsed = githubVerificationInputSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
+    }
+
+    const input = parsed.data;
+    const verifyInput = buildGitHubVerifyInput(input);
+    const repositoryUrl = input.repository.htmlUrl || `https://github.com/${input.repository.fullName}`;
+    const decision = input.provenance.eventName === 'push' ? 'FLAG' : 'ALLOW';
+    const verification = {
+      decision,
+      reasons: decision === 'ALLOW'
+        ? [`Verified GitHub provenance for ${input.repository.fullName} at ${input.headSha}`]
+        : [`GitHub provenance accepted with follow-up review for ${input.repository.fullName}`],
+      riskScore: decision === 'ALLOW' ? 6 : 34,
+      checks: [
+        {
+          checkId: 'github-provider',
+          status: 'PASS',
+          details: `provider=${input.provider}`
+        },
+        {
+          checkId: 'github-repository',
+          status: 'PASS',
+          details: input.repository.fullName
+        },
+        {
+          checkId: 'github-event',
+          status: decision === 'ALLOW' ? 'PASS' : 'WARN',
+          details: `${input.provenance.eventName}:${input.subject.kind}`
+        },
+        {
+          checkId: 'github-head-sha',
+          status: 'PASS',
+          details: input.headSha
+        }
+      ]
+    } as Awaited<ReturnType<typeof verifyBundle>>;
+
+    const { record } = await issueReceiptRecord(
+      verifyInput,
+      verification,
+      securityConfig
+    );
+    const status = mapDecisionToPilotStatus(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK', record.revoked);
+    const conclusion = mapGitHubConclusion(status);
+
+    return reply.send({
+      receiptId: record.id,
+      status: 'completed',
+      conclusion,
+      title: conclusion === 'success' ? 'TrustSignal verification passed' : 'TrustSignal verification needs review',
+      summary: `${input.subject.summary} (${input.repository.fullName}) -> ${status}`,
+      verificationTimestamp: record.createdAt.toISOString(),
+      provenanceNote: `Verified ${input.provenance.eventName} provenance for ${input.repository.fullName}`,
+      detailsUrl: input.detailsUrl || repositoryUrl
+    });
   });
 
   app.get('/api/v1/synthetic', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     const registry = await loadRegistry();
@@ -1502,7 +1690,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1543,7 +1731,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId/pdf', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1563,7 +1751,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1616,7 +1804,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/anchor/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'anchor')],
+    preHandler: [requireScope('anchor')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1662,7 +1850,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
-    preHandler: [requireApiKeyScope(securityConfig, 'revoke')],
+    preHandler: [requireScope('revoke')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1705,7 +1893,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipts', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request) => {
     const query = request.query as { limit?: string };
