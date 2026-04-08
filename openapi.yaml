@@ -226,6 +226,17 @@ paths:
         - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ReceiptId'
+        - name: chain
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [evm, solana]
+            default: evm
+          description: |
+            Target chain for anchoring. `evm` anchors on Sepolia/EVM via the TrustSignal registry contract.
+            `solana` anchors via an SPL Memo transaction on devnet or mainnet-beta (configured by SOLANA_CLUSTER).
+            A receipt may be anchored on multiple chains by calling this endpoint with different `chain` values.
       responses:
         '200':
           description: Provenance state returned.
@@ -662,6 +673,16 @@ components:
         status:
           type: string
           description: Current provenance state for the receipt.
+        chain:
+          type: string
+          enum: [evm, solana]
+          description: The chain on which this receipt was most recently anchored.
+        txHash:
+          type: string
+          description: On-chain transaction hash or Solana signature for the anchor transaction.
+        chainId:
+          type: string
+          description: EVM chain ID (e.g. "11155111" for Sepolia) or Solana cluster ID (e.g. "solana-devnet").
         anchoredAt:
           type: string
           format: date-time

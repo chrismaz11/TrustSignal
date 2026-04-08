@@ -6,7 +6,10 @@ import {
   type ZKPAttestation
 } from '../../../packages/core/dist/index.js';
 
+import { anchorReceiptOnSolana, findSolanaAnchor } from './solanaAnchor.js';
+
 export { ANCHOR_SUBJECT_VERSION } from '../../../packages/core/dist/index.js';
+export { anchorReceiptOnSolana, findSolanaAnchor } from './solanaAnchor.js';
 
 const ABI = [
   'event Anchored(bytes32 receiptHash, bytes32 subjectDigest, bytes32 anchorId, address sender, uint256 timestamp)',
@@ -17,8 +20,11 @@ const ABI = [
   'function subjectForReceipt(bytes32 receiptHash) external view returns (bytes32)'
 ];
 
+export type AnchorChain = 'evm' | 'solana';
+
 export type AnchorResult = {
   status: 'ANCHORED' | 'ALREADY_ANCHORED';
+  chain: AnchorChain;
   txHash?: string;
   chainId?: string;
   anchorId?: string;
@@ -83,6 +89,7 @@ export async function anchorReceipt(receiptHash: string, attestation?: ZKPAttest
     const existingSubjectDigest = await registry.subjectForReceipt(receiptHash);
     return {
       status: 'ALREADY_ANCHORED',
+      chain: 'evm',
       chainId,
       subjectDigest: existingSubjectDigest || subject.digest,
       subjectVersion: subject.version
@@ -107,6 +114,7 @@ export async function anchorReceipt(receiptHash: string, attestation?: ZKPAttest
 
   return {
     status: 'ANCHORED',
+    chain: 'evm',
     txHash: receipt?.hash,
     chainId,
     anchorId,
@@ -114,4 +122,36 @@ export async function anchorReceipt(receiptHash: string, attestation?: ZKPAttest
     subjectVersion: subject.version,
     anchoredAt
   };
+}
+
+/**
+ * Anchor a receipt on a specific chain (evm or solana).
+ * For EVM, delegates to anchorReceipt (Sepolia/local hardhat).
+ * For Solana, writes a memo transaction using the SPL Memo program.
+ */
+export async function anchorReceiptOnChain(
+  receiptHash: string,
+  chain: AnchorChain,
+  attestation?: ZKPAttestation
+): Promise<AnchorResult> {
+  if (chain === 'solana') {
+    const subject = buildAnchorSubject(receiptHash, attestation);
+    // Check if already anchored on Solana before sending a new tx
+    const existing = await findSolanaAnchor(receiptHash, subject.digest, subject.version);
+    if (existing) {
+      return {
+        ...existing,
+        chain: 'solana',
+        subjectVersion: subject.version as typeof ANCHOR_SUBJECT_VERSION
+      };
+    }
+    const result = await anchorReceiptOnSolana(receiptHash, subject.digest, subject.version);
+    return {
+      ...result,
+      chain: 'solana',
+      subjectVersion: result.subjectVersion as typeof ANCHOR_SUBJECT_VERSION
+    };
+  }
+  // Default: EVM
+  return anchorReceipt(receiptHash, attestation);
 }

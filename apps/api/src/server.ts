@@ -41,7 +41,7 @@ import {
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
 import { mapInternalStatusToExternal, type ExternalReceiptStatus } from './receipts.js';
-import { anchorReceipt, buildAnchorSubject } from './anchor.js';
+import { anchorReceipt, anchorReceiptOnChain, buildAnchorSubject, type AnchorChain } from './anchor.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
 import { loadRuntimeEnv, resolveDatabaseUrl } from './env.js';
@@ -548,8 +548,11 @@ function sendWorkflowError(
 
 function buildAnchorState(record: ReceiptRecord, attestation?: ZKPAttestation) {
   const subject = buildAnchorSubject(record.receiptHash, attestation);
+  // Infer chain from stored chainId: "solana-*" → solana, otherwise evm
+  const chain: AnchorChain = record.anchorChainId?.startsWith('solana-') ? 'solana' : 'evm';
   return {
     status: record.anchorStatus,
+    chain,
     txHash: record.anchorTxHash || undefined,
     chainId: record.anchorChainId || undefined,
     anchorId: record.anchorId || undefined,
@@ -1839,6 +1842,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+
+    // Optional ?chain=evm|solana query param (default: evm)
+    const chainParam = (request.query as Record<string, string | undefined>).chain;
+    const chain: AnchorChain = chainParam === 'solana' ? 'solana' : 'evm';
+
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1851,13 +1859,19 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return reply.code(409).send({ error: 'proof_artifact_required_for_anchor' });
     }
 
+    // If already anchored on the requested chain, return the stored state
     if (record.anchorStatus === 'ANCHORED') {
-      return reply.send({
-        ...buildAnchorState(record, receipt.zkpAttestation)
-      });
+      const storedChain: AnchorChain = record.anchorChainId?.startsWith('solana-') ? 'solana' : 'evm';
+      if (storedChain === chain) {
+        return reply.send({
+          ...buildAnchorState(record, receipt.zkpAttestation)
+        });
+      }
+      // Different chain requested — allow anchoring on additional chain
+      // (cross-chain: receipt may be anchored on multiple chains)
     }
 
-    const result = await anchorReceipt(record.receiptHash, receipt.zkpAttestation);
+    const result = await anchorReceiptOnChain(record.receiptHash, chain, receipt.zkpAttestation);
     const updated = await prisma.receipt.update({
       where: { id: receiptId },
       data: {
