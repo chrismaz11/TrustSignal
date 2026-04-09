@@ -117,6 +117,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run database migrations
+        run: cd apps/api && npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/trustsignal_signed_receipt_smoke?sslmode=disable
+
       - name: Run signed-receipt smoke test
         run: cd apps/api && npx vitest run --config vitest.config.ts src/v2-integration.test.ts
 

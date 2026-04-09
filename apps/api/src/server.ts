@@ -41,7 +41,7 @@ import {
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
 import { mapInternalStatusToExternal, type ExternalReceiptStatus } from './receipts.js';
-import { anchorReceipt, anchorReceiptOnChain, buildAnchorSubject, type AnchorChain } from './anchor.js';
+import { anchorReceiptOnChain, buildAnchorSubject, type AnchorChain } from './anchor.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
 import { loadRuntimeEnv, resolveDatabaseUrl } from './env.js';
