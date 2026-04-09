@@ -1,10 +1,10 @@
 import { createHash, generateKeyPairSync } from 'node:crypto';
 
+import { PrismaClient } from '@prisma/client';
 import { getAddress, verifyMessage } from 'ethers';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { type JWK } from 'jose';
 
-const DEFAULT_API_KEY = 'example_local_key_id';
 const DEFAULT_SCOPES = ['verify', 'read', 'anchor', 'revoke'];
 const DEFAULT_DEV_CORS_ORIGINS = [
   'http://localhost:3000',
@@ -25,12 +25,15 @@ export type AuthScope = 'verify' | 'read' | 'anchor' | 'revoke';
 
 export type AuthContext = {
   apiKey: string;
+  apiKeyId: string | null;
   apiKeyHash: string;
+  authSource: 'database' | 'local-dev';
+  userId: string | null;
   scopes: Set<string>;
 };
 
 export type SecurityConfig = {
-  apiKeys: Map<string, Set<string>>;
+  localDevApiKeys: Map<string, Set<string>>;
   revocationIssuers: Map<string, string>;
   revocationMaxSkewMs: number;
   globalRateLimitMax: number;
@@ -228,23 +231,18 @@ export function buildReceiptSigningConfig(env: NodeJS.ProcessEnv = process.env):
 
 export function buildSecurityConfig(env: NodeJS.ProcessEnv = process.env): SecurityConfig {
   const nodeEnv = env.NODE_ENV || 'development';
-  const defaultScopes = parseScopes(env.API_KEY_DEFAULT_SCOPES);
-  const scopedMappings = parseApiKeyScopeMapping(env.API_KEY_SCOPES);
+  const defaultScopes = parseScopes(env.TRUSTSIGNAL_LOCAL_DEV_API_KEY_DEFAULT_SCOPES);
+  const scopedMappings = parseApiKeyScopeMapping(env.TRUSTSIGNAL_LOCAL_DEV_API_KEY_SCOPES);
+  const localDevApiKeys = new Map<string, Set<string>>();
 
-  const apiKeys = parseList(env.API_KEYS);
-  const resolvedApiKeys = apiKeys.length > 0 ? apiKeys : nodeEnv === 'production' ? [] : [DEFAULT_API_KEY];
-
-  if (nodeEnv === 'production' && resolvedApiKeys.length === 0) {
-    throw new Error('API_KEYS is required in production');
-  }
-
-  const keyMap = new Map<string, Set<string>>();
-  for (const key of resolvedApiKeys) {
-    keyMap.set(key, scopedMappings.get(key) ?? new Set(defaultScopes));
+  if (nodeEnv !== 'production') {
+    for (const key of parseList(env.TRUSTSIGNAL_LOCAL_DEV_API_KEYS)) {
+      localDevApiKeys.set(key, scopedMappings.get(key) ?? new Set(defaultScopes));
+    }
   }
 
   return {
-    apiKeys: keyMap,
+    localDevApiKeys,
     revocationIssuers: parseRevocationIssuers(env.REVOCATION_ISSUERS),
     revocationMaxSkewMs: parseInteger(env.REVOCATION_SIGNATURE_MAX_SKEW_MS, 5 * 60 * 1000),
     globalRateLimitMax: parseInteger(env.RATE_LIMIT_GLOBAL_MAX, 600),
@@ -262,39 +260,141 @@ function readHeader(request: FastifyRequest, headerName: string): string | null 
   return null;
 }
 
-function fingerprintApiKey(apiKey: string): string {
-  return createHash('sha256').update(apiKey).digest('hex').slice(0, 16);
+function hashApiKey(apiKey: string): string {
+  return createHash('sha256').update(apiKey).digest('hex');
 }
 
-export function requireApiKeyScope(config: SecurityConfig, requiredScope: AuthScope) {
+function fingerprintApiKey(apiKey: string): string {
+  return hashApiKey(apiKey).slice(0, 16);
+}
+
+function readPresentedCredential(request: FastifyRequest): string | null {
+  const apiKey = readHeader(request, 'x-api-key');
+  if (apiKey) return apiKey;
+
+  const authorization = readHeader(request, 'authorization');
+  if (!authorization) return null;
+
+  const [scheme, token] = authorization.split(/\s+/, 2);
+  if (!scheme || !token) return null;
+  if (scheme.toLowerCase() !== 'bearer') return null;
+  return token.trim() || null;
+}
+
+type ApiKeyRecord = {
+  id: string;
+  user_id: string;
+  key_hash: string;
+  scopes: string[] | null;
+  revoked_at: Date | null;
+  expires_at: Date | null;
+};
+
+async function findDatabaseApiKey(prisma: PrismaClient, apiKeyHash: string): Promise<ApiKeyRecord | null> {
+  const records = await prisma.$queryRaw<ApiKeyRecord[]>`
+    select
+      id,
+      user_id,
+      key_hash,
+      scopes,
+      revoked_at,
+      nullif(to_jsonb(api_keys)->>'expires_at', '')::timestamptz as expires_at
+    from public.api_keys
+    where key_hash = ${apiKeyHash}
+    limit 1
+  `;
+
+  return records[0] ?? null;
+}
+
+async function touchApiKey(prisma: PrismaClient, apiKeyId: string) {
+  await prisma.$executeRaw`
+    update public.api_keys
+    set last_used_at = timezone('utc', now())
+    where id = ${apiKeyId}
+  `;
+}
+
+export function requireApiKeyScope(prisma: PrismaClient, config: SecurityConfig, requiredScope: AuthScope) {
   return async function authenticate(request: FastifyRequest, reply: FastifyReply) {
-    const apiKey = readHeader(request, 'x-api-key');
+    const apiKey = readPresentedCredential(request);
     if (!apiKey) {
-      reply.code(401).send({ error: 'Unauthorized: missing x-api-key' });
+      reply.code(401).send({ error: 'Unauthorized: missing bearer token or x-api-key' });
       return;
     }
 
-    const scopes = config.apiKeys.get(apiKey);
-    if (!scopes) {
+    const apiKeyHash = hashApiKey(apiKey);
+    const localScopes = config.localDevApiKeys.get(apiKey);
+
+    if (localScopes) {
+      if (!localScopes.has('*') && !localScopes.has(requiredScope)) {
+        reply.code(403).send({ error: `Forbidden: missing scope ${requiredScope}` });
+        return;
+      }
+
+      request.authContext = {
+        apiKey,
+        apiKeyId: null,
+        apiKeyHash,
+        authSource: 'local-dev',
+        userId: null,
+        scopes: localScopes
+      };
+      return;
+    }
+
+    let record: ApiKeyRecord | null = null;
+    try {
+      record = await findDatabaseApiKey(prisma, apiKeyHash);
+    } catch (error) {
+      reply.code(503).send({
+        error: 'Database unavailable',
+        details: error instanceof Error ? error.message : 'api_key_lookup_failed'
+      });
+      return;
+    }
+
+    if (!record) {
       reply.code(403).send({ error: 'Forbidden: invalid API key' });
       return;
     }
 
+    if (record.revoked_at) {
+      reply.code(403).send({ error: 'Forbidden: revoked API key' });
+      return;
+    }
+
+    if (record.expires_at && record.expires_at.getTime() <= Date.now()) {
+      reply.code(403).send({ error: 'Forbidden: expired API key' });
+      return;
+    }
+
+    const scopes = new Set(record.scopes ?? []);
     if (!scopes.has('*') && !scopes.has(requiredScope)) {
       reply.code(403).send({ error: `Forbidden: missing scope ${requiredScope}` });
       return;
     }
 
+    try {
+      await touchApiKey(prisma, record.id);
+    } catch {
+      reply.code(503).send({ error: 'Database unavailable', details: 'api_key_touch_failed' });
+      return;
+    }
+
     request.authContext = {
       apiKey,
-      apiKeyHash: fingerprintApiKey(apiKey),
+      apiKeyId: record.id,
+      apiKeyHash,
+      authSource: 'database',
+      userId: record.user_id,
       scopes
     };
   };
 }
 
 export function getApiRateLimitKey(request: FastifyRequest): string {
-  const apiKey = readHeader(request, 'x-api-key');
+  const apiKey = readPresentedCredential(request);
   return apiKey ? fingerprintApiKey(apiKey) : request.ip;
 }
 
@@ -348,4 +448,106 @@ export function verifyRevocationHeaders(
   }
 
   return { ok: true, issuerId };
+}
+
+// ─── Plan quota enforcement ───────────────────────────────────────────────────
+
+export const PLAN_MONTHLY_LIMITS: Record<string, number> = {
+  free: 1_000,
+  pro: 100_000,
+  enterprise: Infinity
+};
+
+export type UsageStats = {
+  plan: string;
+  used: number;
+  limit: number | null;   // null = unlimited (enterprise)
+  remaining: number | null;
+  resetAt: string;        // ISO date of next monthly reset
+};
+
+/**
+ * Return the current month's verification usage for the given userId.
+ * Returns null if the user has no customer record.
+ */
+export async function getMonthlyUsageStats(
+  prisma: PrismaClient,
+  userId: string
+): Promise<UsageStats | null> {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    // First day of next month
+    const resetAt = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const result = await prisma.$queryRaw<Array<{ plan: string | null; used: bigint }>>`
+      select
+        c.plan,
+        count(vl.id) as used
+      from public.verification_log vl
+      left join public.customers c on c.user_id = ${userId}::uuid
+      where
+        vl.user_id = ${userId}::uuid
+        and vl.created_at >= ${monthStart}::timestamptz
+      group by c.plan
+    `;
+
+    const row = result[0];
+    const plan = row?.plan ?? 'free';
+    const used = Number(row?.used ?? 0);
+    const rawLimit = PLAN_MONTHLY_LIMITS[plan] ?? PLAN_MONTHLY_LIMITS['free'];
+    const limit = Number.isFinite(rawLimit) ? rawLimit : null;
+    const remaining = limit !== null ? Math.max(0, limit - used) : null;
+
+    return { plan, used, limit, remaining, resetAt };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check whether the API key owner is within their monthly verification quota.
+ * Returns { allowed: true } or { allowed: false, plan, used, limit }.
+ *
+ * Queries public.verification_log for the current calendar month.
+ * Falls back to allowing the request if the customers table is not yet configured.
+ */
+export async function checkPlanQuota(
+  prisma: PrismaClient,
+  userId: string | null
+): Promise<{ allowed: true } | { allowed: false; plan: string; used: number; limit: number }> {
+  if (!userId) return { allowed: true }; // local-dev keys have no quota
+
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const result = await prisma.$queryRaw<Array<{ plan: string | null; used: bigint }>>`
+      select
+        c.plan,
+        count(vl.id) as used
+      from public.verification_log vl
+      left join public.customers c on c.user_id = ${userId}::uuid
+      where
+        vl.user_id = ${userId}::uuid
+        and vl.created_at >= ${monthStart}::timestamptz
+      group by c.plan
+    `;
+
+    const row = result[0];
+    const plan = row?.plan ?? 'free';
+    const used = Number(row?.used ?? 0);
+    const limit = PLAN_MONTHLY_LIMITS[plan] ?? PLAN_MONTHLY_LIMITS['free'];
+
+    if (!Number.isFinite(limit)) return { allowed: true }; // enterprise = unlimited
+
+    if (used >= limit) {
+      return { allowed: false, plan, used, limit };
+    }
+
+    return { allowed: true };
+  } catch {
+    // If the customers table does not exist yet, allow the request.
+    return { allowed: true };
+  }
 }

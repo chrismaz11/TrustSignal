@@ -1,3 +1,4 @@
+import { type ExternalReceiptStatus, mapInternalStatusToExternal } from '../receipts.js';
 
 export type RiskBand = "LOW" | "MEDIUM" | "HIGH";
 type FraudRiskPayload = {
@@ -8,6 +9,7 @@ type FraudRiskPayload = {
 type ZkpAttestationPayload = unknown;
 type V2VerifyResponse = {
     receiptVersion: string;
+    status: ExternalReceiptStatus;
     decision: string;
     reasons: string[];
     receiptId: string;
@@ -85,6 +87,10 @@ export function toV2VerifyResponse(input: {
 
     const body: V2VerifyResponse = {
         receiptVersion: "2.0",
+        status: mapInternalStatusToExternal(
+            input.decision as 'ALLOW' | 'FLAG' | 'BLOCK',
+            Boolean(input.revoked)
+        ),
         decision: input.decision,
         reasons: input.reasons ?? [],
         receiptId: input.receiptId,

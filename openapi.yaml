@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: TrustSignal Public Verification API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     TrustSignal is evidence integrity infrastructure for existing workflows.
     This contract documents the public verification lifecycle for creating signed verification receipts,
@@ -18,6 +18,8 @@ tags:
     description: Retrieve stored receipts and receipt-ready artifacts.
   - name: Lifecycle
     description: Check later verification status and manage authorized receipt lifecycle actions.
+  - name: Integrations
+    description: Provider-specific verification adapters (GitHub, etc.).
 paths:
   /api/v1/verify:
     post:
@@ -66,6 +68,7 @@ paths:
                   summary: Verification response
                   value:
                     receiptVersion: '2.0'
+                    status: clean
                     decision: ALLOW
                     reasons:
                       - receipt issued
@@ -223,6 +226,17 @@ paths:
         - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ReceiptId'
+        - name: chain
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [evm, solana]
+            default: evm
+          description: |
+            Target chain for anchoring. `evm` anchors on Sepolia/EVM via the TrustSignal registry contract.
+            `solana` anchors via an SPL Memo transaction on devnet or mainnet-beta (configured by SOLANA_CLUSTER).
+            A receipt may be anchored on multiple chains by calling this endpoint with different `chain` values.
       responses:
         '200':
           description: Provenance state returned.
@@ -266,6 +280,39 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ReceiptListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/verifications/github:
+    post:
+      tags: [Integrations]
+      summary: Create a verification receipt from a GitHub Actions workflow event
+      description: |
+        GitHub-specific adapter over the standard receipt issuance path.
+        Intended for use inside GitHub Actions workflows via the TrustSignal Verify Artifact action.
+        The response includes a `receiptStatus` (frozen enum) and a `conclusion` compatible with GitHub check runs.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitHubVerificationRequest'
+      responses:
+        '200':
+          description: Verification completed and receipt issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitHubVerificationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -462,11 +509,21 @@ components:
           type: string
           format: date-time
           description: Caller-provided event timestamp.
+    ExternalReceiptStatus:
+      type: string
+      enum: [clean, failure, revoked, compliance_gap]
+      description: |
+        Frozen external status enum for all pilot-facing routes.
+        - `clean` — verification passed (decision: ALLOW, not revoked)
+        - `failure` — verification failed (decision: BLOCK)
+        - `revoked` — receipt was revoked after issuance
+        - `compliance_gap` — verification requires review (decision: FLAG)
     VerificationResponse:
       type: object
       additionalProperties: true
       required:
         - receiptVersion
+        - status
         - decision
         - reasons
         - receiptId
@@ -477,10 +534,12 @@ components:
         receiptVersion:
           type: string
           example: '2.0'
+        status:
+          $ref: '#/components/schemas/ExternalReceiptStatus'
         decision:
           type: string
           enum: [ALLOW, FLAG, BLOCK]
-          description: Verification signal for the submitted request.
+          description: Internal verification signal. Use `status` for integrations.
         reasons:
           type: array
           items:
@@ -498,6 +557,7 @@ components:
           $ref: '#/components/schemas/RevocationState'
       description: |
         Public response fields for receipt issuance. Additional implementation-specific fields may also be present.
+        The `status` field is the canonical external status for pilot integrations.
     VerificationReceipt:
       allOf:
         - $ref: '#/components/schemas/VerificationResponse'
@@ -613,6 +673,16 @@ components:
         status:
           type: string
           description: Current provenance state for the receipt.
+        chain:
+          type: string
+          enum: [evm, solana]
+          description: The chain on which this receipt was most recently anchored.
+        txHash:
+          type: string
+          description: On-chain transaction hash or Solana signature for the anchor transaction.
+        chainId:
+          type: string
+          description: EVM chain ID (e.g. "11155111" for Sepolia) or Solana cluster ID (e.g. "solana-devnet").
         anchoredAt:
           type: string
           format: date-time
@@ -630,6 +700,7 @@ components:
       additionalProperties: false
       required:
         - receiptId
+        - status
         - decision
         - createdAt
         - anchorStatus
@@ -638,9 +709,12 @@ components:
         receiptId:
           type: string
           format: uuid
+        status:
+          $ref: '#/components/schemas/ExternalReceiptStatus'
         decision:
           type: string
           enum: [ALLOW, FLAG, BLOCK]
+          description: Internal verification signal. Use `status` for integrations.
         createdAt:
           type: string
           format: date-time
@@ -661,14 +735,106 @@ components:
       type: object
       additionalProperties: false
       required:
-        - status
+        - receiptStatus
+        - result
       properties:
-        status:
+        receiptStatus:
+          $ref: '#/components/schemas/ExternalReceiptStatus'
+          description: Always `revoked` for both new and already-revoked receipts.
+        result:
           type: string
           enum: [REVOKED, ALREADY_REVOKED]
+          description: Operation outcome — whether this call performed the revocation or it was already done.
         issuerId:
           type: string
-          description: Authorized issuer identifier returned when the receipt is revoked.
+          description: Authorized issuer identifier, returned only when result is REVOKED.
+    GitHubVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - externalId
+        - headSha
+        - subject
+        - repository
+        - provenance
+      properties:
+        externalId:
+          type: string
+          description: Unique identifier for this GitHub Actions run (e.g. workflow_run_id).
+        headSha:
+          type: string
+          description: Git commit SHA being verified.
+        subject:
+          type: object
+          additionalProperties: false
+          required: [kind, summary]
+          properties:
+            kind:
+              type: string
+              description: Artifact or event kind (e.g. workflow_run, pull_request).
+            summary:
+              type: string
+              description: Human-readable summary of the subject.
+        repository:
+          type: object
+          additionalProperties: false
+          required: [fullName]
+          properties:
+            fullName:
+              type: string
+              description: GitHub repository full name (owner/repo).
+            htmlUrl:
+              type: string
+              format: uri
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [eventName]
+          properties:
+            eventName:
+              type: string
+              description: GitHub Actions trigger event (e.g. push, pull_request).
+        detailsUrl:
+          type: string
+          format: uri
+          description: Optional URL for GitHub check run details.
+    GitHubVerificationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - receiptId
+        - checkRunStatus
+        - receiptStatus
+        - conclusion
+        - title
+        - summary
+        - verificationTimestamp
+      properties:
+        receiptId:
+          type: string
+          format: uuid
+        checkRunStatus:
+          type: string
+          enum: [completed]
+          description: GitHub check run status. Always `completed`.
+        receiptStatus:
+          $ref: '#/components/schemas/ExternalReceiptStatus'
+        conclusion:
+          type: string
+          enum: [success, failure, neutral]
+          description: GitHub check run conclusion mapped from receiptStatus.
+        title:
+          type: string
+        summary:
+          type: string
+        verificationTimestamp:
+          type: string
+          format: date-time
+        provenanceNote:
+          type: string
+        detailsUrl:
+          type: string
+          format: uri
     ReceiptSignature:
       type: object
       additionalProperties: false

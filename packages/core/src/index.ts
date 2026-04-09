@@ -10,6 +10,7 @@ export * from './mocks.js';
 export * from './verifiers.js';
 export * from './risk/index.js';
 export * from './zkp/index.js';
+export * from './zkml/index.js';
 export * from './anchor/portable.js';
 export * from './anchor/provenance.js';
 export * from './attom/types.js';

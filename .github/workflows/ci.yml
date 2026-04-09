@@ -117,6 +117,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Push database schema
+        run: cd apps/api && npx prisma db push --skip-generate --accept-data-loss
+        env:
+          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/trustsignal_signed_receipt_smoke?sslmode=disable
+
+      - name: Create Supabase-managed tables for smoke test
+        run: |
+          psql postgresql://postgres@127.0.0.1:5432/trustsignal_signed_receipt_smoke <<'SQL'
+          CREATE TABLE IF NOT EXISTS public.api_keys (
+            id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            user_id     TEXT,
+            key_hash    TEXT NOT NULL,
+            key_prefix  TEXT,
+            name        TEXT,
+            scopes      TEXT[],
+            plan        TEXT NOT NULL DEFAULT 'FREE',
+            revoked_at  TIMESTAMPTZ,
+            last_used_at TIMESTAMPTZ,
+            expires_at  TIMESTAMPTZ,
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+          );
+          SQL
+
       - name: Run signed-receipt smoke test
         run: cd apps/api && npx vitest run --config vitest.config.ts src/v2-integration.test.ts
 
@@ -132,11 +156,19 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Build Halo2 verifier
+      - name: Build Halo2 ZKP service
         run: cargo build --release
 
       - name: Run Halo2 tests
         run: cargo test
+
+      - name: Upload zkp_service binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: zkp_service-linux-x64
+          path: circuits/non_mem_gadget/target/release/zkp_service
+          if-no-files-found: error
+          retention-days: 30
 
   secret-scan:
     runs-on: ubuntu-latest
