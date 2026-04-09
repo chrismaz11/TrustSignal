@@ -21,8 +21,8 @@ describeWithDatabase('V2 Feature Integration', () => {
     const revocationSigner = Wallet.createRandom();
 
     beforeAll(async () => {
-        process.env.API_KEYS = apiKey;
-        process.env.API_KEY_SCOPES = `${apiKey}=verify|read|anchor|revoke`;
+        process.env.TRUSTSIGNAL_LOCAL_DEV_API_KEYS = apiKey;
+        process.env.TRUSTSIGNAL_LOCAL_DEV_API_KEY_SCOPES = `${apiKey}=verify|read|anchor|revoke`;
         process.env.REVOCATION_ISSUERS = `issuer-test=${revocationSigner.address}`;
         prisma = new PrismaClient();
         app = await buildServer();
@@ -31,8 +31,8 @@ describeWithDatabase('V2 Feature Integration', () => {
     afterAll(async () => {
         await app.close();
         await prisma.$disconnect();
-        delete process.env.API_KEYS;
-        delete process.env.API_KEY_SCOPES;
+        delete process.env.TRUSTSIGNAL_LOCAL_DEV_API_KEYS;
+        delete process.env.TRUSTSIGNAL_LOCAL_DEV_API_KEY_SCOPES;
         delete process.env.REVOCATION_ISSUERS;
     });
 
