@@ -1,0 +1,15 @@
+ name: Cross Model Skill Sync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cross Model Skill Sync
+        # v1.0.0
+        uses: chrismaz11/Multi-Model-Skill-Sync@f4188af98f2d960acad17921b40a0ae0efeb3879
+        with:
+          target-models: codex,claude,gemini
+

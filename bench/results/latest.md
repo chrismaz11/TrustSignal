@@ -6,8 +6,8 @@
 ## Environment Description
 - Node: v22.14.0
 - Platform: darwin (arm64)
-- Host: Christophers-Mac-mini.local
-- Temp database: postgresql on 127.0.0.1:64030
+- Host: localhost
+- Temp database: postgresql on localhost
 - Harness command: `npx tsx bench/run-bench.ts --scenario all --runs 15 --batch-size 10`
 
 ## Iteration / Sample Notes

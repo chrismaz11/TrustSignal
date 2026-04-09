@@ -1,13 +1,13 @@
 **Navigation**
 
-- [Home](Home)
-- [What is TrustSignal](What-is-TrustSignal)
-- [Architecture](Evidence-Integrity-Architecture)
-- [Verification Receipts](Verification-Receipts)
-- [API Overview](API-Overview)
-- [Claims Boundary](Claims-Boundary)
-- [Quick Verification Example](Quick-Verification-Example)
-- [Vanta Integration Example](Vanta-Integration-Example)
+- [Home](Home.md)
+- [What is TrustSignal](What-is-TrustSignal.md)
+- [Architecture](Evidence-Integrity-Architecture.md)
+- [Verification Receipts](Verification-Receipts.md)
+- [API Overview](API-Overview.md)
+- [Claims Boundary](Claims-Boundary.md)
+- [Quick Verification Example](Quick-Verification-Example.md)
+- [Vanta Integration Example](Vanta-Integration-Example.md)
 
 # Quick Verification Example
 
@@ -17,7 +17,7 @@ This example is for partner engineers who want the smallest realistic TrustSigna
 
 ## Verification Lifecycle
 
-The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](/Users/christopher/Projects/trustsignal/docs/verification-lifecycle.md).
+The canonical lifecycle diagram is documented in [docs/verification-lifecycle.md](../docs/verification-lifecycle.md).
 
 This example uses the current integration-facing lifecycle to create a verification, return verification signals plus a signed verification receipt, store the receipt with the workflow record, and later verify stored receipt state during audit review.
 
@@ -25,10 +25,10 @@ This example uses the current integration-facing lifecycle to create a verificat
 
 Start here for the full evaluator path:
 
-- [Evaluator quickstart](/Users/christopher/Projects/trustsignal/docs/partner-eval/quickstart.md)
-- [API playground](/Users/christopher/Projects/trustsignal/docs/partner-eval/api-playground.md)
-- [OpenAPI contract](/Users/christopher/Projects/trustsignal/openapi.yaml)
-- [Postman collection](/Users/christopher/Projects/trustsignal/postman/TrustSignal.postman_collection.json)
+- [Evaluator quickstart](../docs/partner-eval/quickstart.md)
+- [API playground](../docs/partner-eval/api-playground.md)
+- [OpenAPI contract](../openapi.yaml)
+- [Postman collection](../postman/TrustSignal.postman_collection.json)
 
 ## Integration Model
 
