@@ -1,4 +1,5 @@
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { Buffer } from 'node:buffer';
+import { createHmac, generateKeyPairSync, webcrypto } from 'node:crypto';
 
 import { PrismaClient } from '@prisma/client';
 import { getAddress, verifyMessage } from 'ethers';
@@ -260,12 +261,13 @@ function readHeader(request: FastifyRequest, headerName: string): string | null 
   return null;
 }
 
-function hashApiKey(apiKey: string): string {
-  return createHash('sha256').update(apiKey).digest('hex');
+async function hashApiKey(apiKey: string): Promise<string> {
+  const digest = await webcrypto.subtle.digest('SHA-256', new TextEncoder().encode(apiKey));
+  return Buffer.from(digest).toString('hex');
 }
 
 function fingerprintApiKey(apiKey: string): string {
-  return hashApiKey(apiKey).slice(0, 16);
+  return createHmac('sha256', 'trustsignal-rate-limit-fingerprint').update(apiKey).digest('hex').slice(0, 16);
 }
 
 function readPresentedCredential(request: FastifyRequest): string | null {
@@ -323,7 +325,7 @@ export function requireApiKeyScope(prisma: PrismaClient, config: SecurityConfig,
       return;
     }
 
-    const apiKeyHash = hashApiKey(apiKey);
+    const apiKeyHash = await hashApiKey(apiKey);
     const localScopes = config.localDevApiKeys.get(apiKey);
 
     if (localScopes) {
