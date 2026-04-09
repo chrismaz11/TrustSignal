@@ -1,15 +1,48 @@
- name: Cross Model Skill Sync
+name: AI Control Sync
 
 on:
   workflow_dispatch:
+    inputs:
+      target_models:
+        description: "comma-separated models to sync"
+        required: false
+        default: "codex,claude,gemini"
+
+permissions: read-all
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     steps:
-      - name: Cross Model Skill Sync
-        # v1.0.0
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Validate AI control layer files exist
+        run: |
+          test -f .ai/skills/project-spec.md
+          test -f .agents/primary-agent.md
+          test -f .agents/executor-agent.md
+
+      - name: Run cross-model skill sync
         uses: chrismaz11/Multi-Model-Skill-Sync@f4188af98f2d960acad17921b40a0ae0efeb3879
         with:
-          target-models: codex,claude,gemini
+          target-models: ${{ inputs.target_models }}
 
+      - name: Summarize
+        run: |
+          echo "## AI Control Sync" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Target models: ${{ inputs.target_models }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Canonical spec: .ai/skills/project-spec.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "Agent policies: .agents/primary-agent.md, .agents/executor-agent.md" >> "$GITHUB_STEP_SUMMARY"
