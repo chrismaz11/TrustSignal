@@ -63,7 +63,7 @@ The demo runs the full lifecycle: artifact intake → verification → signed re
 
 ### Local API Development
 
-Prerequisites: Node.js ≥ 18, npm ≥ 9, PostgreSQL ≥ 14
+Prerequisites: Node.js 20.x, npm ≥ 9, PostgreSQL ≥ 14
 
 ```bash
 # Install dependencies
