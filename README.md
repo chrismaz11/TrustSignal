@@ -189,7 +189,7 @@ npm run lint
 - Fail-closed defaults where production trust assumptions are not satisfied
 - Explicit lifecycle boundaries for read, revoke, and provenance-state operations
 
-To report a vulnerability: [info@trustsignal.dev](mailto:info@trustsignal.dev)
+To report a vulnerability: [security@trustsignal.dev](mailto:security@trustsignal.dev)
 
 ---
 
