@@ -1969,6 +1969,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     );
 
     return reply.send({
+      status: 'REVOKED',
       receiptStatus: 'revoked' satisfies ExternalReceiptStatus,
       result: 'REVOKED',
       issuerId: revocationVerification.issuerId
