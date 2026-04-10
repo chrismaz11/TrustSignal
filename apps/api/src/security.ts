@@ -1,4 +1,4 @@
-import { createHmac, generateKeyPairSync, scryptSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 
 import { PrismaClient } from '@prisma/client';
 import { getAddress, verifyMessage } from 'ethers';
@@ -13,7 +13,6 @@ const DEFAULT_DEV_CORS_ORIGINS = [
   'http://127.0.0.1:5173'
 ];
 const DEV_RECEIPT_SIGNING_KID = 'dev-local-receipt-signer-v1';
-const API_KEY_HASH_SALT = 'trustsignal-api-key-v1';
 const DEV_RECEIPT_SIGNING_KEYS = (() => {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   return {
@@ -261,12 +260,12 @@ function readHeader(request: FastifyRequest, headerName: string): string | null 
   return null;
 }
 
-async function hashApiKey(apiKey: string): Promise<string> {
-  return scryptSync(apiKey, API_KEY_HASH_SALT, 32).toString('hex');
+function hashApiKey(apiKey: string): string {
+  return createHash('sha256').update(apiKey).digest('hex');
 }
 
 function fingerprintApiKey(apiKey: string): string {
-  return createHmac('sha256', 'trustsignal-rate-limit-fingerprint').update(apiKey).digest('hex').slice(0, 16);
+  return hashApiKey(apiKey).slice(0, 16);
 }
 
 function readPresentedCredential(request: FastifyRequest): string | null {
@@ -324,7 +323,7 @@ export function requireApiKeyScope(prisma: PrismaClient, config: SecurityConfig,
       return;
     }
 
-    const apiKeyHash = await hashApiKey(apiKey);
+    const apiKeyHash = hashApiKey(apiKey);
     const localScopes = config.localDevApiKeys.get(apiKey);
 
     if (localScopes) {
