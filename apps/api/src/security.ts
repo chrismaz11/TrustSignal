@@ -1,5 +1,4 @@
-import { Buffer } from 'node:buffer';
-import { createHmac, generateKeyPairSync, webcrypto } from 'node:crypto';
+import { createHmac, generateKeyPairSync, scryptSync } from 'node:crypto';
 
 import { PrismaClient } from '@prisma/client';
 import { getAddress, verifyMessage } from 'ethers';
@@ -14,6 +13,7 @@ const DEFAULT_DEV_CORS_ORIGINS = [
   'http://127.0.0.1:5173'
 ];
 const DEV_RECEIPT_SIGNING_KID = 'dev-local-receipt-signer-v1';
+const API_KEY_HASH_SALT = 'trustsignal-api-key-v1';
 const DEV_RECEIPT_SIGNING_KEYS = (() => {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   return {
@@ -262,8 +262,7 @@ function readHeader(request: FastifyRequest, headerName: string): string | null 
 }
 
 async function hashApiKey(apiKey: string): Promise<string> {
-  const digest = await webcrypto.subtle.digest('SHA-256', new TextEncoder().encode(apiKey));
-  return Buffer.from(digest).toString('hex');
+  return scryptSync(apiKey, API_KEY_HASH_SALT, 32).toString('hex');
 }
 
 function fingerprintApiKey(apiKey: string): string {

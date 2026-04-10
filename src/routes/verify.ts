@@ -51,13 +51,15 @@ export async function registerVerifyRoute(
   options: VerifyRoutePluginOptions = {}
 ): Promise<void> {
   const deps = createRouteDependencies(options.deps);
-  const verifyBundleRateLimit = app.rateLimit({
-    max: 30,
-    timeWindow: '1 minute'
-  });
 
   app.post('/v1/verify-bundle', {
-    preHandler: [verifyBundleRateLimit, authenticateJWT]
+    preHandler: [authenticateJWT],
+    config: {
+      rateLimit: {
+        max: 30,
+        timeWindow: '1 minute'
+      }
+    }
   }, async (request, reply) => {
     const parsedBody = verifyBundleBodySchema.safeParse(request.body);
     if (!parsedBody.success) {
