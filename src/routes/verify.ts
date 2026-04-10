@@ -1,5 +1,3 @@
-import '@fastify/rate-limit';
-
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { z } from 'zod';
 
