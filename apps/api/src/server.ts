@@ -1181,8 +1181,6 @@ export async function buildServer(options: BuildServerOptions = {}) {
     eventSink: workflowEventSink
   });
   const requireScope = (scope: AuthScope) => requireApiKeyScope(prisma, securityConfig, scope);
-  const scopedRateLimit = (scope: AuthScope) => [app.rateLimit(perApiKeyRateLimit), requireScope(scope)];
-
   app.get('/api/v1/health', async () => ({
     status: 'ok',
     database: {
@@ -1394,7 +1392,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/artifacts/:artifactId/verify', {
-    preHandler: scopedRateLimit('verify')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = workflowArtifactParamsSchema.safeParse(request.params);
     if (!parsed.success) {
@@ -1434,7 +1433,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify', {
-    preHandler: scopedRateLimit('verify')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = registryVerifyInputSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1458,7 +1458,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify-batch', {
-    preHandler: scopedRateLimit('verify')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = registryVerifyBatchInputSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1504,7 +1505,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify/attom', {
-    preHandler: scopedRateLimit('verify')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = deedParsedSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1525,7 +1527,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify', {
-    preHandler: scopedRateLimit('verify')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     // Enforce plan quota before running any verification work.
     const quota = await checkPlanQuota(prisma, request.authContext?.userId ?? null);
@@ -1659,7 +1662,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verifications/github', {
-    preHandler: scopedRateLimit('verify')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = githubVerificationInputSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1722,7 +1726,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/synthetic', {
-    preHandler: scopedRateLimit('read')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('read')]
   }, async () => {
     const registry = await loadRegistry();
     const notary = registry.notaries[0];
@@ -1755,7 +1760,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId', {
-    preHandler: scopedRateLimit('read')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('read')]
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
@@ -1817,7 +1823,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/verify', {
-    preHandler: scopedRateLimit('read')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('read')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
@@ -1869,7 +1876,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/anchor/:receiptId', {
-    preHandler: scopedRateLimit('anchor')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('anchor')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
@@ -1927,7 +1935,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
-    preHandler: scopedRateLimit('revoke')
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('revoke')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
