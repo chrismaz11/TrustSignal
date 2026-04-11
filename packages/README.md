@@ -1,10 +1,7 @@
 # TrustSignal Packages
 
-All packages under the `@deed-shield/*` scope are **legacy identifiers** 
-maintained for backward compatibility with early integrations.
+All packages are published under the `@trustsignal/*` scope.
 
-**Current naming:** `@deed-shield/core`, `@deed-shield/verifier`  
-**Future naming:** `@trustsignal/core`, `@trustsignal/verifier`  
-(Planned for v1.0 with aliasing and deprecation warnings)
+**Current naming:** `@trustsignal/core`, `@trustsignal/contracts`
 
-For new projects, treat `@deed-shield/*` as TrustSignal components.
+The legacy `@deed-shield/*` scope has been retired. Update any imports to use `@trustsignal/*`.

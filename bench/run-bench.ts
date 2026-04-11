@@ -422,7 +422,7 @@ async function scenarioClean(
         checks: receipt.checks
       };
       const started = performance.now();
-      const rebuiltReceipt = buildReceipt(bundle, verificationLike, 'deed-shield', {
+      const rebuiltReceipt = buildReceipt(bundle, verificationLike, 'trustsignal', {
         fraudRisk: receipt.fraudRisk,
         zkpAttestation: receipt.zkpAttestation
       });

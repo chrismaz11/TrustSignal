@@ -44,7 +44,7 @@ import { mapInternalStatusToExternal, type ExternalReceiptStatus } from './recei
 import { anchorReceiptOnChain, buildAnchorSubject, type AnchorChain } from './anchor.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
-import { loadRuntimeEnv, resolveDatabaseUrl } from './env.js';
+import { loadRuntimeEnv, resolveDatabaseUrl, validateRequiredEnv } from './env.js';
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 import {
@@ -81,6 +81,7 @@ import {
 
 loadRuntimeEnv();
 resolveDatabaseUrl();
+validateRequiredEnv();
 const prisma = new PrismaClient();
 const REQUEST_START = Symbol('requestStartMs');
 type RequestTimerState = {
@@ -461,7 +462,7 @@ function receiptFromDb(record: ReceiptRecord) {
     decision: record.decision as 'ALLOW' | 'FLAG' | 'BLOCK',
     reasons: JSON.parse(record.reasons) as string[],
     riskScore: record.riskScore,
-    verifierId: 'deed-shield',
+    verifierId: 'trustsignal',
     ...(record.signingKeyId ? { signing_key_id: record.signingKeyId } : {}),
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
@@ -925,7 +926,7 @@ async function issueReceiptRecord(
     }
   }
 
-  const receipt = buildReceipt(input, verification, 'deed-shield', {
+  const receipt = buildReceipt(input, verification, 'trustsignal', {
     signing_key_id: securityConfig.receiptSigning.current.kid,
     fraudRisk: options.fraudRisk,
     zkpAttestation
@@ -1040,46 +1041,46 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
   // Business-level verification lifecycle metrics
   const receiptsIssuedTotal = new Counter({
-    name: 'deedshield_receipts_issued_total',
+    name: 'trustsignal_receipts_issued_total',
     help: 'Total signed receipts issued by decision outcome',
     labelNames: ['decision', 'policy_profile'] as const,
     registers: [metricsRegistry]
   });
   const receiptVerificationsTotal = new Counter({
-    name: 'deedshield_receipt_verifications_total',
+    name: 'trustsignal_receipt_verifications_total',
     help: 'Total post-issuance receipt verifications by outcome',
     labelNames: ['outcome'] as const,
     registers: [metricsRegistry]
   });
   const revocationsTotal = new Counter({
-    name: 'deedshield_revocations_total',
+    name: 'trustsignal_revocations_total',
     help: 'Total receipt revocations processed',
     labelNames: [] as const,
     registers: [metricsRegistry]
   });
   const verifyDurationSeconds = new Histogram({
-    name: 'deedshield_verify_duration_seconds',
+    name: 'trustsignal_verify_duration_seconds',
     help: 'End-to-end duration of the verification and receipt issuance flow',
     labelNames: ['decision'] as const,
     buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10],
     registers: [metricsRegistry]
   });
   const receiptLookupDurationSeconds = new Histogram({
-    name: 'deedshield_receipt_lookup_duration_seconds',
+    name: 'trustsignal_receipt_lookup_duration_seconds',
     help: 'Duration of receipt retrieval from database (GET /receipt/:id)',
     labelNames: [] as const,
     buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
     registers: [metricsRegistry]
   });
   const anchorDurationSeconds = new Histogram({
-    name: 'deedshield_anchor_duration_seconds',
+    name: 'trustsignal_anchor_duration_seconds',
     help: 'Duration of receipt anchoring operation by chain',
     labelNames: ['chain'] as const,
     buckets: [0.1, 0.5, 1, 2, 5, 10, 30],
     registers: [metricsRegistry]
   });
   const httpErrorsTotal = new Counter({
-    name: 'deedshield_http_errors_total',
+    name: 'trustsignal_http_errors_total',
     help: 'Total HTTP error responses (4xx/5xx) by route and status code',
     labelNames: ['method', 'route', 'status_code'] as const,
     registers: [metricsRegistry]
@@ -1193,7 +1194,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const forwardedProto = normalizeForwardedProto(request.headers['x-forwarded-proto']);
     return {
       status: 'ok',
-      service: 'deed-shield-api',
+      service: 'trustsignal-api',
       version: process.env.TRUSTSIGNAL_VERSION || 'dev',
       environment: process.env.NODE_ENV || 'development',
       uptimeSeconds: Math.floor(process.uptime()),
@@ -1212,7 +1213,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
       }
     };
   });
-  app.get('/api/v1/metrics', async (_request, reply) => {
+  app.get('/api/v1/metrics', {
+    preHandler: [requireScope('read')]
+  }, async (_request, reply) => {
     reply.header('Content-Type', metricsRegistry.contentType);
     return reply.send(await metricsRegistry.metrics());
   });

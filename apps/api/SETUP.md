@@ -67,8 +67,8 @@ npx prisma db seed
 
 ```bash
 docker run -d \
-  --name deed-shield-pg \
-  -e POSTGRES_DB=deed_shield \
+  --name trustsignal-pg \
+  -e POSTGRES_DB=trustsignal \
   -e POSTGRES_PASSWORD=localdev \
   -p 5432:5432 \
   postgres:16-alpine

@@ -54,6 +54,10 @@ model Receipt {
   receiptSignatureAlg String?
   receiptSignatureKid String?
   revoked          Boolean  @default(false)
+
+  @@index([createdAt])
+  @@index([revoked, createdAt])
+  @@index([policyProfile, createdAt])
 }
 
 model Property {

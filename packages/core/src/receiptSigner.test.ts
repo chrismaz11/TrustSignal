@@ -34,7 +34,7 @@ describe('receipt signing', () => {
       timestamp: new Date().toISOString()
     };
     const verification = await verifyBundle(bundle, registry);
-    const receipt = buildReceipt(bundle, verification, 'deed-shield');
+    const receipt = buildReceipt(bundle, verification, 'trustsignal');
     const unsignedPayload = toUnsignedReceiptPayload(receipt);
     const { privateJwk } = await generateRegistryKeypair();
 
@@ -74,7 +74,7 @@ describe('receipt signing', () => {
       timestamp: new Date().toISOString()
     };
     const verification = await verifyBundle(bundle, registry);
-    const receipt = buildReceipt(bundle, verification, 'deed-shield', { signing_key_id: signingKeyId });
+    const receipt = buildReceipt(bundle, verification, 'trustsignal', { signing_key_id: signingKeyId });
     const unsignedPayload = toUnsignedReceiptPayload(receipt);
     expect(unsignedPayload.signing_key_id).toBe(signingKeyId);
 
@@ -119,7 +119,7 @@ describe('receipt signing', () => {
       timestamp: new Date().toISOString()
     };
     const verification = await verifyBundle(bundle, registry);
-    const receipt = buildReceipt(bundle, verification, 'deed-shield', { signing_key_id: signingKeyId });
+    const receipt = buildReceipt(bundle, verification, 'trustsignal', { signing_key_id: signingKeyId });
     const unsignedPayload = toUnsignedReceiptPayload(receipt);
     const keypair = await generateRegistryKeypair();
     const receiptSignature = await signReceiptPayload(unsignedPayload, {
@@ -157,7 +157,7 @@ describe('receipt signing', () => {
       timestamp: new Date().toISOString()
     };
     const verification = await verifyBundle(bundle, registry);
-    const receipt = buildReceipt(bundle, verification, 'deed-shield');
+    const receipt = buildReceipt(bundle, verification, 'trustsignal');
     const unsignedPayload = toUnsignedReceiptPayload(receipt);
     const { privateJwk, publicJwk } = await generateRegistryKeypair();
     const receiptSignature = await signReceiptPayload(unsignedPayload, {
@@ -207,7 +207,7 @@ describe('receipt signing', () => {
       timestamp: new Date().toISOString()
     };
     const verification = await verifyBundle(bundle, registry);
-    const receipt = buildReceipt(bundle, verification, 'deed-shield');
+    const receipt = buildReceipt(bundle, verification, 'trustsignal');
     const unsignedPayload = toUnsignedReceiptPayload(receipt);
 
     const malformed = await verifyReceiptSignature(
