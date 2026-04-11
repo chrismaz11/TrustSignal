@@ -33,7 +33,7 @@ export function toUnsignedReceiptPayload(receipt: Receipt): UnsignedReceiptPaylo
 export function buildReceipt(
   input: BundleInput,
   verification: VerificationResult,
-  verifierId = 'deed-shield',
+  verifierId = 'trustsignal',
   extensions: {
     fraudRisk?: Receipt['fraudRisk'];
     zkpAttestation?: Receipt['zkpAttestation'];

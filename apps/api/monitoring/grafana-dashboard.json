@@ -58,7 +58,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "1 - (sum(rate(deedshield_http_errors_total{status_code=~\"5..\"}[5m])) / sum(rate(trustsignal_http_requests_total[5m])))",
+          "expr": "1 - (sum(rate(trustsignal_http_errors_total{status_code=~\"5..\"}[5m])) / sum(rate(trustsignal_http_requests_total[5m])))",
           "legendFormat": "availability"
         }
       ]
@@ -87,7 +87,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.99, sum(rate(deedshield_verify_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(trustsignal_verify_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p99"
         }
       ]
@@ -116,7 +116,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.99, sum(rate(deedshield_receipt_lookup_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(trustsignal_receipt_lookup_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p99"
         }
       ]
@@ -145,7 +145,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(deedshield_http_errors_total{status_code=~\"5..\"}[5m])) / sum(rate(trustsignal_http_requests_total[5m]))",
+          "expr": "sum(rate(trustsignal_http_errors_total{status_code=~\"5..\"}[5m])) / sum(rate(trustsignal_http_requests_total[5m]))",
           "legendFormat": "error rate"
         }
       ]
@@ -184,7 +184,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(deedshield_http_errors_total[1m])) by (status_code, route)",
+          "expr": "sum(rate(trustsignal_http_errors_total[1m])) by (status_code, route)",
           "legendFormat": "{{ status_code }} {{ route }}"
         }
       ]
@@ -206,15 +206,15 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(deedshield_verify_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(trustsignal_verify_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(deedshield_verify_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(trustsignal_verify_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(deedshield_verify_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(trustsignal_verify_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p99"
         }
       ]
@@ -251,7 +251,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "sum(rate(deedshield_receipts_issued_total[5m])) by (decision)",
+          "expr": "sum(rate(trustsignal_receipts_issued_total[5m])) by (decision)",
           "legendFormat": "{{ decision }}"
         }
       ]
@@ -266,7 +266,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "sum(rate(deedshield_receipt_verifications_total[5m])) by (outcome)",
+          "expr": "sum(rate(trustsignal_receipt_verifications_total[5m])) by (outcome)",
           "legendFormat": "{{ outcome }}"
         }
       ]
@@ -281,7 +281,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(deedshield_anchor_duration_seconds_bucket[10m])) by (le, chain))",
+          "expr": "histogram_quantile(0.99, sum(rate(trustsignal_anchor_duration_seconds_bucket[10m])) by (le, chain))",
           "legendFormat": "p99 {{ chain }}"
         }
       ]
@@ -303,7 +303,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "rate(deedshield_api_process_cpu_seconds_total[1m])",
+          "expr": "rate(trustsignal_api_process_cpu_seconds_total[1m])",
           "legendFormat": "cpu"
         }
       ]
@@ -318,11 +318,11 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "deedshield_api_nodejs_heap_size_used_bytes",
+          "expr": "trustsignal_api_nodejs_heap_size_used_bytes",
           "legendFormat": "heap used"
         },
         {
-          "expr": "deedshield_api_nodejs_heap_size_total_bytes",
+          "expr": "trustsignal_api_nodejs_heap_size_total_bytes",
           "legendFormat": "heap total"
         }
       ]

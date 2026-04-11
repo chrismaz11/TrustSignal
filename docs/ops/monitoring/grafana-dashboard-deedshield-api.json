@@ -86,7 +86,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(rate(deedshield_http_requests_total{job=~\"$job\",route=\"/api/v1/health\",status_code=~\"2..\"}[5m])) / clamp_min(sum(rate(deedshield_http_requests_total{job=~\"$job\",route=\"/api/v1/health\"}[5m])), 0.001)",
+          "expr": "sum(rate(trustsignal_http_requests_total{job=~\"$job\",route=\"/api/v1/health\",status_code=~\"2..\"}[5m])) / clamp_min(sum(rate(trustsignal_http_requests_total{job=~\"$job\",route=\"/api/v1/health\"}[5m])), 0.001)",
           "legendFormat": "health success ratio (5m)",
           "range": true,
           "refId": "A"
@@ -145,7 +145,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m]))",
+          "expr": "sum(rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m]))",
           "legendFormat": "requests/sec",
           "range": true,
           "refId": "A"
@@ -212,7 +212,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(deedshield_http_request_duration_seconds_bucket{job=~\"$job\",route=~\"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(trustsignal_http_request_duration_seconds_bucket{job=~\"$job\",route=~\"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$\"}[5m])))",
           "legendFormat": "core p95",
           "range": true,
           "refId": "A"
@@ -276,7 +276,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\",status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m])), 0.001)",
+          "expr": "sum(rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\",status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m])), 0.001)",
           "legendFormat": "5xx ratio",
           "range": true,
           "refId": "A"
@@ -340,7 +340,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(deedshield_http_request_duration_seconds_bucket{job=~\"$job\",route=~\"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(trustsignal_http_request_duration_seconds_bucket{job=~\"$job\",route=~\"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$\"}[5m])))",
           "legendFormat": "{{route}}",
           "range": true,
           "refId": "A"
@@ -396,7 +396,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum by (route) (rate(deedshield_http_requests_total{job=~\"$job\",route=~\"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$\"}[5m]))",
+          "expr": "sum by (route) (rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"^/api/v1/(verify|receipt/:receiptId|receipt/:receiptId/verify)$\"}[5m]))",
           "legendFormat": "{{route}}",
           "range": true,
           "refId": "A"
@@ -452,7 +452,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum by (status_code) (rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m]))",
+          "expr": "sum by (status_code) (rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m]))",
           "legendFormat": "{{status_code}}",
           "range": true,
           "refId": "A"
@@ -516,7 +516,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m])) / clamp_min(sum(rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[24h])), 0.001)",
+          "expr": "sum(rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m])) / clamp_min(sum(rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[24h])), 0.001)",
           "legendFormat": "current vs 24h baseline",
           "range": true,
           "refId": "A"
@@ -580,7 +580,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum by (route) (rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\",status_code=~\"5..\"}[5m])) / clamp_min(sum by (route) (rate(deedshield_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m])), 0.001)",
+          "expr": "sum by (route) (rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\",status_code=~\"5..\"}[5m])) / clamp_min(sum by (route) (rate(trustsignal_http_requests_total{job=~\"$job\",route=~\"/api/v1/.*\",route!=\"/api/v1/metrics\"}[5m])), 0.001)",
           "format": "table",
           "instant": true,
           "legendFormat": "{{route}}",
@@ -637,7 +637,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum by (decision) (rate(deedshield_receipts_issued_total{job=~\"$job\"}[5m]))",
+          "expr": "sum by (decision) (rate(trustsignal_receipts_issued_total{job=~\"$job\"}[5m]))",
           "legendFormat": "{{ decision }}",
           "range": true,
           "refId": "A"
@@ -701,7 +701,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(deedshield_verify_duration_seconds_bucket{job=~\"$job\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(trustsignal_verify_duration_seconds_bucket{job=~\"$job\"}[5m])))",
           "legendFormat": "p95 duration",
           "range": true,
           "refId": "A"
@@ -765,7 +765,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(increase(deedshield_revocations_total{job=~\"$job\"}[5m]))",
+          "expr": "sum(increase(trustsignal_revocations_total{job=~\"$job\"}[5m]))",
           "legendFormat": "revocations",
           "range": true,
           "refId": "A"
@@ -829,7 +829,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(rate(deedshield_receipt_verifications_total{job=~\"$job\",outcome=\"verified\"}[5m])) / clamp_min(sum(rate(deedshield_receipt_verifications_total{job=~\"$job\"}[5m])), 0.001)",
+          "expr": "sum(rate(trustsignal_receipt_verifications_total{job=~\"$job\",outcome=\"verified\"}[5m])) / clamp_min(sum(rate(trustsignal_receipt_verifications_total{job=~\"$job\"}[5m])), 0.001)",
           "legendFormat": "verified ratio",
           "range": true,
           "refId": "A"
@@ -878,7 +878,7 @@
           "type": "prometheus",
           "uid": "$datasource"
         },
-        "definition": "label_values(deedshield_http_requests_total, job)",
+        "definition": "label_values(trustsignal_http_requests_total, job)",
         "hide": 0,
         "includeAll": true,
         "label": "Prometheus job",
@@ -886,7 +886,7 @@
         "name": "job",
         "options": [],
         "query": {
-          "query": "label_values(deedshield_http_requests_total, job)",
+          "query": "label_values(trustsignal_http_requests_total, job)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
