@@ -1960,6 +1960,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
     if (record.revoked) {
       return reply.send({
+        status: 'REVOKED',
         receiptStatus: 'revoked' satisfies ExternalReceiptStatus,
         result: 'ALREADY_REVOKED'
       });
@@ -1982,6 +1983,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     );
 
     return reply.send({
+      status: 'REVOKED',
       receiptStatus: 'revoked' satisfies ExternalReceiptStatus,
       result: 'REVOKED',
       issuerId: revocationVerification.issuerId
