@@ -8,17 +8,19 @@ on:
     branches:
       - master
 
+permissions: read-all
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20'
+          node-version: '20.18'
           cache: npm
 
       - name: Install dependencies
@@ -31,12 +33,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20'
+          node-version: '20.18'
           cache: npm
 
       - name: Install dependencies
@@ -54,12 +56,12 @@ jobs:
       POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20'
+          node-version: '20.18'
           cache: npm
 
       - name: Install dependencies
@@ -72,12 +74,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20'
+          node-version: '20.18'
           cache: npm
 
       - name: Install dependencies
@@ -106,12 +108,12 @@ jobs:
       DATABASE_URL: postgresql://postgres@127.0.0.1:5432/trustsignal_signed_receipt_smoke?sslmode=disable
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20'
+          node-version: '20.18'
           cache: npm
 
       - name: Install dependencies
@@ -151,10 +153,12 @@ jobs:
         working-directory: circuits/non_mem_gadget
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+        with:
+          toolchain: stable
 
       - name: Build Halo2 ZKP service
         run: cargo build --release
@@ -163,7 +167,7 @@ jobs:
         run: cargo test
 
       - name: Upload zkp_service binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: zkp_service-linux-x64
           path: circuits/non_mem_gadget/target/release/zkp_service
@@ -174,7 +178,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install gitleaks
         run: |
@@ -190,12 +194,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20'
+          node-version: '20.18'
           cache: npm
 
       - name: Install dependencies
@@ -210,12 +214,16 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: 22
+          node-version: '20.18'
+
+      - name: Install action dependencies
+        working-directory: github-actions/trustsignal-verify-artifact
+        run: npm ci
 
       - name: Check source syntax
         working-directory: github-actions/trustsignal-verify-artifact

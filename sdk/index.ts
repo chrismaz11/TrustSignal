@@ -42,7 +42,7 @@ export class TrustSignalSDK {
   private readonly apiKey: string;
 
   constructor(options: SDKOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/+$/, '');
+    this.baseUrl = trimTrailingSlashes(options.baseUrl);
     this.apiKey = options.apiKey;
   }
 
@@ -104,4 +104,12 @@ export class TrustSignalSDK {
 
     return (await response.json()) as T;
   }
+}
+
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+  return value.slice(0, end);
 }

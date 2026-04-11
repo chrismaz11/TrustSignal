@@ -1,14 +1,28 @@
-name: "Copilot Setup Steps"
-on: workflow_dispatch
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+
+permissions: read-all
 
 jobs:
   copilot-setup:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm install
-      - run: npx prisma generate
+          node-version: '20.18'
+          cache: npm
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm --workspace apps/api run db:generate

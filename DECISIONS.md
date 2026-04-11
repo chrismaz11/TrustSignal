@@ -13,7 +13,7 @@ This file is the source of truth for pilot-boundary implementation choices. If c
 
 ## Auth and database
 
-1. API keys are stored only as SHA-256 hashes in Supabase/Postgres `public.api_keys`.
+1. API keys are stored only as SHA-256 hashes in Supabase/Postgres `public.api_keys`. SHA-256 is intentional here because API keys are high-entropy random tokens (not low-entropy user passwords), so rainbow table attacks are not a practical threat. A future migration to a KDF (e.g. scrypt with a per-key salt stored alongside the hash) would require a backwards-compatible dual-hash lookup period and an explicit schema migration; that work is tracked separately and must not be done in place without a migration plan.
 2. `TRUSTSIGNAL_API_KEY` remains the client secret name, not a separate auth system.
 3. Production auth does not depend on `API_KEYS` or `API_KEY_SCOPES` env allowlists.
 4. Prisma `ApiKey` and `VerificationRecord` are not part of the canonical active model.
