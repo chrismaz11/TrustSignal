@@ -35,7 +35,7 @@ jobs:
           test -f .agents/executor-agent.md
 
       - name: Run cross-model skill sync
-        uses: chrismaz11/Multi-Model-Skill-Sync@f4188af98f2d960acad17921b40a0ae0efeb3879
+        uses: chrismaz11/Multi-Model-Skill-Sync@be59905163687b08a0a8e74ca3cca330f572fa29
         with:
           target-models: ${{ inputs.target_models }}
 
