@@ -76,7 +76,9 @@ The evaluator and demo paths are deliberate evaluator paths. They show the verif
 
 Local development defaults are intentionally constrained and fail closed where production trust assumptions are not satisfied. Production deployment requires explicit authentication, signing configuration, and environment setup.
 
-## Canonical Documentation
+## Historical / Reference Set
+- `final/*` is retained for historical synthesis, grant context, and reference only.
+- It should not be treated as the current public product story or API source of truth.
 - `final/01_EXECUTIVE_SUMMARY.md`
 - `final/02_ARCHITECTURE_AND_BOUNDARIES.md`
 - `final/03_SECURITY_AND_COMPLIANCE_BASELINE.md`

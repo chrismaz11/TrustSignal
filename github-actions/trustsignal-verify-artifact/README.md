@@ -31,6 +31,18 @@ TrustSignal is designed for artifact integrity, signed verification receipts, ve
 3. Capture `receipt_id` and `receipt_signature` in downstream steps.
 4. Store receipt metadata anywhere you need later verification or audit evidence.
 
+The canonical source for this action lives in the `TrustSignal` monorepo. Reference it from workflows using the repository plus subdirectory path:
+
+`TrustSignal-dev/TrustSignal/github-actions/trustsignal-verify-artifact`
+
+This repository set does not currently document a confirmed public release ref for the monorepo action path. For external use, pin this action path to a maintainer-published release tag or commit SHA instead of assuming a stable major tag exists.
+
+## Versioning Policy
+
+Pin to a maintainer-published release tag or commit SHA.
+
+Stable major tags (e.g. `@v1`) are not currently guaranteed.
+
 ## Inputs
 
 | Input | Required | Description |
@@ -57,6 +69,12 @@ Provide exactly one of `artifact_path` or `artifact_hash`.
 
 ### Verify An Artifact File
 
+Illustrative workflow skeleton only: the example below intentionally omits the TrustSignal `uses:` step until maintainers publish the supported public ref policy.
+
+For external use, pin the action path below to a maintainer-published release tag or commit SHA:
+
+`TrustSignal-dev/TrustSignal/github-actions/trustsignal-verify-artifact`
+
 ```yaml
 name: Verify Build Artifact
 
@@ -79,25 +97,17 @@ jobs:
           mkdir -p dist
           echo "release bundle" > dist/release.txt
 
-      - name: Verify artifact with TrustSignal
-        id: trustsignal
-        uses: trustsignal-dev/trustsignal-verify-artifact@v1
-        with:
-          api_base_url: ${{ secrets.TRUSTSIGNAL_API_BASE_URL }}
-          api_key: ${{ secrets.TRUSTSIGNAL_API_KEY }}
-          artifact_path: dist/release.txt
-          source: github-actions
-          fail_on_mismatch: "true"
-
-      - name: Record verification outputs
-        run: |
-          echo "Verification ID: ${{ steps.trustsignal.outputs.verification_id }}"
-          echo "Status: ${{ steps.trustsignal.outputs.status }}"
-          echo "Receipt ID: ${{ steps.trustsignal.outputs.receipt_id }}"
-          echo "Receipt Signature: ${{ steps.trustsignal.outputs.receipt_signature }}"
+      # Insert the TrustSignal step here, pinned to a maintainer-published
+      # release tag or commit SHA for the monorepo action path above.
 ```
 
 ### Verify A Precomputed Hash
+
+For the monorepo itself, the action is exercised with a local path in `.github/workflows/main.yml`:
+
+```yaml
+- uses: ./github-actions/trustsignal-verify-artifact
+```
 
 ```yaml
 name: Verify Artifact Hash
@@ -112,20 +122,8 @@ jobs:
       contents: read
 
     steps:
-      - name: Verify known digest
-        id: trustsignal
-        uses: trustsignal-dev/trustsignal-verify-artifact@v1
-        with:
-          api_base_url: ${{ secrets.TRUSTSIGNAL_API_BASE_URL }}
-          api_key: ${{ secrets.TRUSTSIGNAL_API_KEY }}
-          artifact_hash: 2f77668a9dfbf8d5847cf2d5d0370740e0c0601b4f061c1181f58c77c2b8f486
-          source: github-actions
-          fail_on_mismatch: "true"
-
-      - name: Print verification result
-        run: |
-          echo "Verification ID: ${{ steps.trustsignal.outputs.verification_id }}"
-          echo "Status: ${{ steps.trustsignal.outputs.status }}"
+      # Illustrative skeleton only. Insert the TrustSignal step here, pinned
+      # to a maintainer-published release tag or commit SHA.
 ```
 
 ## Request Contract
@@ -168,7 +166,8 @@ TrustSignal gives security and release teams a consistent way to verify artifact
 
 ## Current Limitations
 
-- GitHub Marketplace publication requires this action to be published from a dedicated public repository root with `action.yml` at the top level.
+- GitHub Marketplace publication requires a dedicated public repository root with `action.yml` at the top level.
+- Standard GitHub Actions consumption does not require Marketplace publication; the action can be used directly from this monorepo via the subdirectory path shown above.
 
 ## Local Validation
 
@@ -204,14 +203,15 @@ The test skips cleanly when the environment variables are not set. See `docs/int
 ## Versioning Guidance
 
 - Follow semantic versioning.
-- Publish immutable release tags for each shipped version (e.g., `v0.2.0`).
-- Maintain a stable major tag such as `v1` for consumers who want automatic non-breaking updates.
-- See `docs/release-checklist.md` for the complete release process.
+- Publish immutable release tags for each shipped version.
+- Document the supported public ref policy before advertising a stable major alias.
+- Stable major tags (for example `@v1`) are not currently guaranteed.
+- See `docs/release-checklist.md` for the release and documentation requirements.
 
 ## Release Checklist Summary
 
 - Confirm `src/index.js` changes are intentional.
 - Run `npm run build` and then `npm run validate` to confirm dist alignment.
-- Create an immutable version tag and update the stable major tag.
+- Create an immutable version tag and document the supported public ref policy before advertising any stable major tag.
 - Confirm `action.yml` references `dist/index.js` as the action entrypoint.
 - Update documentation when the API contract or output field mapping changes.

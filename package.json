@@ -29,6 +29,7 @@
     "dev": "concurrently \"npm:dev --workspace apps/api\" \"npm:dev --workspace apps/web\"",
     "build": "npm -ws run build",
     "lint": "eslint .",
+    "check:repo-consistency": "tsx scripts/check-repo-consistency.ts",
     "typecheck": "tsc -b",
     "test": "vitest run",
     "validate": "npm run lint && npm run typecheck && npm test && npm run build",
