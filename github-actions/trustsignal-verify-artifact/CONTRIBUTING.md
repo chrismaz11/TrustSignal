@@ -64,6 +64,5 @@ See `docs/release-checklist.md` for the complete release process, including:
 
 - dist alignment verification
 - semantic version tagging
-- stable major tag maintenance
+- the public ref policy: pin to a maintainer-published release tag or commit SHA; stable major tags are not guaranteed
 - GitHub Marketplace publication steps
-

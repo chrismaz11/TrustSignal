@@ -22,44 +22,27 @@ The public lookup response is artifact-oriented and omits internal scoring, sign
 
 This route remains authenticated. Public inspection is read-only; active verification stays behind the TrustSignal API boundary.
 
-## Partner Summary Flow
-
-`GET /api/v1/receipt/{receiptId}/summary` returns a compact verification badge payload for trust centers, compliance dashboards, and partner evidence panels.
-
-It is designed for simple display logic:
-
-- `status`
-- `integrityState`
-- `issuedAt`
-- source summary
-- a ready-to-render `display` object
-
 ## Example Partner Uses
 
 ### Drata-style evidence view
 
-Store `receiptId` alongside a control evidence record. When an auditor opens the evidence detail, the platform can fetch `/summary` and render a compact TrustSignal integrity badge next to the artifact metadata.
+Store `receiptId` alongside a control evidence record. When an auditor opens the evidence detail, the platform can fetch `/receipt/{receiptId}` and render a compact TrustSignal integrity view next to the artifact metadata.
 
 ### Vanta-style evidence view
 
-Attach the receipt to a control test result. Use `/receipt/{receiptId}` for drill-down and `/summary` for the evidence list row.
+Attach the receipt to a control test result. Use `/receipt/{receiptId}` for drill-down and list-row display until a separate summary endpoint is documented in the public contract.
 
 ### Public trust center or vendor review
 
 Expose a receipt inspector link such as `/verify/{receiptId}`. Buyers can review the signed receipt metadata without gaining access to private systems or backend persistence.
 
-## Verification Badge Example
+## Verification Display Example
 
 ```json
 {
   "receiptId": "8fb78fc6-2763-4e63-9f65-67da2f9f6d98",
   "status": "verified",
-  "integrityState": "valid",
   "issuedAt": "2026-03-13T09:06:47.000Z",
-  "display": {
-    "label": "TrustSignal Verified",
-    "tone": "success",
-    "statement": "This artifact has a signed verification receipt and can be checked later for integrity drift."
-  }
+  "statement": "This artifact has a signed verification receipt and can be checked later for integrity drift."
 }
 ```

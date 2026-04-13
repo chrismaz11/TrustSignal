@@ -12,7 +12,7 @@ The GitHub Action does not connect to Supabase directly. TrustSignal persists re
 2. The action calls `POST /api/v1/verify` on `api.trustsignal.dev`.
 3. TrustSignal validates the request, authenticates the caller, issues a signed receipt, and persists the receipt server-side.
 4. The action writes `verification_id`, `status`, `receipt_id`, and `receipt_signature` as GitHub Actions outputs.
-5. Public consumers can inspect the stored receipt through `GET /api/v1/receipt/{receiptId}` or render a compact badge from `GET /api/v1/receipt/{receiptId}/summary`.
+5. Public consumers can inspect the stored receipt through `GET /api/v1/receipt/{receiptId}`.
 6. A later workflow can call `POST /api/v1/receipt/{receiptId}/verify` with an artifact hash to confirm integrity.
 
 ## Public API Contract
@@ -64,10 +64,6 @@ as a clean error message without exposing raw headers or internal service detail
 
 This endpoint returns a compact inspection view for artifact receipts. It is intended for receipt drill-down pages and audit references.
 
-### `GET /api/v1/receipt/{receiptId}/summary`
-
-This endpoint returns a compact display payload for trust centers, evidence panels, and partner dashboards.
-
 ### `POST /api/v1/receipt/{receiptId}/verify`
 
 Request body:
@@ -99,7 +95,7 @@ Response fields:
 - Service role credentials are backend-only and must never be exposed to clients.
 - Artifact receipts are stored for later verification.
 - Row Level Security is enabled on the artifact receipt table as defense in depth.
-- Public lookup and summary endpoints are read-only and return safe receipt fields only.
+- Public receipt lookup is read-only and returns safe receipt fields only.
 - Later verification remains behind TrustSignal API authentication.
 - `fail_on_mismatch: true` (default) provides fail-closed behavior for pipelines that require verified artifacts.
 
@@ -115,4 +111,3 @@ See `github-actions/trustsignal-verify-artifact/docs/integration.md` for the ful
 
 - The public verification contract currently accepts `sha256` only.
 - GitHub Marketplace publication requires extracting this action into a dedicated public repository with `action.yml` at the repository root.
-

@@ -6,6 +6,20 @@
 
 **Evidence integrity infrastructure for compliance and audit workflows.**
 
+> Status: `canonical` `active`
+>
+> Canonical backend/API source: `TrustSignal/apps/api`
+>
+> Canonical GitHub Action source: `TrustSignal/github-actions/trustsignal-verify-artifact`
+>
+> Canonical public website/docs/onboarding source: `v0-signal-new`
+>
+> `apps/web` exists in this repo for non-canonical internal or pilot-facing web work. It is not the live public frontend for `trustsignal.dev`.
+
+## Source of Truth
+
+Canonical repo roles and ownership are defined in [docs/REPO_ROLES.md](docs/REPO_ROLES.md).
+
 TrustSignal issues signed verification receipts so organizations can prove when evidence was created, where it came from, and whether it has changed — without replacing the system of record.
 
 → [trustsignal.dev](https://trustsignal.dev) · [Documentation](https://trustsignal.dev/docs) · [Request a Pilot](https://trustsignal.dev/#pilot-request)
@@ -109,7 +123,7 @@ curl -X POST "http://localhost:3001/api/v1/receipt/$RECEIPT_ID/verify" \
 ```
 apps/
 ├── api/            Fastify v5 API server (Prisma ORM, PostgreSQL)
-└── web/            Next.js web application
+└── web/            Non-canonical internal/pilot web surface
 packages/
 ├── core/           Verification engine, receipt signing, provenance
 └── contracts/      Solidity smart contracts (Polygon, Hardhat)
@@ -207,10 +221,10 @@ To report a vulnerability: [security@trustsignal.dev](mailto:security@trustsigna
 |---|---|
 | [v0-signal-new](https://github.com/TrustSignal-dev/v0-signal-new) | Public website — trustsignal.dev |
 | [TrustSignal-App](https://github.com/TrustSignal-dev/TrustSignal-App) | GitHub App for CI verification |
-| [TrustSignal-Verify-Artifact](https://github.com/TrustSignal-dev/TrustSignal-Verify-Artifact) | GitHub Action for artifact verification |
+| [TrustSignal GitHub Action](https://github.com/TrustSignal-dev/TrustSignal/tree/master/github-actions/trustsignal-verify-artifact) | Canonical GitHub Action source in the monorepo. Confirm the published ref before documenting a stable version alias. |
 | [TrustSignal-Reddit](https://github.com/TrustSignal-dev/TrustSignal-Reddit) | Reddit trust and moderation toolkit |
 | [trustagents](https://github.com/TrustSignal-dev/trustagents) | Defensive-security R&D for compliance evidence |
-| [TrustSignal-docs](https://github.com/TrustSignal-dev/TrustSignal-docs) | Public documentation |
+| [TrustSignal-docs](https://github.com/TrustSignal-dev/TrustSignal-docs) | Secondary sanitized public review package, not the primary live docs source |
 
 ---
 

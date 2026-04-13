@@ -1,0 +1,70 @@
+name: Repo Consistency
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  repo-consistency:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout TrustSignal
+        uses: actions/checkout@v4
+        with:
+          path: TrustSignal
+
+      - name: Checkout v0-signal-new
+        uses: actions/checkout@v4
+        with:
+          repository: TrustSignal-dev/v0-signal-new
+          path: v0-signal-new
+
+      - name: Checkout TrustSignal-App
+        uses: actions/checkout@v4
+        with:
+          repository: TrustSignal-dev/TrustSignal-App
+          path: TrustSignal-App
+
+      - name: Checkout TrustSignal-docs
+        uses: actions/checkout@v4
+        with:
+          repository: TrustSignal-dev/TrustSignal-docs
+          path: TrustSignal-docs
+
+      - name: Checkout trustagents
+        uses: actions/checkout@v4
+        with:
+          repository: TrustSignal-dev/trustagents
+          path: trustagents
+
+      - name: Checkout TrustSignal-Reddit
+        uses: actions/checkout@v4
+        with:
+          repository: TrustSignal-dev/TrustSignal-Reddit
+          path: TrustSignal-Reddit
+
+      - name: Checkout TrustSignal-Verify-Artifact
+        uses: actions/checkout@v4
+        with:
+          repository: TrustSignal-dev/TrustSignal-Verify-Artifact
+          path: TrustSignal-Verify-Artifact
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.0
+          cache: npm
+          cache-dependency-path: TrustSignal/package-lock.json
+
+      - name: Install TrustSignal dependencies
+        working-directory: TrustSignal
+        run: npm ci
+
+      - name: Check repo consistency
+        working-directory: TrustSignal
+        env:
+          TRUSTSIGNAL_REPO_FAMILY_ROOT: ${{ github.workspace }}
+        run: npm run check:repo-consistency
