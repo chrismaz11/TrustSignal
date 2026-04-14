@@ -21,11 +21,11 @@ The main output is a signed verification receipt that can be retrieved, checked,
 
 ## Which API should new integrations use?
 
-For receipt-oriented integrations in this repository, prefer the `/api/v1/*` surface. The `/v1/*` surface remains available and is used by the current JavaScript SDK.
+Use the `/api/v1/*` surface. The JavaScript SDK (`@trustsignal/sdk`) now covers this surface directly.
 
 ## Does TrustSignal provide a JavaScript SDK?
 
-Yes. The repository includes `@trustsignal/sdk`, which currently targets the `/v1/*` API surface.
+Yes. The repository includes `@trustsignal/sdk`, which targets the canonical `/api/v1/*` receipt lifecycle. See [SDK Usage](SDK-Usage.md) for examples.
 
 ## Can TrustSignal support Vanta evidence workflows?
 

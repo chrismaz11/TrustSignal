@@ -23,7 +23,7 @@ This document provides a practical trust-boundary diagram, threat model, and con
   * GitHub App orchestration
   * replay protection
   * installation-token usage
-* **TrustSignal-Verify-Artifact**
+* **TrustSignal/github-actions/trustsignal-verify-artifact**
   * CI/CD hashing client
   * API submission to TrustSignal
   * log hygiene / secret masking

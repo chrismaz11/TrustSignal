@@ -64,7 +64,7 @@ The `trustsignal` core API implements a redacted public view for receipts access
 ## 7. Logging and Diagnostics Rules
 *   **Auth Redaction**: No raw `Authorization` or `x-api-key` headers may be logged.
 *   **PII Minimization**: Logs should record hashes or identifiers instead of raw PII where possible.
-*   **Action Logs**: `TrustSignal-Verify-Artifact` must sanitize error outputs to prevent leaking secret-like strings (32+ alphanumeric chars).
+*   **Action Logs**: `TrustSignal/github-actions/trustsignal-verify-artifact` must sanitize error outputs to prevent leaking secret-like strings (32+ alphanumeric chars).
 
 ## 8. Demo / Partner Access Data Rules
 *   Partner demos in `v0-signal-new` are protected by a partner-specific password and a signed HMAC session cookie.

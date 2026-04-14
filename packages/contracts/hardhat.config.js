@@ -2,6 +2,24 @@ import { defineConfig } from 'hardhat/config';
 import hardhatEthers from '@nomicfoundation/hardhat-ethers';
 import hardhatMocha from '@nomicfoundation/hardhat-mocha';
 
+const IteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]()));
+if (!IteratorPrototype.flatMap) {
+  IteratorPrototype.flatMap = function*(mapper) {
+    for (const item of this) {
+      yield* mapper(item);
+    }
+  };
+}
+if (!IteratorPrototype.toArray) {
+  IteratorPrototype.toArray = function() {
+    const result = [];
+    for (const item of this) {
+      result.push(item);
+    }
+    return result;
+  };
+}
+
 const sepoliaUrl = process.env.SEPOLIA_RPC_URL;
 
 export default defineConfig({

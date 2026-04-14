@@ -54,7 +54,7 @@ In the event of a suspected compromise:
 * **Signing Keys**: Generate a new key pair and update the `current` signing configuration. Previously issued receipts remain verifiable if the public JWK is retained in the `verificationKeys` map.
 
 ## 9. Logging / Exposure Rules
-* **Secret Masking**: `TrustSignal-Verify-Artifact` must use `::add-mask::` for all secret inputs.
+* **Secret Masking**: `TrustSignal/github-actions/trustsignal-verify-artifact` must use `::add-mask::` for all secret inputs.
 * **Sanitization**: Error handlers (e.g., `setFailed` in the GitHub Action) must redact 32+ character alphanumeric strings from error messages.
 * **Header Redaction**: `Authorization` and `x-api-key` headers must be redacted in structured server logs.
 

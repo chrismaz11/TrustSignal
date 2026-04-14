@@ -3,9 +3,6 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=22.10.0 <23"
-  },
   "scripts": {
     "build": "hardhat compile --config hardhat.config.js",
     "deploy:local": "hardhat run --config hardhat.config.js scripts/deploy.js --network localhost",
@@ -19,10 +16,10 @@
     "@nomicfoundation/hardhat-ethers": "^4.0.6",
     "@nomicfoundation/hardhat-mocha": "^3.0.12",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.5.0",
+    "@types/node": "^20.0.0",
     "ethers": "^6.12.0",
-    "hardhat": "^3.1.11",
-    "mocha": "^11.0.0",
+    "hardhat": "^3.3.0",
+    "mocha": "^10.0.0",
     "ts-node": "^10.9.2",
     "typescript": "5.5.4"
   },
