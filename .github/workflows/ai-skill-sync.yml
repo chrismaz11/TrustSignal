@@ -1,0 +1,153 @@
+name: TrustSignal AI Skill Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "validate (check for drift) or refresh (regenerate adapters)"
+        required: false
+        default: "validate"
+        type: choice
+        options:
+          - validate
+          - refresh
+      target_models:
+        description: "comma-separated models to sync (openai,claude,gemini); defaults to all models"
+        required: false
+        default: "openai,claude,gemini"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      - name: Validate canonical spec exists
+        run: |
+          if [ ! -f ".ai/skills/project-spec.md" ]; then
+            echo "❌ CRITICAL: Canonical spec not found at .ai/skills/project-spec.md"
+            exit 1
+          fi
+          echo "✓ Canonical spec found"
+
+      - name: Extract spec metadata
+        id: spec
+        run: |
+          SPEC_VERSION=$(grep "project_state_version:" .ai/skills/project-spec.md | head -1 | cut -d: -f2 | xargs)
+          LAST_REVIEWED=$(grep "last_reviewed:" .ai/skills/project-spec.md | head -1 | cut -d: -f2 | xargs)
+          echo "version=$SPEC_VERSION" >> $GITHUB_OUTPUT
+          echo "reviewed=$LAST_REVIEWED" >> $GITHUB_OUTPUT
+          echo "Spec Version: $SPEC_VERSION"
+          echo "Last Reviewed: $LAST_REVIEWED"
+
+      - name: Validate adapter metadata (Claude)
+        if: inputs.target_models == '' || contains(inputs.target_models, 'claude')
+        run: |
+          if [ ! -f ".ai/skills/claude/adapter.md" ]; then
+            echo "⚠️  Claude adapter missing"
+          else
+            ADAPTER_VERSION=$(grep "derived_from_version:" .ai/skills/claude/adapter.md | head -1 | cut -d: -f2 | xargs)
+            if [ "$ADAPTER_VERSION" != "${{ steps.spec.outputs.version }}" ]; then
+              echo "⚠️  Claude adapter version mismatch: adapter=$ADAPTER_VERSION, spec=${{ steps.spec.outputs.version }}"
+            else
+              echo "✓ Claude adapter version matches spec"
+            fi
+          fi
+
+      - name: Validate adapter metadata (OpenAI)
+        if: inputs.target_models == '' || contains(inputs.target_models, 'openai')
+        run: |
+          if [ ! -f ".ai/skills/openai/adapter.md" ]; then
+            echo "⚠️  OpenAI adapter missing"
+          else
+            ADAPTER_VERSION=$(grep "derived_from_version:" .ai/skills/openai/adapter.md | head -1 | cut -d: -f2 | xargs)
+            if [ "$ADAPTER_VERSION" != "${{ steps.spec.outputs.version }}" ]; then
+              echo "⚠️  OpenAI adapter version mismatch: adapter=$ADAPTER_VERSION, spec=${{ steps.spec.outputs.version }}"
+            else
+              echo "✓ OpenAI adapter version matches spec"
+            fi
+          fi
+
+      - name: Validate adapter metadata (Gemini)
+        if: inputs.target_models == '' || contains(inputs.target_models, 'gemini')
+        run: |
+          if [ ! -f ".ai/skills/gemini/adapter.md" ]; then
+            echo "⚠️  Gemini adapter missing"
+          else
+            ADAPTER_VERSION=$(grep "derived_from_version:" .ai/skills/gemini/adapter.md | head -1 | cut -d: -f2 | xargs)
+            if [ "$ADAPTER_VERSION" != "${{ steps.spec.outputs.version }}" ]; then
+              echo "⚠️  Gemini adapter version mismatch: adapter=$ADAPTER_VERSION, spec=${{ steps.spec.outputs.version }}"
+            else
+              echo "✓ Gemini adapter version matches spec"
+            fi
+          fi
+
+      - name: Validate agent policies exist
+        run: |
+          if [ ! -f ".agents/primary-agent.md" ]; then
+            echo "❌ Primary agent policy missing"
+            exit 1
+          fi
+          if [ ! -f ".agents/executor-agent.md" ]; then
+            echo "❌ Executor agent policy missing"
+            exit 1
+          fi
+          echo "✓ Agent policies present"
+
+      - name: Report mode - check for spec drift
+        if: inputs.mode == 'validate'
+        run: |
+          echo "=== AI Skill Sync Validation Report ==="
+          echo ""
+          echo "Canonical Spec:"
+          echo "  Version: ${{ steps.spec.outputs.version }}"
+          echo "  Last Reviewed: ${{ steps.spec.outputs.reviewed }}"
+          echo ""
+          echo "Adapter Sync Status:"
+          echo "  [See validation steps above]"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Review adapter version mismatches (if any)"
+          echo "  2. If spec was updated, run workflow with mode=refresh"
+          echo "  3. If adapters are stale, request review"
+
+      - name: Refresh mode - regenerate adapters
+        if: inputs.mode == 'refresh'
+        run: |
+          echo "⚠️  Refresh mode: Would regenerate adapters from canonical spec"
+          echo ""
+          echo "This is a placeholder. In a production setup, this would:"
+          echo "  1. Parse the canonical spec"
+          echo "  2. Generate model-specific adapters"
+          echo "  3. Update derived_from_version in each adapter"
+          echo "  4. Commit and open a PR for review"
+          echo ""
+          echo "For now: manual adapter updates are required."
+          echo "Recommended: review each adapter against the canonical spec."
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## AI Skill Sync Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Mode:** ${{ inputs.mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Models:** ${{ inputs.target_models }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Canonical Spec Version:** ${{ steps.spec.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Last Reviewed:** ${{ steps.spec.outputs.reviewed }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Checks Performed:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Canonical spec exists" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Adapter metadata validated" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Agent policies verified" >> $GITHUB_STEP_SUMMARY

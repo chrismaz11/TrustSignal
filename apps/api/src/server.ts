@@ -5,6 +5,8 @@ import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { JsonRpcProvider, keccak256, toUtf8Bytes } from 'ethers';
 import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
 import { z } from 'zod';
@@ -1172,6 +1174,36 @@ export async function buildServer(options: BuildServerOptions = {}) {
       requestId: request.id
     })
   });
+
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: 'TrustSignal API',
+        description: 'Cryptographic fraud prevention API',
+        version: '1.0.0'
+      },
+      servers: [
+        { url: 'https://api.trustsignal.dev', description: 'Production' },
+        { url: 'http://localhost:3001', description: 'Development' }
+      ],
+      tags: [
+        { name: 'Receipt', description: 'Receipt operations' },
+        { name: 'Verify', description: 'Verification operations' },
+        { name: 'Anchor', description: 'Anchoring operations' },
+        { name: 'Registry', description: 'Registry operations' }
+      ]
+    }
+  });
+
+  await app.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'full',
+      deepLinking: false
+    },
+    staticCSP: true,
+    transformStaticCSP: (header: string) => header
+  });
   const workflowEventSink =
     options.workflowEventSink ??
     new PrismaWorkflowEventSink(
@@ -1531,6 +1563,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/verify', {
     config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Verify'],
+      summary: 'Verify a document and generate receipt',
+      description: 'Run verification checks and generate a cryptographic receipt',
+      body: verifyInputSchema
+    },
     preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     // Enforce plan quota before running any verification work.
@@ -1764,6 +1802,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.get('/api/v1/receipt/:receiptId', {
     config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Receipt'],
+      summary: 'Get receipt details',
+      description: 'Retrieve a receipt by ID',
+      params: receiptIdParamSchema
+    },
     preHandler: [requireScope('read')]
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1827,6 +1871,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/receipt/:receiptId/verify', {
     config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Receipt'],
+      summary: 'Verify receipt signature',
+      description: 'Verify the cryptographic signature of a receipt',
+      params: receiptIdParamSchema
+    },
     preHandler: [requireScope('read')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1880,6 +1930,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/anchor/:receiptId', {
     config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Anchor'],
+      summary: 'Anchor receipt to blockchain',
+      description: 'Store cryptographic proof on-chain for immutability',
+      params: receiptIdParamSchema
+    },
     preHandler: [requireScope('anchor')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
@@ -1939,6 +1995,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
     config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Receipt'],
+      summary: 'Revoke a receipt',
+      description: 'Mark a receipt as revoked',
+      params: receiptIdParamSchema
+    },
     preHandler: [requireScope('revoke')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
