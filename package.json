@@ -60,6 +60,6 @@
   },
   "overrides": {
     "serialize-javascript": ">=7.0.5",
-    "vite": "^5"
+    "vite": "^6.4.2"
   }
 }

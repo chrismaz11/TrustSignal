@@ -17,6 +17,8 @@
   "dependencies": {
     "@trustsignal/core": "file:../../packages/core",
     "@fastify/cors": "^11.2.0",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.5",
     "@fastify/rate-limit": "^10.3.0",
     "@prisma/client": "^5.17.0",
     "@solana/web3.js": "^1.98.4",

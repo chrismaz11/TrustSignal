@@ -1202,7 +1202,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       deepLinking: false
     },
     staticCSP: true,
-    transformStaticCSP: (header) => header
+    transformStaticCSP: (header: string) => header
   });
   const workflowEventSink =
     options.workflowEventSink ??
