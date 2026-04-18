@@ -3,6 +3,7 @@
   "id": "solc-0_8_24-682f2b555da537e46b295922c5704ae97eaf216c",
   "solcVersion": "0.8.24",
   "solcLongVersion": "0.8.24+commit.e11b9ed9",
+  "compilerType": "solc",
   "userSourceNameMap": {
     "contracts/AnchorRegistry.sol": "project/contracts/AnchorRegistry.sol"
   },

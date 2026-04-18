@@ -59,6 +59,42 @@ export function loadRuntimeEnv(): void {
   runtimeEnvLoaded = true;
 }
 
+/**
+ * Validates that all required environment variables are set.
+ * Call at startup before the server begins listening.
+ */
+export function validateRequiredEnv(env: NodeJS.ProcessEnv = process.env): void {
+  const required: string[] = [];
+
+  // DATABASE_URL is always required (may be set via alias — check after resolveDatabaseUrl runs)
+  if (!env.DATABASE_URL && !env.SUPABASE_DB_URL && !env.SUPABASE_POOLER_URL && !env.SUPABASE_DIRECT_URL) {
+    required.push('DATABASE_URL');
+  }
+
+  // In production, receipt signing keys must be explicitly configured
+  if (env.NODE_ENV === 'production') {
+    if (
+      !env.TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK &&
+      !env.TRUSTSIGNAL_SIGNING_PRIVATE_JWK
+    ) {
+      required.push('TRUSTSIGNAL_RECEIPT_SIGNING_PRIVATE_JWK');
+    }
+    if (
+      !env.TRUSTSIGNAL_RECEIPT_SIGNING_KID &&
+      !env.TRUSTSIGNAL_SIGNING_KEY_ID
+    ) {
+      required.push('TRUSTSIGNAL_RECEIPT_SIGNING_KID');
+    }
+  }
+
+  if (required.length > 0) {
+    throw new Error(
+      `[startup] Missing required environment variables: ${required.join(', ')}. ` +
+      'Set them in your .env file or deployment environment before starting the server.'
+    );
+  }
+}
+
 export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | undefined {
   const databaseUrl =
     env.DATABASE_URL ||

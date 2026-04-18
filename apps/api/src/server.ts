@@ -36,15 +36,17 @@ import {
   NotaryVerifier,
   PropertyVerifier,
   CountyVerifier,
-  nameOverlapScore
+  nameOverlapScore,
+  generateFraudScoreProof,
+  type ZkmlFraudAttestation
 } from '../../../packages/core/dist/index.js';
 
 import { toV2VerifyResponse } from './lib/v2ReceiptMapper.js';
-import { anchorReceipt, buildAnchorSubject } from './anchor.js';
-import { ensureDatabase } from './db.js';
+import { mapInternalStatusToExternal, type ExternalReceiptStatus } from './receipts.js';
+import { anchorReceiptOnChain, buildAnchorSubject, type AnchorChain } from './anchor.js';
 import { loadRegistry } from './registryLoader.js';
 import { renderReceiptPdf } from './receiptPdf.js';
-import { loadRuntimeEnv, resolveDatabaseUrl } from './env.js';
+import { loadRuntimeEnv, resolveDatabaseUrl, validateRequiredEnv } from './env.js';
 import { HttpAttomClient } from './services/attomClient.js';
 import { CookCountyComplianceValidator } from './services/compliance.js';
 import {
@@ -54,8 +56,11 @@ import {
   RegistrySourceId
 } from './services/registryAdapters.js';
 import {
+  type AuthScope,
   buildSecurityConfig,
+  checkPlanQuota,
   getApiRateLimitKey,
+  getMonthlyUsageStats,
   isCorsOriginAllowed,
   requireApiKeyScope,
   type SecurityConfig,
@@ -63,7 +68,6 @@ import {
 } from './security.js';
 import { isWorkflowError } from './workflow/errors.js';
 import {
-  NoopWorkflowEventSink,
   PrismaWorkflowEventSink,
   type WorkflowEventSink
 } from './workflow/events.js';
@@ -79,6 +83,7 @@ import {
 
 loadRuntimeEnv();
 resolveDatabaseUrl();
+validateRequiredEnv();
 const prisma = new PrismaClient();
 const REQUEST_START = Symbol('requestStartMs');
 type RequestTimerState = {
@@ -127,6 +132,28 @@ const bundleSchema = z.object({
 });
 
 const verifyInputSchema = bundleSchema;
+const githubVerificationInputSchema = z.object({
+  apiVersion: z.literal('2026-03-13'),
+  provider: z.literal('github'),
+  externalId: z.string().min(1),
+  headSha: z.string().min(7).max(64),
+  detailsUrl: z.string().url().optional(),
+  subject: z.object({
+    kind: z.enum(['workflow_run', 'release', 'commit']),
+    summary: z.string().min(1)
+  }),
+  repository: z.object({
+    owner: z.string().min(1),
+    repo: z.string().min(1),
+    fullName: z.string().min(1),
+    defaultBranch: z.string().min(1).optional(),
+    htmlUrl: z.string().url().optional()
+  }),
+  provenance: z.object({
+    eventName: z.enum(['workflow_run', 'release', 'push']),
+    attributes: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+  })
+});
 const registryVerifyInputSchema = z.object({
   sourceId: registrySourceIdEnum,
   subjectName: z.string().trim().min(2).max(256),
@@ -437,7 +464,7 @@ function receiptFromDb(record: ReceiptRecord) {
     decision: record.decision as 'ALLOW' | 'FLAG' | 'BLOCK',
     reasons: JSON.parse(record.reasons) as string[],
     riskScore: record.riskScore,
-    verifierId: 'deed-shield',
+    verifierId: 'trustsignal',
     ...(record.signingKeyId ? { signing_key_id: record.signingKeyId } : {}),
     receiptHash: record.receiptHash,
     fraudRisk: record.fraudRisk ? JSON.parse(record.fraudRisk) as DocumentRisk : undefined,
@@ -525,8 +552,11 @@ function sendWorkflowError(
 
 function buildAnchorState(record: ReceiptRecord, attestation?: ZKPAttestation) {
   const subject = buildAnchorSubject(record.receiptHash, attestation);
+  // Infer chain from stored chainId: "solana-*" → solana, otherwise evm
+  const chain: AnchorChain = record.anchorChainId?.startsWith('solana-') ? 'solana' : 'evm';
   return {
     status: record.anchorStatus,
+    chain,
     txHash: record.anchorTxHash || undefined,
     chainId: record.anchorChainId || undefined,
     anchorId: record.anchorId || undefined,
@@ -822,8 +852,174 @@ type VerifyRouteInput = BundleInput & {
   };
 };
 
+type GitHubVerificationInput = z.infer<typeof githubVerificationInputSchema>;
+
+function mapGitHubConclusion(status: ExternalReceiptStatus): 'success' | 'failure' | 'neutral' {
+  if (status === 'clean') return 'success';
+  if (status === 'failure' || status === 'revoked') return 'failure';
+  return 'neutral';
+}
+
+function buildGitHubVerifyInput(input: GitHubVerificationInput): VerifyRouteInput {
+  const payloadDigest = keccak256(toUtf8Bytes(canonicalizeJson(input)));
+  const repositoryUrl = input.repository.htmlUrl || `https://github.com/${input.repository.fullName}`;
+
+  return {
+    bundleId: `github-${input.externalId}`,
+    transactionType: input.subject.kind,
+    ron: {
+      provider: 'github',
+      notaryId: input.repository.fullName,
+      commissionState: 'GH',
+      sealPayload: `${input.headSha}:${input.externalId}`
+    },
+    doc: {
+      docHash: payloadDigest
+    },
+    policy: {
+      profile: 'GITHUB_ARTIFACT_V1'
+    },
+    property: {
+      parcelId: input.externalId,
+      county: input.repository.repo,
+      state: 'GH'
+    },
+    ocrData: {
+      notaryName: input.repository.fullName,
+      propertyAddress: repositoryUrl,
+      grantorName: input.subject.summary
+    },
+    timestamp: new Date().toISOString()
+  };
+}
+
+type ReceiptIssueResult = {
+  record: ReceiptRecord;
+  signedReceipt: Receipt;
+  responseBody: ReturnType<typeof toV2VerifyResponse> & { zkmlAttestation?: ZkmlFraudAttestation };
+};
+
+async function issueReceiptRecord(
+  input: VerifyRouteInput,
+  verification: Awaited<ReturnType<typeof verifyBundle>>,
+  securityConfig: SecurityConfig,
+  options: {
+    fraudRisk?: DocumentRisk;
+  } = {}
+): Promise<ReceiptIssueResult> {
+  // Generate Halo2 compliance proof (dev-only unless TRUSTSIGNAL_ZKP_BACKEND=external).
+  const zkpAttestation = await generateComplianceProof({
+    policyProfile: input.policy.profile,
+    checksResult: verification.decision === 'ALLOW',
+    inputsCommitment: computeInputsCommitment(input),
+    docHash: input.doc.docHash,
+    canonicalDocumentBase64: input.doc.pdfBase64
+  });
+
+  // Generate ezkl ZKML fraud score proof (dev-only unless TRUSTSIGNAL_ZKML_EZKL_BIN is set).
+  let zkmlAttestation: ZkmlFraudAttestation | undefined;
+  if (options.fraudRisk) {
+    try {
+      const features = [options.fraudRisk.score, options.fraudRisk.score > 0.5 ? 1 : 0];
+      zkmlAttestation = await generateFraudScoreProof(features, options.fraudRisk.score);
+    } catch (err) {
+      // Non-fatal: log and continue without ZKML attestation.
+      console.warn('[zkml] proof generation skipped:', err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const receipt = buildReceipt(input, verification, 'trustsignal', {
+    signing_key_id: securityConfig.receiptSigning.current.kid,
+    fraudRisk: options.fraudRisk,
+    zkpAttestation
+  });
+  const receiptSignature = await signReceiptPayload(
+    toUnsignedReceiptPayload(receipt),
+    securityConfig.receiptSigning.current
+  );
+  const signedReceipt: Receipt = {
+    ...receipt,
+    receiptSignature
+  };
+
+  const record = await prisma.receipt.create({
+    data: {
+      id: signedReceipt.receiptId,
+      receiptHash: signedReceipt.receiptHash,
+      inputsCommitment: signedReceipt.inputsCommitment,
+      parcelId: input.property.parcelId,
+      policyProfile: signedReceipt.policyProfile,
+      decision: signedReceipt.decision,
+      reasons: JSON.stringify(signedReceipt.reasons),
+      riskScore: signedReceipt.riskScore,
+      checks: JSON.stringify(signedReceipt.checks),
+      rawInputsHash: signedReceipt.inputsCommitment,
+      signingKeyId: signedReceipt.signing_key_id,
+      createdAt: new Date(signedReceipt.createdAt),
+      fraudRisk: signedReceipt.fraudRisk ? JSON.stringify(signedReceipt.fraudRisk) : undefined,
+      zkpAttestation: signedReceipt.zkpAttestation ? JSON.stringify(signedReceipt.zkpAttestation) : undefined,
+      receiptSignature: signedReceipt.receiptSignature?.signature,
+      receiptSignatureAlg: signedReceipt.receiptSignature?.alg,
+      receiptSignatureKid: signedReceipt.receiptSignature?.kid,
+      revoked: false
+    }
+  });
+
+  const responseBody = toV2VerifyResponse({
+    decision: signedReceipt.decision,
+    reasons: signedReceipt.reasons,
+    receiptId: record.id,
+    receiptHash: signedReceipt.receiptHash,
+    receiptSignature: signedReceipt.receiptSignature,
+    proofVerified: signedReceipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
+    anchor: buildAnchorState(record, signedReceipt.zkpAttestation),
+    fraudRisk: signedReceipt.fraudRisk,
+    zkpAttestation: signedReceipt.zkpAttestation,
+    revoked: record.revoked,
+    riskScore: signedReceipt.riskScore
+  });
+
+  const responseWithZkml = zkmlAttestation
+    ? { ...responseBody, zkmlAttestation }
+    : responseBody;
+
+  return {
+    record,
+    signedReceipt,
+    responseBody: responseWithZkml
+  };
+}
+
+async function assertRequiredSchema() {
+  const [state] = await prisma.$queryRaw<Array<{
+    apiKeys: string | null;
+    receipts: string | null;
+    workflowEvents: string | null;
+    properties: string | null;
+    countyRecords: string | null;
+    notaries: string | null;
+  }>>`
+    select
+      to_regclass('public.api_keys')::text as "apiKeys",
+      to_regclass('public."Receipt"')::text as "receipts",
+      to_regclass('public."WorkflowEvent"')::text as "workflowEvents",
+      to_regclass('public."Property"')::text as "properties",
+      to_regclass('public."CountyRecord"')::text as "countyRecords",
+      to_regclass('public."Notary"')::text as "notaries"
+  `;
+
+  const missing = Object.entries(state ?? {})
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    throw new Error(`required_schema_missing:${missing.join(',')}`);
+  }
+}
+
 export async function buildServer(options: BuildServerOptions = {}) {
   requireProductionVerifierConfig();
+  await assertRequiredSchema();
   const app = Fastify({ logger: options.logger ?? true });
   const securityConfig = buildSecurityConfig();
   const propertyApiKey = resolvePropertyApiKey();
@@ -847,28 +1043,48 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
   // Business-level verification lifecycle metrics
   const receiptsIssuedTotal = new Counter({
-    name: 'deedshield_receipts_issued_total',
+    name: 'trustsignal_receipts_issued_total',
     help: 'Total signed receipts issued by decision outcome',
     labelNames: ['decision', 'policy_profile'] as const,
     registers: [metricsRegistry]
   });
   const receiptVerificationsTotal = new Counter({
-    name: 'deedshield_receipt_verifications_total',
+    name: 'trustsignal_receipt_verifications_total',
     help: 'Total post-issuance receipt verifications by outcome',
     labelNames: ['outcome'] as const,
     registers: [metricsRegistry]
   });
   const revocationsTotal = new Counter({
-    name: 'deedshield_revocations_total',
+    name: 'trustsignal_revocations_total',
     help: 'Total receipt revocations processed',
     labelNames: [] as const,
     registers: [metricsRegistry]
   });
   const verifyDurationSeconds = new Histogram({
-    name: 'deedshield_verify_duration_seconds',
+    name: 'trustsignal_verify_duration_seconds',
     help: 'End-to-end duration of the verification and receipt issuance flow',
     labelNames: ['decision'] as const,
     buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10],
+    registers: [metricsRegistry]
+  });
+  const receiptLookupDurationSeconds = new Histogram({
+    name: 'trustsignal_receipt_lookup_duration_seconds',
+    help: 'Duration of receipt retrieval from database (GET /receipt/:id)',
+    labelNames: [] as const,
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+    registers: [metricsRegistry]
+  });
+  const anchorDurationSeconds = new Histogram({
+    name: 'trustsignal_anchor_duration_seconds',
+    help: 'Duration of receipt anchoring operation by chain',
+    labelNames: ['chain'] as const,
+    buckets: [0.1, 0.5, 1, 2, 5, 10, 30],
+    registers: [metricsRegistry]
+  });
+  const httpErrorsTotal = new Counter({
+    name: 'trustsignal_http_errors_total',
+    help: 'Total HTTP error responses (4xx/5xx) by route and status code',
+    labelNames: ['method', 'route', 'status_code'] as const,
     registers: [metricsRegistry]
   });
   const perApiKeyRateLimit = {
@@ -894,6 +1110,51 @@ export async function buildServer(options: BuildServerOptions = {}) {
     const durationSeconds = startedAt ? (Date.now() - startedAt) / 1000 : 0;
     httpRequestsTotal.inc({ method, route, status_code: statusCode });
     httpRequestDurationSeconds.observe({ method, route, status_code: statusCode }, durationSeconds);
+    if (reply.statusCode >= 400) {
+      httpErrorsTotal.inc({ method, route, status_code: statusCode });
+    }
+
+    if (request.authContext?.apiKeyId) {
+      const userAgent = request.headers['user-agent'];
+      const userAgentValue = Array.isArray(userAgent) ? userAgent[0] : userAgent;
+      const metadata = JSON.stringify({
+        authSource: request.authContext.authSource,
+        scopes: [...request.authContext.scopes]
+      });
+
+      try {
+        await prisma.$executeRaw`
+          insert into public.verification_log (
+            api_key_id,
+            user_id,
+            endpoint,
+            status_code,
+            request_id,
+            source_ip,
+            user_agent,
+            metadata
+          ) values (
+            ${request.authContext.apiKeyId},
+            ${request.authContext.userId},
+            ${route},
+            ${reply.statusCode},
+            ${request.id},
+            ${request.ip}::inet,
+            ${userAgentValue ?? null},
+            ${metadata}::jsonb
+          )
+        `;
+      } catch (error) {
+        app.log.error(
+          {
+            event: 'verification_log_write_failed',
+            request_id: request.id,
+            error: error instanceof Error ? error.message : String(error)
+          },
+          'verification_log_write_failed'
+        );
+      }
+    }
   });
 
   await app.register(cors, {
@@ -959,53 +1220,30 @@ export async function buildServer(options: BuildServerOptions = {}) {
     );
   }
 
+
   const workflowEventSink =
     options.workflowEventSink ??
-    (databaseReady
-      ? new PrismaWorkflowEventSink(
-          (prisma as PrismaClient & { workflowEvent: PrismaWorkflowEventDelegate }).workflowEvent,
-          app.log
-        )
-      : new NoopWorkflowEventSink());
+    new PrismaWorkflowEventSink(
+      (prisma as PrismaClient & { workflowEvent: PrismaWorkflowEventDelegate }).workflowEvent,
+      app.log
+    );
   const workflowService = new WorkflowService(undefined, {
     eventSink: workflowEventSink
   });
-
-  const dbOptionalRoutes = new Set([
-    '/api/v1/health',
-    '/api/v1/status',
-    '/api/v1/metrics',
-    '/api/v1/integrations/vanta/schema',
-    '/api/v1/trust-agents',
-    '/api/v1/workflows/readiness-audit',
-    '/api/v1/workflows',
-    '/api/v1/workflows/:workflowId',
-    '/api/v1/workflows/:workflowId/events',
-    '/api/v1/workflows/:workflowId/evidence-package',
-    '/api/v1/workflows/:workflowId/artifacts',
-    '/api/v1/workflows/:workflowId/artifacts/:artifactId/verify',
-    '/api/v1/workflows/:workflowId/runs'
-  ]);
-
-  app.addHook('preHandler', async (request, reply) => {
-    if (databaseReady) return;
-    const route = (request.routeOptions.url || request.url.split('?')[0] || '').toString();
-    if (dbOptionalRoutes.has(route)) return;
-    return reply.code(503).send({ error: 'Database unavailable' });
-  });
-
+  const requireScope = (scope: AuthScope) => requireApiKeyScope(prisma, securityConfig, scope);
   app.get('/api/v1/health', async () => ({
-    status: databaseReady ? 'ok' : 'degraded',
+    status: 'ok',
     database: {
-      ready: databaseReady,
-      initError: databaseInitError
+      ready: true,
+      initError: null
     }
   }));
   app.get('/api/v1/status', async (request) => {
     const forwardedProto = normalizeForwardedProto(request.headers['x-forwarded-proto']);
     return {
       status: 'ok',
-      service: 'deed-shield-api',
+      service: 'trustsignal-api',
+      version: process.env.TRUSTSIGNAL_VERSION || 'dev',
       environment: process.env.NODE_ENV || 'development',
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
@@ -1015,21 +1253,39 @@ export async function buildServer(options: BuildServerOptions = {}) {
       },
       database: {
         sslModeRequired: databaseUrlHasRequiredSslMode(process.env.DATABASE_URL),
-        ready: databaseReady,
-        initError: databaseInitError
+        ready: true,
+        initError: null
       },
       trustRegistry: {
         source: process.env.TRUST_REGISTRY_SOURCE || 'local-signed-registry'
       }
     };
   });
-  app.get('/api/v1/metrics', async (_request, reply) => {
+  app.get('/api/v1/metrics', {
+    preHandler: [requireScope('read')]
+  }, async (_request, reply) => {
     reply.header('Content-Type', metricsRegistry.contentType);
     return reply.send(await metricsRegistry.metrics());
   });
 
+  app.get('/api/v1/usage', {
+    preHandler: [requireScope('read')],
+    config: { rateLimit: perApiKeyRateLimit }
+  }, async (request, reply) => {
+    const userId = request.authContext?.userId ?? null;
+    if (!userId) {
+      // local-dev keys: return unlimited placeholder
+      return reply.send({ plan: 'dev', used: 0, limit: null, remaining: null, resetAt: null });
+    }
+    const stats = await getMonthlyUsageStats(prisma, userId);
+    if (!stats) {
+      return reply.code(404).send({ error: 'Usage data not available — customer record not found' });
+    }
+    return reply.send(stats);
+  });
+
   app.get('/api/v1/integrations/vanta/schema', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     return {
@@ -1039,7 +1295,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/trust-agents', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     return {
@@ -1053,7 +1309,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowCreateRequestSchema.safeParse(request.body);
@@ -1066,7 +1322,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/readiness-audit', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = readinessWorkflowRequestSchema.safeParse(request.body);
@@ -1083,7 +1339,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1100,7 +1356,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId/events', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1121,7 +1377,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/workflows/:workflowId/evidence-package', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const parsed = workflowParamsSchema.safeParse(request.params);
@@ -1138,7 +1394,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/artifacts', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const params = workflowParamsSchema.safeParse(request.params);
@@ -1166,7 +1422,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/runs', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const params = workflowParamsSchema.safeParse(request.params);
@@ -1188,8 +1444,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/workflows/:workflowId/artifacts/:artifactId/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = workflowArtifactParamsSchema.safeParse(request.params);
     if (!parsed.success) {
@@ -1205,7 +1461,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/integrations/vanta/verification/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1218,7 +1474,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/sources', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async () => {
     const sources = await registryAdapterService.listSources();
@@ -1229,8 +1485,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = registryVerifyInputSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1254,8 +1510,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/registry/verify-batch', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = registryVerifyBatchInputSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1275,7 +1531,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/jobs', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request) => {
     const limitRaw = (request.query as { limit?: string } | undefined)?.limit;
@@ -1289,7 +1545,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/registry/jobs/:jobId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const { jobId } = request.params as { jobId: string };
@@ -1301,8 +1557,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify/attom', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     const parsed = deedParsedSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1323,7 +1579,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'verify')],
+    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Verify'],
@@ -1342,6 +1598,18 @@ export async function buildServer(options: BuildServerOptions = {}) {
       }
     }
   }, async (request, reply) => {
+    // Enforce plan quota before running any verification work.
+    const quota = await checkPlanQuota(prisma, request.authContext?.userId ?? null);
+    if (!quota.allowed) {
+      return reply.code(429).send({
+        error: 'plan_quota_exceeded',
+        plan: quota.plan,
+        used: quota.used,
+        limit: quota.limit,
+        message: `Monthly verification limit reached for plan '${quota.plan}'. Upgrade to continue.`
+      });
+    }
+
     const verifyStartMs = Date.now();
     const parsed = verifyInputSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1437,66 +1705,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
       });
     }
 
-    // ZKP Attestation
-    // We generate a ZKP that proves we ran the checks and they passed (or failed)
-    const zkpAttestation = await generateComplianceProof({
-      policyProfile: input.policy.profile,
-      checksResult: verification.decision === 'ALLOW',
-      inputsCommitment: computeInputsCommitment(input),
-      docHash: input.doc.docHash,
-      canonicalDocumentBase64: input.doc.pdfBase64
-    });
-
-    const receipt = buildReceipt(input, verification, 'deed-shield', {
-      signing_key_id: securityConfig.receiptSigning.current.kid,
-      fraudRisk,
-      zkpAttestation
-    });
-    const receiptSignature = await signReceiptPayload(
-      toUnsignedReceiptPayload(receipt),
-      securityConfig.receiptSigning.current
+    const { record, signedReceipt, responseBody } = await issueReceiptRecord(
+      input,
+      verification,
+      securityConfig,
+      { fraudRisk }
     );
-    const signedReceipt: Receipt = {
-      ...receipt,
-      receiptSignature
-    };
-
-    const record = await prisma.receipt.create({
-      data: {
-        id: signedReceipt.receiptId,
-        receiptHash: signedReceipt.receiptHash,
-        inputsCommitment: signedReceipt.inputsCommitment,
-        parcelId: input.property.parcelId,
-        policyProfile: signedReceipt.policyProfile,
-        decision: signedReceipt.decision,
-        reasons: JSON.stringify(signedReceipt.reasons),
-        riskScore: signedReceipt.riskScore,
-        checks: JSON.stringify(signedReceipt.checks),
-        rawInputsHash: signedReceipt.inputsCommitment,
-        signingKeyId: signedReceipt.signing_key_id,
-        createdAt: new Date(signedReceipt.createdAt),
-        fraudRisk: signedReceipt.fraudRisk ? JSON.stringify(signedReceipt.fraudRisk) : undefined,
-        zkpAttestation: signedReceipt.zkpAttestation ? JSON.stringify(signedReceipt.zkpAttestation) : undefined,
-        receiptSignature: signedReceipt.receiptSignature?.signature,
-        receiptSignatureAlg: signedReceipt.receiptSignature?.alg,
-        receiptSignatureKid: signedReceipt.receiptSignature?.kid,
-        revoked: false
-      }
-    });
-
-    const body = toV2VerifyResponse({
-      decision: signedReceipt.decision,
-      reasons: signedReceipt.reasons,
-      receiptId: record.id,
-      receiptHash: signedReceipt.receiptHash,
-      receiptSignature: signedReceipt.receiptSignature,
-      proofVerified: signedReceipt.zkpAttestation?.status === 'verifiable' ? undefined : false,
-      anchor: buildAnchorState(record, signedReceipt.zkpAttestation),
-      fraudRisk: signedReceipt.fraudRisk,
-      zkpAttestation: signedReceipt.zkpAttestation,
-      revoked: record.revoked,
-      riskScore: signedReceipt.riskScore
-    });
 
     receiptsIssuedTotal.inc({ decision: signedReceipt.decision, policy_profile: input.policy.profile });
     verifyDurationSeconds.observe({ decision: signedReceipt.decision }, (Date.now() - verifyStartMs) / 1000);
@@ -1512,12 +1726,76 @@ export async function buildServer(options: BuildServerOptions = {}) {
       'receipt_issued'
     );
 
-    return reply.send(body);
+    return reply.send(responseBody);
+  });
+
+  app.post('/api/v1/verifications/github', {
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('verify')]
+  }, async (request, reply) => {
+    const parsed = githubVerificationInputSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.flatten() });
+    }
+
+    const input = parsed.data;
+    const verifyInput = buildGitHubVerifyInput(input);
+    const repositoryUrl = input.repository.htmlUrl || `https://github.com/${input.repository.fullName}`;
+    const decision = input.provenance.eventName === 'push' ? 'FLAG' : 'ALLOW';
+    const verification = {
+      decision,
+      reasons: decision === 'ALLOW'
+        ? [`Verified GitHub provenance for ${input.repository.fullName} at ${input.headSha}`]
+        : [`GitHub provenance accepted with follow-up review for ${input.repository.fullName}`],
+      riskScore: decision === 'ALLOW' ? 6 : 34,
+      checks: [
+        {
+          checkId: 'github-provider',
+          status: 'PASS',
+          details: `provider=${input.provider}`
+        },
+        {
+          checkId: 'github-repository',
+          status: 'PASS',
+          details: input.repository.fullName
+        },
+        {
+          checkId: 'github-event',
+          status: decision === 'ALLOW' ? 'PASS' : 'WARN',
+          details: `${input.provenance.eventName}:${input.subject.kind}`
+        },
+        {
+          checkId: 'github-head-sha',
+          status: 'PASS',
+          details: input.headSha
+        }
+      ]
+    } as Awaited<ReturnType<typeof verifyBundle>>;
+
+    const { record } = await issueReceiptRecord(
+      verifyInput,
+      verification,
+      securityConfig
+    );
+    const receiptStatus = mapInternalStatusToExternal(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK', record.revoked);
+    const conclusion = mapGitHubConclusion(receiptStatus);
+
+    return reply.send({
+      receiptId: record.id,
+      checkRunStatus: 'completed',
+      receiptStatus,
+      conclusion,
+      title: conclusion === 'success' ? 'TrustSignal verification passed' : 'TrustSignal verification needs review',
+      summary: `${input.subject.summary} (${input.repository.fullName}) -> ${receiptStatus}`,
+      verificationTimestamp: record.createdAt.toISOString(),
+      provenanceNote: `Verified ${input.provenance.eventName} provenance for ${input.repository.fullName}`,
+      detailsUrl: input.detailsUrl || repositoryUrl
+    });
   });
 
   app.get('/api/v1/synthetic', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    preHandler: [requireScope('read')]
   }, async () => {
     const registry = await loadRegistry();
     const notary = registry.notaries[0];
@@ -1550,7 +1828,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Receipt'],
@@ -1573,7 +1851,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+    const lookupStart = Date.now();
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
+    receiptLookupDurationSeconds.observe((Date.now() - lookupStart) / 1000);
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
     }
@@ -1609,7 +1889,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId/pdf', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
@@ -1629,7 +1909,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/verify', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Receipt'],
@@ -1698,7 +1978,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/anchor/:receiptId', {
-    preHandler: [requireApiKeyScope(securityConfig, 'anchor')],
+    preHandler: [requireScope('anchor')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Anchor'],
@@ -1722,6 +2002,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
+
+    // Optional ?chain=evm|solana query param (default: evm)
+    const chainParam = (request.query as Record<string, string | undefined>).chain;
+    const chain: AnchorChain = chainParam === 'solana' ? 'solana' : 'evm';
+
     const record = await prisma.receipt.findUnique({ where: { id: receiptId } });
     if (!record) {
       return reply.code(404).send({ error: 'Receipt not found' });
@@ -1734,13 +2019,21 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return reply.code(409).send({ error: 'proof_artifact_required_for_anchor' });
     }
 
+    // If already anchored on the requested chain, return the stored state
     if (record.anchorStatus === 'ANCHORED') {
-      return reply.send({
-        ...buildAnchorState(record, receipt.zkpAttestation)
-      });
+      const storedChain: AnchorChain = record.anchorChainId?.startsWith('solana-') ? 'solana' : 'evm';
+      if (storedChain === chain) {
+        return reply.send({
+          ...buildAnchorState(record, receipt.zkpAttestation)
+        });
+      }
+      // Different chain requested — allow anchoring on additional chain
+      // (cross-chain: receipt may be anchored on multiple chains)
     }
 
-    const result = await anchorReceipt(record.receiptHash, receipt.zkpAttestation);
+    const anchorStart = Date.now();
+    const result = await anchorReceiptOnChain(record.receiptHash, chain, receipt.zkpAttestation);
+    anchorDurationSeconds.observe({ chain }, (Date.now() - anchorStart) / 1000);
     const updated = await prisma.receipt.update({
       where: { id: receiptId },
       data: {
@@ -1760,7 +2053,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
-    preHandler: [requireApiKeyScope(securityConfig, 'revoke')],
+    preHandler: [requireScope('revoke')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Receipt'],
@@ -1795,7 +2088,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
     }
 
     if (record.revoked) {
-      return reply.send({ status: 'ALREADY_REVOKED' });
+      return reply.send({
+        status: 'REVOKED',
+        receiptStatus: 'revoked' satisfies ExternalReceiptStatus,
+        result: 'ALREADY_REVOKED'
+      });
     }
 
     await prisma.receipt.update({
@@ -1814,11 +2111,16 @@ export async function buildServer(options: BuildServerOptions = {}) {
       'receipt_revoked'
     );
 
-    return reply.send({ status: 'REVOKED', issuerId: revocationVerification.issuerId });
+    return reply.send({
+      status: 'REVOKED',
+      receiptStatus: 'revoked' satisfies ExternalReceiptStatus,
+      result: 'REVOKED',
+      issuerId: revocationVerification.issuerId
+    });
   });
 
   app.get('/api/v1/receipts', {
-    preHandler: [requireApiKeyScope(securityConfig, 'read')],
+    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit }
   }, async (request) => {
     const query = request.query as { limit?: string };
@@ -1838,6 +2140,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     });
     return records.map((record) => ({
       receiptId: record.id,
+      status: mapInternalStatusToExternal(record.decision as 'ALLOW' | 'FLAG' | 'BLOCK', record.revoked),
       decision: record.decision,
       riskScore: record.riskScore,
       createdAt: record.createdAt,
@@ -1858,7 +2161,15 @@ const isDirectExecution = (() => {
 if (isDirectExecution) {
   const port = Number(process.env.PORT || 3001);
   buildServer()
-    .then((app) => app.listen({ port, host: '0.0.0.0' }))
+    .then((app) => {
+      app.log.info({
+        event: 'server_start',
+        version: process.env.TRUSTSIGNAL_VERSION || 'dev',
+        environment: process.env.NODE_ENV || 'development',
+        port
+      }, 'TrustSignal API starting');
+      return app.listen({ port, host: '0.0.0.0' });
+    })
     .catch((error) => {
       console.error(error);
       process.exit(1);

@@ -1,10 +1,10 @@
 # TrustSignal Canonical Messaging
 
-This document is the messaging source of truth for TrustSignal across the three-repo system.
+This document is the messaging source of truth for TrustSignal across the current public repo set.
 
 - `trustsignal` defines implementation truth.
-- `TrustSignal-docs` is the public documentation layer derived from implementation truth.
-- `v0-signal-new` is the public website and presentation layer derived from approved messaging and public-safe docs.
+- `v0-signal-new` is the primary public website, docs, and onboarding layer derived from implementation truth and approved public-safe messaging.
+- `TrustSignal-docs` is a secondary sanitized public review package, not the primary live docs source.
 
 Public messaging may simplify. It may not contradict the codebase, overstate experimental work, or present roadmap items as shipped behavior.
 

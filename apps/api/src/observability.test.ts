@@ -93,8 +93,8 @@ describe.sequential('observability: correlation IDs and metrics endpoint', () =>
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/plain');
     const body = response.body;
-    expect(body).toContain('deedshield_http_requests_total');
-    expect(body).toContain('deedshield_http_request_duration_seconds');
+    expect(body).toContain('trustsignal_http_requests_total');
+    expect(body).toContain('trustsignal_http_request_duration_seconds');
   });
 
   it('metrics endpoint exposes business-level verification lifecycle counters', async () => {
@@ -105,10 +105,10 @@ describe.sequential('observability: correlation IDs and metrics endpoint', () =>
 
     expect(response.statusCode).toBe(200);
     const body = response.body;
-    expect(body).toContain('deedshield_receipts_issued_total');
-    expect(body).toContain('deedshield_receipt_verifications_total');
-    expect(body).toContain('deedshield_revocations_total');
-    expect(body).toContain('deedshield_verify_duration_seconds');
+    expect(body).toContain('trustsignal_receipts_issued_total');
+    expect(body).toContain('trustsignal_receipt_verifications_total');
+    expect(body).toContain('trustsignal_revocations_total');
+    expect(body).toContain('trustsignal_verify_duration_seconds');
   });
 
   it('metrics endpoint exposes default Node.js process metrics', async () => {
@@ -120,7 +120,7 @@ describe.sequential('observability: correlation IDs and metrics endpoint', () =>
     expect(response.statusCode).toBe(200);
     const body = response.body;
     // prom-client collectDefaultMetrics includes process_cpu_seconds_total
-    expect(body).toContain('deedshield_api_process_cpu_seconds_total');
+    expect(body).toContain('trustsignal_api_process_cpu_seconds_total');
   });
 
   it('x-request-id is consistent in header and not a sensitive value', async () => {

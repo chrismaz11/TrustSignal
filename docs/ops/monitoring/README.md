@@ -75,13 +75,13 @@ Store screenshots in staging evidence (for example under `docs/evidence/staging/
 ## Notes
 - The alert rules use metrics emitted by `apps/api/src/server.ts`:
   - **HTTP infrastructure metrics:**
-    - `deedshield_http_requests_total` (labels: `method`, `route`, `status_code`)
-    - `deedshield_http_request_duration_seconds` (labels: `method`, `route`, `status_code`)
+    - `trustsignal_http_requests_total` (labels: `method`, `route`, `status_code`)
+    - `trustsignal_http_request_duration_seconds` (labels: `method`, `route`, `status_code`)
   - **Verification lifecycle business metrics:**
-    - `deedshield_receipts_issued_total` (labels: `decision`, `policy_profile`) — incremented per signed receipt issued
-    - `deedshield_receipt_verifications_total` (labels: `outcome`: `verified` | `not_verified`) — incremented per post-issuance receipt verification
-    - `deedshield_revocations_total` — incremented per receipt revocation
-    - `deedshield_verify_duration_seconds` (labels: `decision`) — histogram of end-to-end verify+receipt-issue duration
+    - `trustsignal_receipts_issued_total` (labels: `decision`, `policy_profile`) — incremented per signed receipt issued
+    - `trustsignal_receipt_verifications_total` (labels: `outcome`: `verified` | `not_verified`) — incremented per post-issuance receipt verification
+    - `trustsignal_revocations_total` — incremented per receipt revocation
+    - `trustsignal_verify_duration_seconds` (labels: `decision`) — histogram of end-to-end verify+receipt-issue duration
 - Core latency scope follows baseline routes:
   - `/api/v1/verify`
   - `/api/v1/receipt/:receiptId`

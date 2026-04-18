@@ -44,11 +44,7 @@ This checklist must be completed before every version tag is pushed for `TrustSi
   git tag -a v0.2.0 -m "Release v0.2.0"
   git push origin v0.2.0
   ```
-- [ ] Update the stable major tag to point to this release.
-  ```bash
-  git tag -f v1
-  git push origin v1 --force
-  ```
+- [ ] Do not document or publish a stable major tag unless maintainers have explicitly adopted that policy.
 - [ ] Confirm the tag points to the correct commit.
   ```bash
   git show v0.2.0 --stat | head -5
@@ -58,18 +54,24 @@ This checklist must be completed before every version tag is pushed for `TrustSi
 
 - [ ] Confirm `dist/index.js` in the tagged commit is the intended entrypoint.
 - [ ] Confirm `action.yml` in the tag references `dist/index.js` as `main`.
-- [ ] Smoke-test the release tag in a sample workflow using `uses: trustsignal-dev/trustsignal-verify-artifact@v1`.
+- [ ] Smoke-test a maintainer-published release tag or commit SHA using the monorepo action path `TrustSignal-dev/TrustSignal/github-actions/trustsignal-verify-artifact`.
+- [ ] Update the README examples only after the chosen stable ref policy is documented and published.
 
 ## Marketplace Publication (when applicable)
 
-GitHub Marketplace publication requires the action repository to have `action.yml` at the repository root.
-The current structure nests this action inside a monorepo. Steps for marketplace publication:
+Normal workflow consumption should use the monorepo subdirectory path:
+
+`TrustSignal-dev/TrustSignal/github-actions/trustsignal-verify-artifact`
+
+Public ref policy: pin to a maintainer-published release tag or commit SHA. Stable major tags are not currently guaranteed.
+
+GitHub Marketplace publication is a separate packaging concern. Marketplace requires the action repository to have `action.yml` at the repository root. If Marketplace publication is needed later, follow these steps:
 
 1. Extract `github-actions/trustsignal-verify-artifact/` into a dedicated public repository.
 2. Place `action.yml`, `dist/index.js`, `README.md`, and `LICENSE` at the repository root.
 3. Push a version tag to the public repository.
 4. Use GitHub's **Draft a release** flow to publish to the Marketplace.
-5. Link the Marketplace listing from this monorepo's documentation.
+5. Link the Marketplace listing from this monorepo's documentation, but keep the monorepo as the source of truth unless governance changes explicitly.
 
 ---
 

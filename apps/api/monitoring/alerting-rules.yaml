@@ -1,0 +1,134 @@
+---
+# TrustSignal API — Prometheus alerting rules
+# Load via: rule_files: [ "alerting-rules.yaml" ] in prometheus.yml
+# SLOs: p99 latency < 500ms, availability > 99.5%
+
+groups:
+  - name: trustsignal_slo
+    interval: 30s
+    rules:
+      # --- Recording rules (pre-aggregated for dashboard efficiency) ---
+
+      # 1-minute verify latency p99 (rolling)
+      - record: trustsignal:verify_duration_p99:1m
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(deedshield_verify_duration_seconds_bucket[1m])) by (le, decision)
+          )
+
+      # 5-minute HTTP request latency p99 by route
+      - record: trustsignal:http_request_duration_p99:5m
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(trustsignal_http_request_duration_seconds_bucket[5m])) by (le, route)
+          )
+
+      # 5-minute availability (non-5xx rate)
+      - record: trustsignal:availability:5m
+        expr: |
+          1 - (
+            sum(rate(deedshield_http_errors_total{status_code=~"5.."}[5m]))
+            /
+            sum(rate(trustsignal_http_requests_total[5m]))
+          )
+
+      # --- Alert rules ---
+
+      - alert: TrustSignalVerifyLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(deedshield_verify_duration_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Verify p99 latency above 500ms SLO"
+          description: >
+            The p99 latency for /api/v1/verify has exceeded 500ms for the last 2 minutes.
+            Current value: {{ $value | humanizeDuration }}
+          runbook_url: "https://github.com/TrustSignal-dev/TrustSignal/wiki/runbooks/verify-latency"
+
+      - alert: TrustSignalReceiptLookupLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(deedshield_receipt_lookup_duration_seconds_bucket[5m])) by (le)
+          ) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Receipt lookup p99 latency above 100ms"
+          description: >
+            Database receipt lookups are taking longer than expected.
+            Current p99: {{ $value | humanizeDuration }}. Check Postgres query performance.
+          runbook_url: "https://github.com/TrustSignal-dev/TrustSignal/wiki/runbooks/receipt-lookup-latency"
+
+      - alert: TrustSignalAvailabilityDegraded
+        expr: |
+          (
+            1 - (
+              sum(rate(deedshield_http_errors_total{status_code=~"5.."}[5m]))
+              /
+              sum(rate(trustsignal_http_requests_total[5m]))
+            )
+          ) < 0.995
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "TrustSignal API availability below 99.5% SLO"
+          description: >
+            API availability has dropped below 99.5% over the last 5 minutes.
+            Current value: {{ $value | humanizePercentage }}
+          runbook_url: "https://github.com/TrustSignal-dev/TrustSignal/wiki/runbooks/availability"
+
+      - alert: TrustSignalHighErrorRate
+        expr: |
+          sum(rate(deedshield_http_errors_total{status_code=~"5.."}[5m]))
+          /
+          sum(rate(trustsignal_http_requests_total[5m])) > 0.01
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "TrustSignal API 5xx error rate above 1%"
+          description: >
+            More than 1% of requests are returning 5xx errors.
+            Current rate: {{ $value | humanizePercentage }}
+
+      - alert: TrustSignalAnchorLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(deedshield_anchor_duration_seconds_bucket[10m])) by (le, chain)
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Anchor operation p99 taking over 30s"
+          description: >
+            On-chain anchoring (chain={{ $labels.chain }}) is taking over 30 seconds at p99.
+            This may indicate network congestion or RPC issues.
+
+      - alert: TrustSignalAPIDown
+        expr: up{job="trustsignal-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+          page: "true"
+        annotations:
+          summary: "TrustSignal API is unreachable"
+          description: "Prometheus scrape target trustsignal-api has been down for 1 minute."
+          runbook_url: "https://github.com/TrustSignal-dev/TrustSignal/wiki/runbooks/api-down"

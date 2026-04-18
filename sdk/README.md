@@ -1,6 +1,10 @@
 # TrustSignal SDK
 
-Lightweight JavaScript SDK for TrustSignal verification APIs.
+**Status: `official` `v0.2.0`**
+
+Lightweight JavaScript SDK for the TrustSignal verification API. Published as `@trustsignal/sdk`.
+
+---
 
 ## Install
 
@@ -14,43 +18,60 @@ npm install @trustsignal/sdk
 import { TrustSignalSDK } from '@trustsignal/sdk';
 
 const client = new TrustSignalSDK({
-  baseUrl: 'https://api.trustsignal.example',
+  baseUrl: 'https://api.trustsignal.dev',
   apiKey: process.env.TRUSTSIGNAL_API_KEY ?? ''
 });
 ```
 
-## Verify Bundle
+## Verify a Document
 
 ```ts
 const result = await client.verify({
-  deed_hash: '0x9ccf90f7b62f3ca69f1df442f9e44b6f95ad3f57f5f1d4dce5f35f7915d644a0',
-  text_length: 4821,
-  num_signatures: 3,
-  notary_present: true,
-  days_since_notarized: 11,
-  amount: 425000
+  doc: { pdfBase64: '<base64>' },
+  ron: { commissionState: 'IL' },
+  policy: { profile: 'standard' }
 });
 
-console.log(result);
+console.log(result.receiptId, result.decision, result.status);
 ```
 
-## Revoke Bundle (Admin JWT Required)
+## Fetch a Receipt
 
 ```ts
-const revoked = await client.revoke(
-  '0x9ccf90f7b62f3ca69f1df442f9e44b6f95ad3f57f5f1d4dce5f35f7915d644a0',
-  'Court order'
-);
-
-console.log(revoked.tx_hash, revoked.timestamp);
+const receipt = await client.receipt(result.receiptId);
+console.log(receipt.status, receipt.fraudRisk.band);
 ```
 
-## Check Verification Status
+## Verify a Stored Receipt
 
 ```ts
-const status = await client.status(
-  '0x9ccf90f7b62f3ca69f1df442f9e44b6f95ad3f57f5f1d4dce5f35f7915d644a0'
-);
-
-console.log(status);
+const check = await client.verifyReceipt(result.receiptId);
+console.log(check.verified, check.signatureVerified);
 ```
+
+## Revoke a Receipt
+
+Revocation requires an authorized issuer signature passed as headers — no request body is accepted.
+
+```ts
+const revoked = await client.revoke(result.receiptId, {
+  issuerId: 'issuer-abc',
+  signature: '<eth-signed-message>',
+  timestamp: Date.now().toString()
+});
+
+console.log(revoked.result); // 'REVOKED' | 'ALREADY_REVOKED'
+```
+
+See `security.ts:verifyRevocationHeaders` in `apps/api` for the signing protocol.
+
+---
+
+## API Reference
+
+| Method | Route | Scope |
+|---|---|---|
+| `verify(input)` | `POST /api/v1/verify` | `verify` |
+| `receipt(receiptId)` | `GET /api/v1/receipt/:receiptId` | `read` |
+| `verifyReceipt(receiptId)` | `POST /api/v1/receipt/:receiptId/verify` | `read` |
+| `revoke(receiptId, headers)` | `POST /api/v1/receipt/:receiptId/revoke` | `revoke` |

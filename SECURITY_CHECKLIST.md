@@ -45,7 +45,7 @@
 
 | #   | Requirement                                | Status | Evidence                                                 |
 | --- | ------------------------------------------ | ------ | -------------------------------------------------------- |
-| 4.1 | Keccak-256 for document hashing            | ✅     | `keccak256Buffer` from `@deed-shield/core`.              |
+| 4.1 | Keccak-256 for document hashing            | ✅     | `keccak256Buffer` from `@trustsignal/core`.              |
 | 4.2 | Receipt hash verification                  | ✅     | `POST /receipt/:id/verify` recomputes hash.              |
 | 4.3 | JWT receipts have expiration               | ✅     | Enforced in core receipt builder.                        |
 | 4.4 | Private keys never in code or config files | ✅     | Only via `PRIVATE_KEY` env var, never imported directly. |
