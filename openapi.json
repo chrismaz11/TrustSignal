@@ -1,0 +1,293 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "TrustSignal API",
+    "description": "Cryptographic fraud prevention API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.trustsignal.dev",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:3001",
+      "description": "Development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Receipt",
+      "description": "Receipt operations"
+    },
+    {
+      "name": "Verify",
+      "description": "Verification operations"
+    },
+    {
+      "name": "Anchor",
+      "description": "Anchoring operations"
+    },
+    {
+      "name": "Registry",
+      "description": "Registry operations"
+    }
+  ],
+  "paths": {
+    "/api/v1/verify": {
+      "post": {
+        "tags": [
+          "Verify"
+        ],
+        "summary": "Verify a document and generate receipt",
+        "description": "Run verification checks and generate a cryptographic receipt",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bundleId": {
+                    "type": "string"
+                  },
+                  "transactionType": {
+                    "type": "string"
+                  },
+                  "ron": {
+                    "type": "object"
+                  },
+                  "doc": {
+                    "type": "object"
+                  },
+                  "property": {
+                    "type": "object"
+                  },
+                  "policy": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful verification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "receiptId": {
+                      "type": "string"
+                    },
+                    "receiptHash": {
+                      "type": "string"
+                    },
+                    "decision": {
+                      "type": "string",
+                      "enum": [
+                        "ALLOW",
+                        "FLAG",
+                        "BLOCK"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/receipt/{receiptId}": {
+      "get": {
+        "tags": [
+          "Receipt"
+        ],
+        "summary": "Get receipt details",
+        "description": "Retrieve a receipt by ID",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Receipt details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "receiptId": {
+                      "type": "string"
+                    },
+                    "receiptHash": {
+                      "type": "string"
+                    },
+                    "decision": {
+                      "type": "string",
+                      "enum": [
+                        "ALLOW",
+                        "FLAG",
+                        "BLOCK"
+                      ]
+                    },
+                    "revoked": {
+                      "type": "boolean"
+                    },
+                    "anchorStatus": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/receipt/{receiptId}/verify": {
+      "post": {
+        "tags": [
+          "Receipt"
+        ],
+        "summary": "Verify receipt signature",
+        "description": "Verify the cryptographic signature of a receipt",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "signatureVerified": {
+                      "type": "boolean"
+                    },
+                    "integrityVerified": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/anchor/{receiptId}": {
+      "post": {
+        "tags": [
+          "Anchor"
+        ],
+        "summary": "Anchor receipt to blockchain",
+        "description": "Store cryptographic proof on-chain for immutability",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Anchoring result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ANCHORED",
+                        "PENDING"
+                      ]
+                    },
+                    "txHash": {
+                      "type": "string"
+                    },
+                    "chainId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/receipt/{receiptId}/revoke": {
+      "post": {
+        "tags": [
+          "Receipt"
+        ],
+        "summary": "Revoke a receipt",
+        "description": "Mark a receipt as revoked",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revocation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "REVOKED",
+                        "ALREADY_REVOKED"
+                      ]
+                    },
+                    "issuerId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

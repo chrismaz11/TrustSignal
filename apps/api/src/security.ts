@@ -4,7 +4,7 @@ import { getAddress, verifyMessage } from 'ethers';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { type JWK } from 'jose';
 
-const DEFAULT_API_KEY = 'example_local_key_id';
+const DEFAULT_API_KEY = process.env.DEFAULT_API_KEY || 'example_local_key_id';
 const DEFAULT_SCOPES = ['verify', 'read', 'anchor', 'revoke'];
 const DEFAULT_DEV_CORS_ORIGINS = [
   'http://localhost:3000',

@@ -5,6 +5,8 @@ import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { JsonRpcProvider, keccak256, toUtf8Bytes } from 'ethers';
 import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
 import { z } from 'zod';
@@ -911,6 +913,36 @@ export async function buildServer(options: BuildServerOptions = {}) {
       requestId: request.id
     })
   });
+  
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: 'TrustSignal API',
+        description: 'Cryptographic fraud prevention API',
+        version: '1.0.0'
+      },
+      servers: [
+        { url: 'https://api.trustsignal.dev', description: 'Production' },
+        { url: 'http://localhost:3001', description: 'Development' }
+      ],
+      tags: [
+        { name: 'Receipt', description: 'Receipt operations' },
+        { name: 'Verify', description: 'Verification operations' },
+        { name: 'Anchor', description: 'Anchoring operations' },
+        { name: 'Registry', description: 'Registry operations' }
+      ]
+    }
+  });
+  
+  await app.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'full',
+      deepLinking: false
+    },
+    staticCSP: true,
+    transformStaticCSP: (header) => header
+  });
   let databaseReady = true;
   let databaseInitError: string | null = null;
   try {
@@ -1292,7 +1324,23 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/verify', {
     preHandler: [requireApiKeyScope(securityConfig, 'verify')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Verify'],
+      summary: 'Verify a document and generate receipt',
+      description: 'Run verification checks and generate a cryptographic receipt',
+      body: verifyInputSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            receiptId: { type: 'string' },
+            receiptHash: { type: 'string' },
+            decision: { type: 'string', enum: ['ALLOW', 'FLAG', 'BLOCK'] }
+          }
+        }
+      }
+    }
   }, async (request, reply) => {
     const verifyStartMs = Date.now();
     const parsed = verifyInputSchema.safeParse(request.body);
@@ -1503,7 +1551,25 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.get('/api/v1/receipt/:receiptId', {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Receipt'],
+      summary: 'Get receipt details',
+      description: 'Retrieve a receipt by ID',
+      params: receiptIdParamSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            receiptId: { type: 'string' },
+            receiptHash: { type: 'string' },
+            decision: { type: 'string', enum: ['ALLOW', 'FLAG', 'BLOCK'] },
+            revoked: { type: 'boolean' },
+            anchorStatus: { type: 'string' }
+          }
+        }
+      }
+    }
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
@@ -1564,7 +1630,23 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/receipt/:receiptId/verify', {
     preHandler: [requireApiKeyScope(securityConfig, 'read')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Receipt'],
+      summary: 'Verify receipt signature',
+      description: 'Verify the cryptographic signature of a receipt',
+      params: receiptIdParamSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            verified: { type: 'boolean' },
+            signatureVerified: { type: 'boolean' },
+            integrityVerified: { type: 'boolean' }
+          }
+        }
+      }
+    }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
@@ -1617,7 +1699,23 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/anchor/:receiptId', {
     preHandler: [requireApiKeyScope(securityConfig, 'anchor')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Anchor'],
+      summary: 'Anchor receipt to blockchain',
+      description: 'Store cryptographic proof on-chain for immutability',
+      params: receiptIdParamSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['ANCHORED', 'PENDING'] },
+            txHash: { type: 'string' },
+            chainId: { type: 'string' }
+          }
+        }
+      }
+    }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
@@ -1663,7 +1761,22 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
     preHandler: [requireApiKeyScope(securityConfig, 'revoke')],
-    config: { rateLimit: perApiKeyRateLimit }
+    config: { rateLimit: perApiKeyRateLimit },
+    schema: {
+      tags: ['Receipt'],
+      summary: 'Revoke a receipt',
+      description: 'Mark a receipt as revoked',
+      params: receiptIdParamSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['REVOKED', 'ALREADY_REVOKED'] },
+            issuerId: { type: 'string' }
+          }
+        }
+      }
+    }
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
