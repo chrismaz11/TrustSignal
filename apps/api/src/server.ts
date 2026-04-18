@@ -1174,7 +1174,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       requestId: request.id
     })
   });
-  
+
   await app.register(swagger, {
     openapi: {
       info: {
@@ -1194,7 +1194,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       ]
     }
   });
-  
+
   await app.register(swaggerUi, {
     routePrefix: '/docs',
     uiConfig: {
@@ -1204,23 +1204,6 @@ export async function buildServer(options: BuildServerOptions = {}) {
     staticCSP: true,
     transformStaticCSP: (header) => header
   });
-  let databaseReady = true;
-  let databaseInitError: string | null = null;
-  try {
-    await ensureDatabase(prisma);
-  } catch (error) {
-    databaseReady = false;
-    databaseInitError = 'database_initialization_failed';
-    app.log.error(
-      {
-        error_code: databaseInitError,
-        error_name: error instanceof Error ? error.name : 'UnknownError'
-      },
-      'database initialization failed; non-DB routes remain available'
-    );
-  }
-
-
   const workflowEventSink =
     options.workflowEventSink ??
     new PrismaWorkflowEventSink(
@@ -1579,24 +1562,14 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/verify', {
-    preHandler: [requireScope('verify')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Verify'],
       summary: 'Verify a document and generate receipt',
       description: 'Run verification checks and generate a cryptographic receipt',
-      body: verifyInputSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            receiptId: { type: 'string' },
-            receiptHash: { type: 'string' },
-            decision: { type: 'string', enum: ['ALLOW', 'FLAG', 'BLOCK'] }
-          }
-        }
-      }
-    }
+      body: verifyInputSchema
+    },
+    preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     // Enforce plan quota before running any verification work.
     const quota = await checkPlanQuota(prisma, request.authContext?.userId ?? null);
@@ -1828,26 +1801,14 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.get('/api/v1/receipt/:receiptId', {
-    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Receipt'],
       summary: 'Get receipt details',
       description: 'Retrieve a receipt by ID',
-      params: receiptIdParamSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            receiptId: { type: 'string' },
-            receiptHash: { type: 'string' },
-            decision: { type: 'string', enum: ['ALLOW', 'FLAG', 'BLOCK'] },
-            revoked: { type: 'boolean' },
-            anchorStatus: { type: 'string' }
-          }
-        }
-      }
-    }
+      params: receiptIdParamSchema
+    },
+    preHandler: [requireScope('read')]
   }, async (request, reply) => {
     const receiptId = parseReceiptIdParam(request, reply);
     if (!receiptId) return;
@@ -1909,24 +1870,14 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/verify', {
-    preHandler: [requireScope('read')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Receipt'],
       summary: 'Verify receipt signature',
       description: 'Verify the cryptographic signature of a receipt',
-      params: receiptIdParamSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            verified: { type: 'boolean' },
-            signatureVerified: { type: 'boolean' },
-            integrityVerified: { type: 'boolean' }
-          }
-        }
-      }
-    }
+      params: receiptIdParamSchema
+    },
+    preHandler: [requireScope('read')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
@@ -1978,24 +1929,14 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/anchor/:receiptId', {
-    preHandler: [requireScope('anchor')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Anchor'],
       summary: 'Anchor receipt to blockchain',
       description: 'Store cryptographic proof on-chain for immutability',
-      params: receiptIdParamSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', enum: ['ANCHORED', 'PENDING'] },
-            txHash: { type: 'string' },
-            chainId: { type: 'string' }
-          }
-        }
-      }
-    }
+      params: receiptIdParamSchema
+    },
+    preHandler: [requireScope('anchor')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });
@@ -2053,23 +1994,14 @@ export async function buildServer(options: BuildServerOptions = {}) {
   });
 
   app.post('/api/v1/receipt/:receiptId/revoke', {
-    preHandler: [requireScope('revoke')],
     config: { rateLimit: perApiKeyRateLimit },
     schema: {
       tags: ['Receipt'],
       summary: 'Revoke a receipt',
       description: 'Mark a receipt as revoked',
-      params: receiptIdParamSchema,
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', enum: ['REVOKED', 'ALREADY_REVOKED'] },
-            issuerId: { type: 'string' }
-          }
-        }
-      }
-    }
+      params: receiptIdParamSchema
+    },
+    preHandler: [requireScope('revoke')]
   }, async (request, reply) => {
     if (hasUnexpectedBody(request.body)) {
       return reply.code(400).send({ error: 'request_body_not_allowed' });

@@ -45,8 +45,6 @@
     "seed:parcel": "cd apps/api && tsx scripts/seed-parcel.ts"
   },
   "devDependencies": {
-    "@fastify/swagger": "^9.7.0",
-    "@fastify/swagger-ui": "^5.2.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.5.0",
     "@typescript-eslint/eslint-plugin": "^7.6.0",
@@ -62,6 +60,6 @@
   },
   "overrides": {
     "serialize-javascript": ">=7.0.5",
-    "vite": "^6.4.2"
+    "vite": "^5"
   }
 }

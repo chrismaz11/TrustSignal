@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
 import { buildServer } from '../../apps/api/src/server.js';
@@ -99,7 +100,6 @@ describeWithDatabase('E2E /api/v1/receipt/:receiptId/revoke via curl', () => {
   });
 
   it('should successfully revoke a receipt', async () => {
-    const timestamp = Date.now();
     const revoke = await curlJson(
       `${baseUrl}/api/v1/receipt/${testReceiptId}/revoke`, 
       'POST',
@@ -141,7 +141,6 @@ describeWithDatabase('E2E /api/v1/receipt/:receiptId/revoke via curl', () => {
   });
 
   it('should return ALREADY_REVOKED when revoking twice', async () => {
-    const timestamp = Date.now();
     const firstRevoke = await curlJson(
       `${baseUrl}/api/v1/receipt/${testReceiptId}/revoke`, 
       'POST',
@@ -172,7 +171,6 @@ describeWithDatabase('E2E /api/v1/receipt/:receiptId/revoke via curl', () => {
   });
 
   it('should reject revocation with invalid issuer', async () => {
-    const timestamp = Date.now();
     const revoke = await curlJson(
       `${baseUrl}/api/v1/receipt/${testReceiptId}/revoke`, 
       'POST',
@@ -183,7 +181,6 @@ describeWithDatabase('E2E /api/v1/receipt/:receiptId/revoke via curl', () => {
   });
 
   it('should reject revocation with stale timestamp', async () => {
-    const oldTimestamp = Date.now() - 10 * 60 * 1000;
     const revoke = await curlJson(
       `${baseUrl}/api/v1/receipt/${testReceiptId}/revoke`, 
       'POST',
@@ -194,7 +191,6 @@ describeWithDatabase('E2E /api/v1/receipt/:receiptId/revoke via curl', () => {
   });
 
   it('should reject revocation with invalid signature', async () => {
-    const timestamp = Date.now();
     const revoke = await curlJson(
       `${baseUrl}/api/v1/receipt/${testReceiptId}/revoke`, 
       'POST',
