@@ -22,7 +22,6 @@ const repoDefinitions: RepoDefinition[] = [
   { name: "TrustSignal-App", readmePath: "TrustSignal-App/README.md" },
   { name: "TrustSignal-docs", readmePath: "TrustSignal-docs/README.md" },
   { name: "trustagents", readmePath: "trustagents/README.md" },
-  { name: "TrustSignal-Reddit", readmePath: "TrustSignal-Reddit/README.md" },
   { name: "TrustSignal-Verify-Artifact", readmePath: "TrustSignal-Verify-Artifact/README.md" },
 ];
 
@@ -100,7 +99,9 @@ const walkReadmes = (dirPath: string): string[] => {
       entry.name === ".next" ||
       entry.name === "dist" ||
       entry.name === "build" ||
-      entry.name === "coverage"
+      entry.name === "coverage" ||
+      entry.name === "output" ||
+      entry.name === "tmp"
     ) {
       continue;
     }

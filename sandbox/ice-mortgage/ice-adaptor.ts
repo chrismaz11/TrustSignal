@@ -6,10 +6,11 @@
  * Connect API response; here it operates on the mock fixture data.
  */
 
-import { randomUUID } from 'node:crypto';
+
 import { keccak256, toUtf8Bytes, Wallet } from 'ethers';
 
 import type { BundleInput } from '../../packages/core/src/types.js';
+
 import type { EncompassLoan } from './mock-ice-api.js';
 
 // Deterministic notary wallet derived from notary ID — mirrors synthetic.ts pattern

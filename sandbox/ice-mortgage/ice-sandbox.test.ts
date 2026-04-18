@@ -20,12 +20,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { FastifyInstance } from 'fastify';
-import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
+import { Wallet } from 'ethers';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildServer } from '../../apps/api/src/server.js';
-import { getAllLoans, getLoan } from './mock-ice-api.js';
+
+import { getLoan } from './mock-ice-api.js';
 import { adaptLoanToBundle } from './ice-adaptor.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
