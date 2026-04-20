@@ -1,0 +1,35 @@
+name: Oz PR Review
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: warpdotdev/oz-agent-action@v1
+        with:
+          name: "TrustSignal PR Review"
+          prompt: |
+            Review the code changes on this PR for the TrustSignal evidence integrity API (Fastify + TypeScript + Prisma + Supabase).
+
+            Priority checks:
+            1. Any endpoint missing auth middleware — flag as CRITICAL
+            2. Any wildcard CORS (*) — flag as CRITICAL  
+            3. Any hardcoded secret, key, or credential — flag as CRITICAL
+            4. Supabase service_role key used in API routes — flag as HIGH
+            5. Any raw SQL bypassing Prisma — flag as HIGH
+            6. Any mocked ZK proof or ephemeral wallet stub being treated as production — flag as HIGH
+            7. Receipt schema changes (fields, signing logic, status labels) — flag for doc update
+            8. Any new /api/v1/* endpoint missing rate limiting
+
+            Status labels must only be: clean, failure, revoked, compliance_gap — flag any deviation.
+            Legacy @deed-shield references should be flagged for removal.
+
+            Use `git` to identify changes from base branch.
+            Use `gh` to post inline PR comments for each issue found.
+          warp_api_key: ${{ secrets.WARP_API_KEY }}
