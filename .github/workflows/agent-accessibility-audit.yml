@@ -1,0 +1,83 @@
+name: Agent — Web Accessibility Audit
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'apps/web/**'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to audit'
+        required: false
+        default: 'https://trustsignal.io'
+      standard:
+        description: 'WCAG standard level'
+        required: false
+        default: 'WCAG2AA'
+        type: choice
+        options:
+          - WCAG2A
+          - WCAG2AA
+          - WCAG2AAA
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  accessibility-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install axe-core CLI
+        run: npm install -g @axe-core/cli
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Start app (PR mode)
+        if: github.event_name == 'pull_request'
+        run: |
+          npm ci
+          npm run dev &
+          npx wait-on http://localhost:3000 --timeout 60000
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run axe audit
+        run: |
+          TARGET="${{ github.event.inputs.url || 'http://localhost:3000' }}"
+          axe "$TARGET" \
+            --tags ${{ github.event.inputs.standard || 'wcag2aa' }} \
+            --reporter json \
+            --save axe-results.json || true
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Review the accessibility audit results and provide remediation guidance.
+
+            Standard: ${{ github.event.inputs.standard || 'WCAG2AA' }}
+
+            Read axe-results.json and analyze:
+            1. Critical violations — must fix before ship
+            2. Serious violations — high priority
+            3. Moderate/minor — improvements for later
+            4. Patterns (e.g. all buttons missing aria-label)
+
+            For each critical/serious violation:
+            - Which element is affected
+            - What the WCAG rule requires
+            - The exact code fix
+
+            Post results as a ${{ github.event_name == 'pull_request' && 'PR comment' || 'GitHub issue titled "Accessibility Audit — [date]"' }}.
+            Include a summary score: X critical, Y serious, Z moderate.

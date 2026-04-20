@@ -1,0 +1,53 @@
+name: Agent — Terraform Style Check
+
+on:
+  pull_request:
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+  workflow_dispatch:
+    inputs:
+      path:
+        description: 'Path to Terraform files to review'
+        required: false
+        default: '.'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269ef065 # v3
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Review the Terraform HCL changes in this PR for style and best practices.
+
+            Check against HashiCorp's official style guide:
+            1. Formatting — consistent indentation, spacing, alignment
+            2. Naming conventions — snake_case for resources, descriptive names
+            3. Variable and output descriptions present
+            4. No hardcoded credentials or sensitive values
+            5. Resource dependencies correctly expressed
+            6. Tags applied to all taggable resources
+            7. Modules used where repetition exists
+
+            Run `git diff origin/master -- '*.tf'` to see the changes.
+
+            Post a PR comment with:
+            - Style issues found (with line references)
+            - Security concerns (if any)
+            - Suggested improvements
+            - Overall verdict: APPROVED / NEEDS_CHANGES

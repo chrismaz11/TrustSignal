@@ -1,0 +1,58 @@
+name: Agent — MCP Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: 'Name of the API/service to build an MCP server for'
+        required: true
+      service_description:
+        description: 'What the service does and what tools to expose'
+        required: true
+      language:
+        description: 'Implementation language'
+        required: false
+        default: 'typescript'
+        type: choice
+        options:
+          - typescript
+          - python
+      output_path:
+        description: 'Where to create the MCP server (e.g. packages/mcp-myservice)'
+        required: false
+        default: 'packages/mcp-new'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Build a high-quality MCP (Model Context Protocol) server.
+
+            Service: ${{ github.event.inputs.service_name }}
+            Description: ${{ github.event.inputs.service_description }}
+            Language: ${{ github.event.inputs.language }}
+            Output path: ${{ github.event.inputs.output_path }}
+
+            Follow MCP best practices:
+            - Use the official MCP SDK (TypeScript) or FastMCP (Python)
+            - Define clear, well-typed tool schemas with descriptions
+            - Handle errors gracefully and return informative messages
+            - Include a README with setup and usage instructions
+            - Add input validation for all tool parameters
+
+            After creating the server, open a PR with the new package.

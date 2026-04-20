@@ -1,0 +1,68 @@
+name: Agent — Web Performance Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to audit'
+        required: false
+        default: 'https://trustsignal.io'
+      device:
+        description: 'Device profile'
+        required: false
+        default: 'desktop'
+        type: choice
+        options:
+          - desktop
+          - mobile
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9am UTC
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  performance-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Run Lighthouse
+        run: |
+          lhci collect \
+            --url="${{ github.event.inputs.url || 'https://trustsignal.io' }}" \
+            --settings.preset="${{ github.event.inputs.device || 'desktop' }}" \
+            --numberOfRuns=3 \
+            --output=json \
+            --outputPath=./lighthouse-results.json || true
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Analyze the Lighthouse performance audit results and provide actionable recommendations.
+
+            URL audited: ${{ github.event.inputs.url || 'https://trustsignal.io' }}
+            Device: ${{ github.event.inputs.device || 'desktop' }}
+
+            Read ./lighthouse-results.json and analyze:
+            1. Performance score and Core Web Vitals (LCP, FID/INP, CLS)
+            2. Largest Contentful Paint — what's slow?
+            3. Total Blocking Time — any render-blocking resources?
+            4. Cumulative Layout Shift — any unstable elements?
+            5. Bundle sizes and unused JavaScript
+
+            Create a GitHub issue titled "Performance Audit — [date]" with:
+            - Score summary table
+            - Top 3 highest-impact fixes (with estimated score improvement)
+            - Code-level suggestions where possible
+            - Comparison note if previous audit data exists

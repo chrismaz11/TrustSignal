@@ -1,0 +1,64 @@
+name: Agent — SEO & AEO Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to audit (defaults to trustsignal.io)'
+        required: false
+        default: 'https://trustsignal.io'
+      scope:
+        description: 'Audit scope'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - meta-tags
+          - structured-data
+          - ai-visibility
+  schedule:
+    - cron: '0 10 1 * *'  # First of each month
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  seo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install audit tools
+        run: npm install -g lighthouse
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Audit ${{ github.event.inputs.url || 'https://trustsignal.io' }} for SEO and AI Engine Optimization (AEO).
+
+            Scope: ${{ github.event.inputs.scope || 'full' }}
+
+            Use curl to fetch and inspect the page:
+            ```
+            curl -sL "${{ github.event.inputs.url || 'https://trustsignal.io' }}" > page.html
+            ```
+
+            Check:
+            1. **Meta tags** — title, description, og:*, twitter:* present and well-written
+            2. **Structured data** — JSON-LD schema markup (Organization, Product, FAQPage, etc.)
+            3. **Heading hierarchy** — H1 → H2 → H3 logical structure
+            4. **Canonical URL** — correctly set
+            5. **robots.txt** — not blocking important pages
+            6. **Sitemap** — exists and up to date
+            7. **AEO / AI visibility** — content structured for AI citation (clear facts, definitions, Q&A format)
+            8. **Page speed** — run `lighthouse ${{ github.event.inputs.url || 'https://trustsignal.io' }} --output json --only-categories=seo`
+
+            Create a GitHub issue titled "SEO/AEO Audit — [date]" with findings and prioritized recommendations.

@@ -1,0 +1,43 @@
+name: Agent — Issue Deduplication
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dedupe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Check if this new GitHub issue is a duplicate of an existing open issue.
+
+            New issue #${{ github.event.issue.number }}:
+            Title: ${{ github.event.issue.title }}
+            Body:
+            ${{ github.event.issue.body }}
+
+            Steps:
+            1. Use the GitHub CLI to list recent open issues:
+               `gh issue list --repo ${{ github.repository }} --state open --limit 50 --json number,title,body`
+            2. Compare the new issue against existing ones using semantic similarity and keyword matching
+            3. Identify any issues that describe the same problem, even if worded differently
+
+            If a duplicate is found:
+            - Comment on issue #${{ github.event.issue.number }} pointing to the original with a brief explanation
+            - Apply the "duplicate" label: `gh issue edit ${{ github.event.issue.number }} --add-label duplicate`
+            - Do NOT close the issue — let a human decide
+
+            If no duplicate is found:
+            - Do nothing (no comment needed)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

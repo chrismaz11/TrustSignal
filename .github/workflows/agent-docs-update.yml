@@ -1,0 +1,50 @@
+name: Agent — Docs Update
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/**/*.ts'
+      - 'apps/**/*.tsx'
+      - 'packages/**/*.ts'
+      - 'packages/core/src/**'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Scope to review (e.g. "api endpoints", "auth flow")'
+        required: false
+        default: 'recent changes'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  docs-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 10
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Review recent code changes and update user-facing documentation to stay in sync.
+
+            Scope: ${{ github.event.inputs.scope || 'recent commits to master' }}
+
+            Steps:
+            1. Run `git log --oneline -10` to see recent commits
+            2. Run `git diff HEAD~5 HEAD -- apps/ packages/` to see what changed
+            3. Check the `docs/` or `README.md` files for anything that references changed code
+            4. If documentation is out of date, update it to reflect the current behavior
+            5. If changes warrant new documentation, add it
+
+            Rules:
+            - Only update docs that are factually incorrect or missing key info
+            - Preserve existing tone and formatting
+            - If changes are minor, skip and output "No doc updates needed"
+            - If you make changes, create a PR with title "docs: sync documentation with recent changes"

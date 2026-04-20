@@ -1,0 +1,41 @@
+name: Agent — Bug Report Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.title, 'bug') || contains(github.event.issue.title, 'Bug')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Triage this GitHub bug report for actionability.
+
+            Issue title: ${{ github.event.issue.title }}
+            Issue body:
+            ${{ github.event.issue.body }}
+
+            Evaluate whether the report has sufficient detail to act on. Check for:
+            1. Steps to reproduce
+            2. Expected vs actual behavior
+            3. Environment details (OS, browser, version)
+            4. Error messages or logs
+            5. Severity/impact description
+
+            Post a comment on issue #${{ github.event.issue.number }} with:
+            - A triage verdict: ACTIONABLE, NEEDS_INFO, or DUPLICATE
+            - A checklist of what's missing (if anything)
+            - One specific question to ask the reporter (if needed)
+
+            Keep the comment concise and helpful, not robotic.

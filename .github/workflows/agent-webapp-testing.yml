@@ -1,0 +1,67 @@
+name: Agent — Webapp Testing
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/**'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to test (default: localhost:3000)'
+        required: false
+        default: 'http://localhost:3000'
+      focus:
+        description: 'Specific flow to test (e.g. "login", "dashboard", "upload")'
+        required: false
+        default: 'critical paths'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  webapp-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Start app
+        run: npm run dev &
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Wait for app
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Test the web application using Playwright to verify frontend functionality.
+
+            Target URL: ${{ github.event.inputs.url || 'http://localhost:3000' }}
+            Focus: ${{ github.event.inputs.focus || 'critical paths' }}
+
+            Write and run Playwright tests to:
+            1. Verify the app loads without console errors
+            2. Test the primary user flow (login → dashboard)
+            3. Check for any visible UI errors or broken layouts
+            4. Capture screenshots of key pages
+
+            Report findings as a PR comment with:
+            - PASS/FAIL status per flow
+            - Any console errors found
+            - Screenshots attached if failures detected
