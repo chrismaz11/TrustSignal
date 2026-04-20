@@ -1,0 +1,27 @@
+name: Oz Fix Failing Checks
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  fix:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: warpdotdev/oz-agent-action@v1
+        with:
+          name: "Fix Failing CI"
+          prompt: |
+            The CI workflow just failed on this branch.
+            1. Use gh to read the failure logs
+            2. Identify the root cause
+            3. Fix it — TypeScript errors, Prisma schema issues, missing env vars in tests, lint failures
+            4. Open a PR with the fix linked to the failing run
+            Never remove type safety to silence TS errors. Never skip tests.
+          warp_api_key: ${{ secrets.WARP_API_KEY }}
