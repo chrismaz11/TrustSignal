@@ -28,6 +28,18 @@ This file is the source of truth for canonical ownership and repo-role labels ac
 - `TrustSignal-Verify-Artifact` is deprecated.
 - New installs and documentation must point to `TrustSignal/github-actions/trustsignal-verify-artifact`.
 
+## GitHub Positioning Guidance
+
+Use this layout as the default org structure:
+
+- Keep `TrustSignal` as the canonical backend/API monorepo.
+- Keep `v0-signal-new` as the canonical public website and live docs surface.
+- Keep `TrustSignal-App` as the dedicated GitHub App implementation.
+- Keep `trustagents` as a non-canonical experimental repository.
+- Keep `TrustSignal-Reddit` as a non-canonical adjacent product repository.
+- Keep `TrustSignal-docs` as secondary public-review material only.
+- Keep `TrustSignal-Verify-Artifact` archived/deprecated and direct new integrations to the monorepo action path.
+
 ## Status Definitions
 
 - `canonical`: authoritative source for that surface.

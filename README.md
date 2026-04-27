@@ -226,6 +226,8 @@ To report a vulnerability: [security@trustsignal.dev](mailto:security@trustsigna
 | [trustagents](https://github.com/TrustSignal-dev/trustagents) | Defensive-security R&D for compliance evidence |
 | [TrustSignal-docs](https://github.com/TrustSignal-dev/TrustSignal-docs) | Secondary sanitized public review package, not the primary live docs source |
 
+Canonical repo-role and positioning guidance: [docs/REPO_ROLES.md](docs/REPO_ROLES.md)
+
 ---
 
 ## Contact
