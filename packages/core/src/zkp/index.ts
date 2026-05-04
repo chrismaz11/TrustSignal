@@ -340,6 +340,8 @@ export async function generateComplianceProof(input: ComplianceInput): Promise<Z
 
     assertDevBackendAllowed();
 
+    console.warn('[zkp:MOCK] dev-only Halo2 attestation -- not a real proof. Set TRUSTSIGNAL_ZKP_BACKEND=external with a production prover binary for verifiable proofs.');
+
     return {
         proofId: randomUUID(),
         scheme: 'HALO2-DEV-v0',
