@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+
 import '@tabler/core/dist/css/tabler.min.css';
 import { AppSidebar } from '../../components/app/AppSidebar';
 

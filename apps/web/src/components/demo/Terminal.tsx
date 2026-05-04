@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+
 import styles from './ScrollytellingDemo.module.css';
 
 const CHAR_DELAY_MS = 13;
@@ -122,7 +123,6 @@ export function Terminal({ content, stepIndex, flash }: TerminalProps) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
     // stepIndex drives re-runs, content is derived from stepIndex
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex]);
 
   const terminalClass = [
@@ -144,7 +144,6 @@ export function Terminal({ content, stepIndex, flash }: TerminalProps) {
         <span className={styles.terminalTitle}>trustsignal — verify</span>
       </div>
       <div className={`${styles.terminalBody} ${phase === 'fading' ? styles.terminalFading : ''}`}>
-        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
         <pre ref={preRef} className={styles.terminalPre} tabIndex={0} />
         <span ref={cursorRef} className={styles.cursor} />
       </div>
