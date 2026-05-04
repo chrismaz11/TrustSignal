@@ -7,9 +7,12 @@ import {
 } from '../../../packages/core/dist/index.js';
 
 import { anchorReceiptOnSolana, findSolanaAnchor } from './solanaAnchor.js';
+import { anchorReceiptOnPolygonAmoy, findPolygonAmoyAnchor } from './polygonAmoyAnchor.js';
 
 export { ANCHOR_SUBJECT_VERSION } from '../../../packages/core/dist/index.js';
 export { anchorReceiptOnSolana, findSolanaAnchor } from './solanaAnchor.js';
+export { anchorReceiptOnPolygonAmoy, findPolygonAmoyAnchor } from './polygonAmoyAnchor.js';
+export { stampWithRfc3161, verifyRfc3161TokenHash } from './rfc3161Anchor.js';
 
 const ABI = [
   'event Anchored(bytes32 receiptHash, bytes32 subjectDigest, bytes32 anchorId, address sender, uint256 timestamp)',
@@ -20,7 +23,7 @@ const ABI = [
   'function subjectForReceipt(bytes32 receiptHash) external view returns (bytes32)'
 ];
 
-export type AnchorChain = 'evm' | 'solana';
+export type AnchorChain = 'evm' | 'solana' | 'polygon-amoy';
 
 export type AnchorResult = {
   status: 'ANCHORED' | 'ALREADY_ANCHORED';
@@ -152,6 +155,26 @@ export async function anchorReceiptOnChain(
       subjectVersion: result.subjectVersion as typeof ANCHOR_SUBJECT_VERSION
     };
   }
-  // Default: EVM
+
+  if (chain === 'polygon-amoy') {
+    const subject = buildAnchorSubject(receiptHash, attestation);
+    // Check if already anchored on Polygon Amoy before sending a new tx
+    const existing = await findPolygonAmoyAnchor(receiptHash, subject.digest, subject.version);
+    if (existing) {
+      return {
+        ...existing,
+        chain: 'polygon-amoy',
+        subjectVersion: subject.version as typeof ANCHOR_SUBJECT_VERSION
+      };
+    }
+    const result = await anchorReceiptOnPolygonAmoy(receiptHash, subject.digest, subject.version);
+    return {
+      ...result,
+      chain: 'polygon-amoy',
+      subjectVersion: result.subjectVersion as typeof ANCHOR_SUBJECT_VERSION
+    };
+  }
+
+  // Default: EVM (Sepolia / local hardhat)
   return anchorReceipt(receiptHash, attestation);
 }
