@@ -33,6 +33,15 @@ function hashArtifact(data: string): string {
   return '0x' + createHash('sha256').update(data).digest('hex');
 }
 
+/**
+ * Creates a vitest 4.x-compatible constructor mock that returns `instance`
+ * when called with `new`. Vitest 4.x requires a `class` body — plain arrow
+ * functions are not valid constructor implementations.
+ */
+function makeClassMock<T>(instance: T): new (...args: unknown[]) => T {
+  return class { constructor() { return instance; } } as unknown as new (...args: unknown[]) => T;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -71,12 +80,9 @@ describe('Polygon Amoy Anchor Service', () => {
     mockWallet = {} as Wallet;
 
     // Wire up ethers mocks — vitest 4.x requires 'class' keyword for constructor mocks
-    const capturedProvider = mockProvider;
-    const capturedWallet = mockWallet;
-    const capturedContract = mockContract;
-    vi.mocked(JsonRpcProvider).mockImplementation(class { constructor() { return capturedProvider; } } as unknown as typeof JsonRpcProvider);
-    vi.mocked(Wallet).mockImplementation(class { constructor() { return capturedWallet; } } as unknown as typeof Wallet);
-    vi.mocked(Contract).mockImplementation(class { constructor() { return capturedContract; } } as unknown as typeof Contract);
+    vi.mocked(JsonRpcProvider).mockImplementation(makeClassMock(mockProvider) as unknown as typeof JsonRpcProvider);
+    vi.mocked(Wallet).mockImplementation(makeClassMock(mockWallet) as unknown as typeof Wallet);
+    vi.mocked(Contract).mockImplementation(makeClassMock(mockContract) as unknown as typeof Contract);
   });
 
   afterEach(() => {
@@ -161,7 +167,7 @@ describe('Polygon Amoy Anchor Service', () => {
       } as unknown as Interface;
 
       const capturedInterface = mockInterface;
-      vi.mocked(Interface).mockImplementation(class { constructor() { return capturedInterface; } } as unknown as typeof Interface);
+      vi.mocked(Interface).mockImplementation(makeClassMock(capturedInterface) as unknown as typeof Interface);
       vi.mocked(mockContract.isAnchored).mockResolvedValue(false);
       vi.mocked(mockContract.anchorWithSubject).mockResolvedValue({
         wait: vi.fn().mockResolvedValue({
