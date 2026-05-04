@@ -21,6 +21,7 @@ if (!IteratorPrototype.toArray) {
 }
 
 const sepoliaUrl = process.env.SEPOLIA_RPC_URL;
+const polygonAmoyUrl = process.env.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology';
 
 export default defineConfig({
   plugins: [hardhatEthers, hardhatMocha],
@@ -48,6 +49,12 @@ export default defineConfig({
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
           }
         }
-      : {})
+      : {}),
+    polygonAmoy: {
+      type: 'http',
+      url: polygonAmoyUrl,
+      chainId: 80002,
+      accounts: process.env.POLYGON_AMOY_PRIVATE_KEY ? [process.env.POLYGON_AMOY_PRIVATE_KEY] : []
+    }
   }
 });
