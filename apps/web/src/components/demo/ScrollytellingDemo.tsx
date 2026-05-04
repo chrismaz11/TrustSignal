@@ -10,7 +10,7 @@ const STEPS = [
     number: '00',
     heading: 'Document enters the workflow',
     narrative:
-      'A mortgage bank statement is uploaded to the lender's intake portal. TrustSignal intercepts it at the ingestion boundary.',
+      "A mortgage bank statement is uploaded to the lender's intake portal. TrustSignal intercepts it at the ingestion boundary.",
     flash: undefined as 'success' | 'error' | undefined,
     terminal: `$ cat loan-bank-statement.json
 
