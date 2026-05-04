@@ -12,42 +12,42 @@ jobs:
 
     steps:
       - name: Checkout TrustSignal
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: TrustSignal
 
       - name: Checkout v0-signal-new
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TrustSignal-dev/v0-signal-new
           path: v0-signal-new
 
       - name: Checkout TrustSignal-App
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TrustSignal-dev/TrustSignal-App
           path: TrustSignal-App
 
       - name: Checkout TrustSignal-docs
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TrustSignal-dev/TrustSignal-docs
           path: TrustSignal-docs
 
       - name: Checkout trustagents
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TrustSignal-dev/trustagents
           path: trustagents
 
       - name: Checkout TrustSignal-Reddit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TrustSignal-dev/TrustSignal-Reddit
           path: TrustSignal-Reddit
 
       - name: Checkout TrustSignal-Verify-Artifact
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TrustSignal-dev/TrustSignal-Verify-Artifact
           path: TrustSignal-Verify-Artifact
