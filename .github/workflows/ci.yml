@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20.18'
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20.18'
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
@@ -61,7 +61,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20.18'
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
@@ -79,7 +79,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20.18'
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
@@ -113,7 +113,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20.18'
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
@@ -199,7 +199,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20.18'
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
@@ -219,7 +219,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.0.0
         with:
-          node-version: '20.18'
+          node-version: '20'
 
       - name: Install action dependencies
         working-directory: github-actions/trustsignal-verify-artifact

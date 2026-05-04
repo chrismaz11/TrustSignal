@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useId } from 'react';
+import React, { useId } from 'react';
 
 interface OperatorAttestationProps {
   attestationText?: string;

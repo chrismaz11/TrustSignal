@@ -83,7 +83,6 @@ import {
 
 loadRuntimeEnv();
 resolveDatabaseUrl();
-validateRequiredEnv();
 const prisma = new PrismaClient();
 const REQUEST_START = Symbol('requestStartMs');
 type RequestTimerState = {
@@ -1018,6 +1017,7 @@ async function assertRequiredSchema() {
 }
 
 export async function buildServer(options: BuildServerOptions = {}) {
+  validateRequiredEnv();
   requireProductionVerifierConfig();
   await assertRequiredSchema();
   const app = Fastify({ logger: options.logger ?? true });

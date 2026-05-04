@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+
+import { VerificationResult } from '../types';
+
 import { DecisionIndicator } from './ui/DecisionIndicator';
 import { CopyableField } from './ui/CopyableField';
 import { Button } from './ui/Button';
-import { VerificationResult } from '../types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 

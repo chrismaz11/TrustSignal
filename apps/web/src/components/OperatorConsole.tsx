@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+
+import { OperatorProvider } from '../contexts/OperatorContext';
+import { VerificationResult } from '../types';
+
 import { ReceiptGeneratorPanel } from './ReceiptGeneratorPanel';
 import { VerificationPanel } from './VerificationPanel';
 import { AuthenticationWrapper } from './ui/AuthenticationWrapper';
-import { OperatorProvider } from '../contexts/OperatorContext';
-import { VerificationResult } from '../types';
 
 export function OperatorConsole() {
   const [result, setResult] = useState<VerificationResult | null>(null);

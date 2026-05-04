@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+
 import { generateApiKey, revokeApiKey, type ApiKeyRecord } from './actions';
 
 interface NewKey {

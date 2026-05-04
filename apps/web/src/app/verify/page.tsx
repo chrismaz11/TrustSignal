@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+
 import { OperatorConsole } from '../../components/OperatorConsole';
 
 export default function VerifyPage() {

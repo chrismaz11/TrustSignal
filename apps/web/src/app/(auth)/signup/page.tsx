@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+
 import { createClient } from '../../../lib/supabase/client';
 
 const COMPANY_TYPES = [

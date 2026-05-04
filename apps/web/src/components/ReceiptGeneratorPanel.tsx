@@ -1,10 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Select } from './ui/Select';
-import { Input } from './ui/Input';
-import { Button } from './ui/Button';
-import { OperatorAttestation } from './ui/OperatorAttestation';
+
 import {
   TRANSACTION_TYPE_OPTIONS,
   RON_PROVIDER_OPTIONS,
@@ -13,6 +10,11 @@ import {
 } from '../constants/dropdownOptions';
 import { TransactionType, RONProvider, USState, PolicyProfile, VerificationResult } from '../types';
 import { useOperator } from '../contexts/OperatorContext';
+
+import { Select } from './ui/Select';
+import { Input } from './ui/Input';
+import { Button } from './ui/Button';
+import { OperatorAttestation } from './ui/OperatorAttestation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
