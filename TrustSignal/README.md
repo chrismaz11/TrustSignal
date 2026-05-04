@@ -1,0 +1,37 @@
+# TrustSignal
+
+A [Mistral Workflows](https://docs.mistral.ai/workflows/getting-started/introduction) project.
+
+## Setup
+
+```bash
+uv sync
+```
+
+## Commands
+
+### Register workflows in AI Studio
+
+Auto-discovers all workflow classes in `src/workflows/`, registers them with AI Studio, and starts polling for executions. The task queue is set to your hostname:
+
+```bash
+make start-worker
+```
+
+### Execute a workflow
+
+In a separate terminal, trigger a workflow execution by name:
+
+```bash
+make execute workflow=hello-world input='{"name": "World"}'
+```
+
+## Development
+
+```bash
+# Format
+uv run ruff format .
+
+# Lint
+uv run ruff check --fix .
+```
