@@ -17,8 +17,8 @@
   --radius-lg: 0.5rem;
   
   /* Typography */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-sans: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -1457,4 +1457,420 @@ main,
   .table td {
     padding: var(--space-2) var(--space-3);
   }
+}
+
+/* ============================================================
+   DASHBOARD NAV
+   ============================================================ */
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.dashboard-brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.dashboard-logo {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.dashboard-logo:hover {
+  color: var(--accent);
+}
+
+.dashboard-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.dashboard-nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.dashboard-nav a {
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  transition: color 0.15s, background 0.15s;
+}
+
+.dashboard-nav a:hover {
+  color: var(--ink);
+  background: var(--border-light);
+}
+
+.dashboard-nav a.active {
+  color: var(--accent);
+  background: #eff6ff;
+  font-weight: 500;
+}
+
+/* ============================================================
+   OPERATOR CONSOLE
+   ============================================================ */
+
+.operator-console {
+  padding: var(--space-4) 0;
+}
+
+.console-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .console-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.console-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg);
+}
+
+.panel-title {
+  margin: 0 0 var(--space-1);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.panel-subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.panel-body {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.panel-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.panel-empty {
+  padding: var(--space-10) var(--space-4);
+  text-align: center;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.form-section-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   DECISION INDICATOR
+   ============================================================ */
+
+.decision-indicator {
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.decision-indicator.decision-pass {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.decision-indicator.decision-flag {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.decision-indicator.decision-block {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.decision-badge-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.decision-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.decision-badge.decision-pass {
+  background: #bbf7d0;
+  color: #14532d;
+}
+
+.decision-badge.decision-flag {
+  background: #fed7aa;
+  color: #7c2d12;
+}
+
+.decision-badge.decision-block {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
+.decision-risk-score {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.decision-description {
+  margin: 0 0 var(--space-2);
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.decision-reasons {
+  margin: 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+}
+
+.decision-reason {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+
+/* ============================================================
+   COPYABLE FIELD
+   ============================================================ */
+
+.copyable-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.copyable-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+}
+
+.copyable-value {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.copyable-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.copyable-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+
+.copyable-btn:hover {
+  color: var(--accent);
+  background: var(--border-light);
+}
+
+.copyable-feedback {
+  font-size: 0.75rem;
+}
+
+/* ============================================================
+   OPERATOR ATTESTATION
+   ============================================================ */
+
+.attestation-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  background: var(--bg);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.attestation-block.attestation-confirmed {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.attestation-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.attestation-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.attestation-operator {
+  font-size: 0.75rem;
+}
+
+.attestation-text {
+  font-size: 0.8125rem;
+  margin: 0 0 var(--space-3);
+  line-height: 1.55;
+}
+
+.attestation-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.attestation-checkbox {
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* ============================================================
+   AUTHENTICATION GATE
+   ============================================================ */
+
+.auth-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.auth-operator-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.auth-operator-role {
+  font-weight: 400;
+}
+
+.auth-gate {
+  min-height: 60vh;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* ============================================================
+   RECEIPT DETAILS (inside VerificationPanel)
+   ============================================================ */
+
+.receipt-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.receipt-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.attestation-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.anchor-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.card-danger {
+  border-color: #fca5a5;
+  background: #fef2f2;
 }

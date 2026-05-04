@@ -126,6 +126,10 @@ describeWithDatabase('Registry adapters: free source wiring', () => {
     expect(ids).toContain('nppes_npi_registry');
     expect(ids).toContain('sec_edgar_company_tickers');
     expect(ids).toContain('fdic_bankfind_institutions');
+    expect(ids).toContain('openfema_nfip_community');
+    expect(ids).toContain('gleif_lei_records');
+    expect(ids).toContain('un_sc_consolidated');
+    expect(ids).toContain('irs_eo_bmf');
   });
 
   it('verifies against OFAC and uses cache on repeated lookups', async () => {

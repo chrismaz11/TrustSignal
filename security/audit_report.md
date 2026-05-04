@@ -17,7 +17,7 @@ Excluded by design: Slither (no Solidity security review required in this sessio
 | A07 | Identification/Auth Failures | PASS | JWT auth hardened with rotating key support (`TRUSTSIGNAL_JWT_SECRETS` comma-list) and strict bearer validation. | Adopt ops rotation policy: rotate active key at least every 90 days; keep previous key during grace period, then remove. |
 | A08 | Software and Data Integrity Failures | PASS | Verification chain is explicit: route -> `verifyBundle` -> Halo2 + revocation + ZKML checks; CI now enforces typecheck/tests/coverage and Rust build/tests. | None required. Add signed build provenance in future release pipeline. |
 | A09 | Security Logging/Monitoring Failures | PASS | Structured JSON logging middleware added (`request_id`, `route`, `duration_ms`, `status_code`, `bundle_hash`), with logger redaction for authorization fields. | Integrate with centralized SIEM/Sentry ingestion in staging/prod. |
-| A10 | SSRF | PASS | External network call audit shows only Polygon Mumbai anchor path via env-configured RPC URL; no user-controlled outbound URL parameters in scoped API routes. | Keep outbound endpoints env-controlled; if dynamic endpoints are introduced, enforce allowlists. |
+| A10 | SSRF | PASS | External network call audit shows only Polygon anchor path via env-configured RPC URL; no user-controlled outbound URL parameters in scoped API routes. | Keep outbound endpoints env-controlled; if dynamic endpoints are introduced, enforce allowlists. |
 
 ## Additional Security Checks
 

@@ -81,7 +81,7 @@ Plan reference: `PROJECT_PLAN.md`
 - [x] IL DMV adapter stub (`src/adapters/registries/il-dmv.ts`).
 - [x] `registries.sql` migration (`supabase/migrations/registries.sql`).
 - [x] E2E verify curl->proof test (`tests/e2e/verify.test.ts`).
-- [ ] Free registry expansion backlog (next source wave prioritization and implementation queue).
+- [x] Free registry expansion backlog (Wave 1: `openfema_nfip_community`, `gleif_lei_records`; Wave 2: `un_sc_consolidated`, `irs_eo_bmf`).
 - [x] Fail-closed negative tests (`apps/api/src/registry-adapters.test.ts` compliance gap coverage).
 
 ## Phase 2 — ICE/Encompass Marketplace Ready

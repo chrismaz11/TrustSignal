@@ -22,7 +22,11 @@ const HASH_TICK_MS = 12;
 const PROGRESS_BAR_WIDTH = 28;
 const REGISTRY_DELAY_MS = 380;
 const HTML_FILE_NAME = 'trustsignal-demo.html';
-const ARTIFACT_FILE_NAME = 'cook-county-deed.json';
+const ARTIFACT_FILE_NAME = 'loan-bank-statement.json';
+const BRAND_WORDMARK = [
+  'trustsignal',
+  'Evidence Integrity Infrastructure'
+];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,6 +45,10 @@ function ensureDir(target) {
   return target;
 }
 
+function brandBanner() {
+  return `${BRAND_WORDMARK[0]}\n${BRAND_WORDMARK[1]}`;
+}
+
 function createProgressPrinter() {
   let rendered = false;
 
@@ -50,7 +58,8 @@ function createProgressPrinter() {
     const empty = PROGRESS_BAR_WIDTH - filled;
     const bar = `${'='.repeat(filled)}${' '.repeat(empty)}`;
     const lines = [
-      `${rendered ? '\x1b[2J\x1b[H' : ''}TrustSignal live demo`,
+      `${rendered ? '\x1b[2J\x1b[H' : ''}${brandBanner()}`,
+      'Live demo',
       `${label}`,
       `[${bar}] ${String(Math.round(ratio * 100)).padStart(3, ' ')}%`
     ];
@@ -68,20 +77,23 @@ function createProgressPrinter() {
 
 function buildArtifactPayload() {
   return {
-    artifactType: 'Property Deed Evidence Bundle',
-    artifactId: 'ART-COOK-2026-0314-00017',
-    jurisdiction: 'Cook County, Illinois',
-    parcelId: '17-20-226-014-0000',
-    documentNumber: '2026-0314-884211',
-    recordedAt: '2026-03-14T10:22:16Z',
-    grantor: 'Jane Seller',
-    grantee: 'Acme Title LLC',
+    artifactType: 'Mortgage Bank Statement',
+    artifactId: 'ART-LNDR-2026-0314-00017',
+    borrowerId: 'BRW-104882',
+    loanId: 'LN-9927415',
+    statementDate: '2026-03-14',
+    uploadedAt: '2026-03-14T10:22:16Z',
+    lender: 'North River Lending',
+    documentOwner: 'Borrower Upload Portal',
+    soldTo: 'Fannie Mae',
+    soldAt: '2026-03-28T16:05:00Z',
+    repurchaseReviewAt: '2026-09-28T14:10:00Z',
     preparedBy: 'TrustSignal Demo Operations',
     policyProfile: 'EVIDENCE_INTEGRITY_STANDARD',
     evidence: {
-      sourceRecord: 'County recorder export',
+      sourceRecord: 'Borrower upload ingestion stream',
       captureMethod: 'Local deterministic demonstration',
-      pageCount: 12,
+      pageCount: 5,
       checksumAlgorithm: 'SHA-256'
     }
   };
@@ -486,11 +498,11 @@ function createRuntimeHtml() {
             <div class="value" id="artifact-id">-</div>
           </div>
           <div>
-            <div class="label">Parcel</div>
+            <div class="label">Borrower</div>
             <div class="value" id="artifact-parcel">-</div>
           </div>
           <div>
-            <div class="label">Recorded</div>
+            <div class="label">Statement date</div>
             <div class="value" id="artifact-recorded">-</div>
           </div>
           <div>
@@ -608,8 +620,8 @@ function createRuntimeHtml() {
 
         function setArtifact(artifact) {
           state.artifactId.textContent = artifact.artifactId;
-          state.artifactParcel.textContent = artifact.parcelId;
-          state.artifactRecorded.textContent = artifact.recordedAt;
+          state.artifactParcel.textContent = artifact.borrowerId;
+          state.artifactRecorded.textContent = artifact.statementDate;
           state.artifactPolicy.textContent = artifact.policyProfile;
           state.artifactContent.textContent = JSON.stringify(artifact, null, 2);
         }
@@ -787,23 +799,23 @@ async function waitForUi(page) {
 function buildRegistrySteps() {
   return [
     {
-      name: 'Registry intake',
-      detail: 'Presentation package registered in local evidence queue.',
+      name: 'Borrower intake',
+      detail: 'Bank statement enters lender upload workflow and ingestion queue.',
       status: 'Queued'
     },
     {
-      name: 'Recorder index lookup',
-      detail: 'Mock county recorder index returns the expected document number.',
+      name: 'Receipt issuance',
+      detail: 'TrustSignal binds receipt to the uploaded document fingerprint at day one.',
       status: 'Queued'
     },
     {
-      name: 'Chain-of-custody checkpoint',
-      detail: 'Source digest is compared with the receipt baseline.',
+      name: 'Secondary market transfer',
+      detail: 'Loan sold to Fannie Mae with receipt reference retained in the file trail.',
       status: 'Queued'
     },
     {
-      name: 'Evidence state decision',
-      detail: 'Verification status is issued for presentation.',
+      name: 'Repurchase review',
+      detail: 'Six months later, receipt is replayed to prove document state at ingestion.',
       status: 'Queued'
     }
   ];
@@ -910,19 +922,6 @@ async function triggerFailureFlash(page) {
   });
 }
 
-function buildTamperedArtifact(originalArtifact) {
-  return {
-    ...originalArtifact,
-    grantee: 'Acme Title Holdings LLC',
-    evidence: {
-      ...originalArtifact.evidence,
-      pageCount: 13,
-      sourceRecord: 'County recorder export (tampered local copy)'
-    },
-    tamperNote: 'Demonstration-only mutation to show failed integrity verification.'
-  };
-}
-
 async function runScenario({
   page,
   progress,
@@ -1008,10 +1007,10 @@ async function main() {
     htmlPath,
     artifactPath,
     baselineHash: baselineArtifact.hash,
-    scenario1: null,
-    scenario2: null
+    scenario1: null
   };
 
+  console.log(`${brandBanner()}\n`);
   console.log(`Runtime HTML: ${htmlPath}`);
   console.log(`Artifact path: ${artifactPath}`);
   console.log(`Local server: ${url}`);
@@ -1036,8 +1035,8 @@ async function main() {
 
     await setOverlay(
       page,
-      'Evidence integrity infrastructure',
-      'TrustSignal demonstrates whether a presented artifact still matches the recorded evidence baseline.'
+      'trustsignal',
+      'Evidence Integrity Infrastructure. TrustSignal demonstrates a lender intake, secondary market transfer, and repurchase review using one receipt lifecycle.'
     );
     await sleep(OVERLAY_PAUSE_MS);
 
@@ -1046,33 +1045,14 @@ async function main() {
       progress,
       artifactPath,
       expectedHash: baselineArtifact.hash,
-      scenarioName: 'Scenario 1: Baseline evidence path',
+      scenarioName: 'Scenario: Bank statement day-one integrity proof',
       tamperExpected: false
-    });
-
-    const tamperedArtifact = buildTamperedArtifact(initialArtifact);
-    fs.writeFileSync(artifactPath, JSON.stringify(tamperedArtifact, null, 2), 'utf8');
-
-    await setOverlay(
-      page,
-      'Tamper event introduced',
-      'The local artifact file is modified between presentation steps to simulate an integrity break.'
-    );
-    await sleep(OVERLAY_PAUSE_MS);
-
-    summary.scenario2 = await runScenario({
-      page,
-      progress,
-      artifactPath,
-      expectedHash: baselineArtifact.hash,
-      scenarioName: 'Scenario 2: Tampered evidence path',
-      tamperExpected: true
     });
 
     await setOverlay(
       page,
       'Demonstration complete',
-      'Scenario 1 remained VERIFIED. Scenario 2 failed after the file changed. The browser will close automatically.'
+      'Repurchase review successfully verified the original day-one document state. The browser will close automatically.'
     );
     await sleep(1800);
 
@@ -1080,7 +1060,6 @@ async function main() {
     fs.writeFileSync(reportPath, JSON.stringify(summary, null, 2), 'utf8');
     console.log(`\nDemo report: ${reportPath}`);
     console.log(`Scenario 1 status: ${summary.scenario1.receipt.status}`);
-    console.log(`Scenario 2 status: ${summary.scenario2.receipt.status}`);
   } finally {
     await Promise.allSettled([
       context ? context.close() : Promise.resolve(),

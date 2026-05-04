@@ -19,7 +19,11 @@ export const REGISTRY_SOURCE_IDS = [
   'us_csl_consolidated',
   'nppes_npi_registry',
   'sec_edgar_company_tickers',
-  'fdic_bankfind_institutions'
+  'fdic_bankfind_institutions',
+  'openfema_nfip_community',
+  'gleif_lei_records',
+  'un_sc_consolidated',
+  'irs_eo_bmf'
 ] as const;
 
 export type RegistrySourceId = typeof REGISTRY_SOURCE_IDS[number];
@@ -29,7 +33,11 @@ type ProviderType =
   | 'sam_json'
   | 'npi_json'
   | 'sec_tickers_json'
-  | 'fdic_json';
+  | 'fdic_json'
+  | 'openfema_json'
+  | 'gleif_json'
+  | 'un_sc_xml'
+  | 'irs_eo_bmf_csv';
 
 export type ComplianceState = 'MATCH' | 'NO_MATCH' | 'COMPLIANCE_GAP';
 
@@ -261,6 +269,62 @@ const SOURCE_SEEDS: RegistrySourceSeed[] = [
     officialSourceName: 'U.S. Federal Deposit Insurance Corporation - BankFind Suite',
     primarySourceHost: 'fdic.gov',
     requestAcceptHeader: 'application/json'
+  },
+  {
+    id: 'openfema_nfip_community',
+    name: 'FEMA NFIP Community Status',
+    category: 'misc',
+    endpointEnv: 'OPENFEMA_NFIP_URL',
+    endpointDefault: 'https://www.fema.gov/api/open/v2/fimaNfipCommunities',
+    zkCircuit: 'entity_registry_match',
+    fetchIntervalMinutes: 1440,
+    parserVersion: 'openfema-nfip-json-v1',
+    providerType: 'openfema_json',
+    officialSourceName: 'U.S. Federal Emergency Management Agency - OpenFEMA NFIP Community Status',
+    primarySourceHost: 'fema.gov',
+    requestAcceptHeader: 'application/json'
+  },
+  {
+    id: 'gleif_lei_records',
+    name: 'GLEIF LEI Records',
+    category: 'misc',
+    endpointEnv: 'GLEIF_LEI_API_URL',
+    endpointDefault: 'https://api.gleif.org/api/v1/lei-records',
+    zkCircuit: 'entity_registry_match',
+    fetchIntervalMinutes: 720,
+    parserVersion: 'gleif-lei-json-v1',
+    providerType: 'gleif_json',
+    officialSourceName: 'Global Legal Entity Identifier Foundation - LEI Records',
+    primarySourceHost: 'gleif.org',
+    requestAcceptHeader: 'application/json'
+  },
+  {
+    id: 'un_sc_consolidated',
+    name: 'UN Security Council Consolidated Sanctions',
+    category: 'sanctions',
+    endpointEnv: 'UN_SC_CONSOLIDATED_URL',
+    endpointDefault: 'https://scsanctions.un.org/resources/xml/en/consolidated.xml',
+    zkCircuit: 'sanctions_nonmembership',
+    fetchIntervalMinutes: 360,
+    parserVersion: 'un-sc-xml-v1',
+    providerType: 'un_sc_xml',
+    officialSourceName: 'United Nations Security Council - Consolidated Sanctions List',
+    primarySourceHost: 'scsanctions.un.org',
+    requestAcceptHeader: 'application/xml'
+  },
+  {
+    id: 'irs_eo_bmf',
+    name: 'IRS Exempt Organizations Business Master File',
+    category: 'misc',
+    endpointEnv: 'IRS_EO_BMF_URL',
+    endpointDefault: 'https://apps.irs.gov/pub/epostcard/data-download-epostcard.zip',
+    zkCircuit: 'entity_registry_match',
+    fetchIntervalMinutes: 10080,
+    parserVersion: 'irs-eo-bmf-csv-v1',
+    providerType: 'irs_eo_bmf_csv',
+    officialSourceName: 'U.S. Internal Revenue Service - Exempt Organizations Business Master File Extract',
+    primarySourceHost: 'apps.irs.gov',
+    requestAcceptHeader: 'application/octet-stream'
   }
 ];
 
@@ -672,8 +736,7 @@ async function fetchSecTickerMatches(
   return { matches, sourceVersion };
 }
 
-async function fetchFdicMatches(
-  source: RegistrySourceSeed,
+async function fetchFdicMatches(  source: RegistrySourceSeed,
   endpoint: string,
   subject: string,
   fetchImpl: FetchLike
@@ -699,6 +762,253 @@ async function fetchFdicMatches(
     if (!details || typeof details !== 'object') continue;
     const name = (details as Record<string, unknown>).NAME;
     if (typeof name !== 'string' || name.trim().length === 0) continue;
+    const score = scoreCandidate(subject, name);
+    if (score >= 0.7) {
+      const current = matchMap.get(name) || 0;
+      if (score > current) matchMap.set(name, score);
+    }
+  }
+
+  const matches = [...matchMap.entries()]
+    .map(([name, score]) => ({ name, score: Number(score.toFixed(3)) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const sourceVersion = response.headers.get('etag') || response.headers.get('last-modified');
+  return { matches, sourceVersion };
+}
+
+async function fetchOpenFemaNfipMatches(
+  source: RegistrySourceSeed,
+  endpoint: string,
+  subject: string,
+  fetchImpl: FetchLike
+): Promise<{ matches: RegistryMatch[]; sourceVersion: string | null }> {
+  const url = new URL(endpoint);
+  url.searchParams.set('$filter', `communityName eq '${subject.replace(/'/g, "''")}'`);
+  url.searchParams.set('$top', '50');
+  url.searchParams.set('$format', 'json');
+  url.searchParams.set('$select', 'communityName,stateName,cid,floodZone');
+
+  await applyProviderCooldown(source.id);
+  const response = await secureFetch(url.toString(), { accept: source.requestAcceptHeader }, fetchImpl);
+  if (!response.ok) {
+    throw new Error(`upstream_http_${response.status}`);
+  }
+
+  const payload = await response.json() as Record<string, unknown>;
+  const records = Array.isArray((payload as Record<string, unknown>).data)
+    ? (payload as Record<string, unknown>).data as Array<Record<string, unknown>>
+    : [];
+
+  const matchMap = new Map<string, number>();
+  for (const record of records) {
+    const name = typeof record.communityName === 'string' ? record.communityName : '';
+    if (!name) continue;
+    const score = scoreCandidate(subject, name);
+    if (score >= 0.7) {
+      const current = matchMap.get(name) || 0;
+      if (score > current) matchMap.set(name, score);
+    }
+  }
+
+  // Fall back to an unfiltered search using name tokenization when exact filter yields nothing
+  if (matchMap.size === 0) {
+    const fallbackUrl = new URL(endpoint);
+    const token = tokenize(subject)[0] || subject;
+    fallbackUrl.searchParams.set('$filter', `startswith(communityName,'${token.replace(/'/g, "''")}') eq true`);
+    fallbackUrl.searchParams.set('$top', '50');
+    fallbackUrl.searchParams.set('$format', 'json');
+    fallbackUrl.searchParams.set('$select', 'communityName,stateName,cid');
+
+    await applyProviderCooldown(source.id);
+    const fallbackResponse = await secureFetch(fallbackUrl.toString(), { accept: source.requestAcceptHeader }, fetchImpl);
+    if (fallbackResponse.ok) {
+      const fallbackPayload = await fallbackResponse.json() as Record<string, unknown>;
+      const fallbackRecords = Array.isArray(fallbackPayload.data)
+        ? fallbackPayload.data as Array<Record<string, unknown>>
+        : [];
+      for (const record of fallbackRecords) {
+        const name = typeof record.communityName === 'string' ? record.communityName : '';
+        if (!name) continue;
+        const score = scoreCandidate(subject, name);
+        if (score >= 0.7) {
+          const current = matchMap.get(name) || 0;
+          if (score > current) matchMap.set(name, score);
+        }
+      }
+    }
+  }
+
+  const matches = [...matchMap.entries()]
+    .map(([name, score]) => ({ name, score: Number(score.toFixed(3)) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const sourceVersion = response.headers.get('etag') || response.headers.get('last-modified');
+  return { matches, sourceVersion };
+}
+
+async function fetchGleifLeiMatches(
+  source: RegistrySourceSeed,
+  endpoint: string,
+  subject: string,
+  fetchImpl: FetchLike
+): Promise<{ matches: RegistryMatch[]; sourceVersion: string | null }> {
+  const url = new URL(endpoint);
+  url.searchParams.set('filter[entity.legalName]', subject);
+  url.searchParams.set('page[size]', '25');
+
+  await applyProviderCooldown(source.id);
+  const response = await secureFetch(url.toString(), { accept: source.requestAcceptHeader }, fetchImpl);
+  if (!response.ok) {
+    throw new Error(`upstream_http_${response.status}`);
+  }
+
+  const payload = await response.json() as Record<string, unknown>;
+  const records = Array.isArray(payload.data) ? payload.data as Array<Record<string, unknown>> : [];
+
+  const matchMap = new Map<string, number>();
+  for (const record of records) {
+    const attributes = record.attributes as Record<string, unknown> | undefined;
+    const entity = attributes?.entity as Record<string, unknown> | undefined;
+    const legalName = entity?.legalName as Record<string, unknown> | undefined;
+    const name = typeof legalName?.name === 'string' ? legalName.name : '';
+    if (!name) continue;
+    const score = scoreCandidate(subject, name);
+    if (score >= 0.7) {
+      const current = matchMap.get(name) || 0;
+      if (score > current) matchMap.set(name, score);
+    }
+    // Also check otherNames array for alternate legal names
+    const otherNames = Array.isArray(entity?.otherNames) ? entity.otherNames as Array<Record<string, unknown>> : [];
+    for (const other of otherNames) {
+      const altName = typeof other.name === 'string' ? other.name : '';
+      if (!altName) continue;
+      const altScore = scoreCandidate(subject, altName);
+      if (altScore >= 0.7) {
+        const current = matchMap.get(altName) || 0;
+        if (altScore > current) matchMap.set(altName, altScore);
+      }
+    }
+  }
+
+  const matches = [...matchMap.entries()]
+    .map(([name, score]) => ({ name, score: Number(score.toFixed(3)) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const sourceVersion = response.headers.get('etag') || response.headers.get('last-modified');
+  return { matches, sourceVersion };
+}
+
+/**
+ * Extracts all text values for a given XML tag from raw XML text.
+ * Used to avoid adding an XML parsing dependency for well-structured government XML feeds.
+ */
+function extractXmlTagValues(xml: string, tagName: string): string[] {
+  const pattern = new RegExp(`<${tagName}>([^<]+)<\\/${tagName}>`, 'gi');
+  const values: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(xml)) !== null) {
+    const value = match[1].trim();
+    if (value.length > 0) values.push(value);
+  }
+  return values;
+}
+
+/**
+ * Parses UN Security Council consolidated XML and extracts entity/individual names.
+ * Handles INDIVIDUAL (FIRST_NAME + SECOND_NAME + THIRD_NAME + FOURTH_NAME) and
+ * ENTITY (FIRST_NAME as full entity name) entries, plus ALIAS_NAME alternates.
+ */
+function parseUnScXmlNames(xml: string): string[] {
+  const names: string[] = [];
+
+  // Extract composed individual names from within <INDIVIDUAL> blocks
+  const individualBlockRegex = /<INDIVIDUAL>([\s\S]*?)<\/INDIVIDUAL>/gi;
+  let block: RegExpExecArray | null;
+  while ((block = individualBlockRegex.exec(xml)) !== null) {
+    const content = block[1];
+    const parts = ['FIRST_NAME', 'SECOND_NAME', 'THIRD_NAME', 'FOURTH_NAME']
+      .map((tag) => {
+        const m = new RegExp(`<${tag}>([^<]+)<\\/${tag}>`, 'i').exec(content);
+        return m ? m[1].trim() : '';
+      })
+      .filter((part) => part.length > 0);
+    if (parts.length > 0) names.push(parts.join(' '));
+  }
+
+  // Extract entity names (FIRST_NAME is the full entity name inside <ENTITY> blocks)
+  const entityBlockRegex = /<ENTITY>([\s\S]*?)<\/ENTITY>/gi;
+  while ((block = entityBlockRegex.exec(xml)) !== null) {
+    const content = block[1];
+    const m = /<FIRST_NAME>([^<]+)<\/FIRST_NAME>/i.exec(content);
+    if (m) names.push(m[1].trim());
+  }
+
+  // Include all ALIAS_NAME values for both individuals and entities
+  const aliases = extractXmlTagValues(xml, 'ALIAS_NAME');
+  names.push(...aliases);
+
+  return names.filter((name) => name.length > 0);
+}
+
+async function fetchUnScConsolidatedMatches(
+  source: RegistrySourceSeed,
+  endpoint: string,
+  subject: string,
+  fetchImpl: FetchLike
+): Promise<{ matches: RegistryMatch[]; sourceVersion: string | null }> {
+  await applyProviderCooldown(source.id);
+  const response = await secureFetch(endpoint, { accept: source.requestAcceptHeader }, fetchImpl);
+  if (!response.ok) {
+    throw new Error(`upstream_http_${response.status}`);
+  }
+  const xml = await response.text();
+  const names = parseUnScXmlNames(xml);
+
+  const matchMap = new Map<string, number>();
+  for (const name of names) {
+    const score = scoreCandidate(subject, name);
+    if (score >= 0.7) {
+      const current = matchMap.get(name) || 0;
+      if (score > current) matchMap.set(name, score);
+    }
+  }
+
+  const matches = [...matchMap.entries()]
+    .map(([name, score]) => ({ name, score: Number(score.toFixed(3)) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const sourceVersion = response.headers.get('etag') || response.headers.get('last-modified');
+  return { matches, sourceVersion };
+}
+
+/**
+ * IRS EO BMF pipe-delimited CSV: each row is a tax-exempt org.
+ * Column 1 (index 0) is EIN, column 2 (index 1) is organization name.
+ * The EO BMF bulk download returns a pipe-delimited text file.
+ */
+async function fetchIrsEoBmfMatches(
+  source: RegistrySourceSeed,
+  endpoint: string,
+  subject: string,
+  fetchImpl: FetchLike
+): Promise<{ matches: RegistryMatch[]; sourceVersion: string | null }> {
+  await applyProviderCooldown(source.id);
+  const response = await secureFetch(endpoint, { accept: source.requestAcceptHeader }, fetchImpl);
+  if (!response.ok) {
+    throw new Error(`upstream_http_${response.status}`);
+  }
+
+  // EO BMF is a large pipe-delimited file. Stream / text-scan line by line.
+  const text = await response.text();
+  const lines = text.split('\n');
+
+  const matchMap = new Map<string, number>();
+  for (const line of lines) {
+    const parts = line.split('|');
+    // Column layout: EIN | Name | ICO | Street | City | State | ZIP | Group | Subsection | ...
+    const name = parts[1]?.trim() ?? '';
+    if (!name) continue;
     const score = scoreCandidate(subject, name);
     if (score >= 0.7) {
       const current = matchMap.get(name) || 0;
@@ -806,6 +1116,42 @@ async function runLookup(
 
     if (seed.providerType === 'fdic_json') {
       const result = await fetchFdicMatches(seed, source.endpoint, subject, fetchImpl);
+      return {
+        status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
+        matches: result.matches,
+        sourceVersion: result.sourceVersion
+      };
+    }
+
+    if (seed.providerType === 'openfema_json') {
+      const result = await fetchOpenFemaNfipMatches(seed, source.endpoint, subject, fetchImpl);
+      return {
+        status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
+        matches: result.matches,
+        sourceVersion: result.sourceVersion
+      };
+    }
+
+    if (seed.providerType === 'gleif_json') {
+      const result = await fetchGleifLeiMatches(seed, source.endpoint, subject, fetchImpl);
+      return {
+        status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
+        matches: result.matches,
+        sourceVersion: result.sourceVersion
+      };
+    }
+
+    if (seed.providerType === 'un_sc_xml') {
+      const result = await fetchUnScConsolidatedMatches(seed, source.endpoint, subject, fetchImpl);
+      return {
+        status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
+        matches: result.matches,
+        sourceVersion: result.sourceVersion
+      };
+    }
+
+    if (seed.providerType === 'irs_eo_bmf_csv') {
+      const result = await fetchIrsEoBmfMatches(seed, source.endpoint, subject, fetchImpl);
       return {
         status: result.matches.length > 0 ? 'MATCH' : 'NO_MATCH',
         matches: result.matches,

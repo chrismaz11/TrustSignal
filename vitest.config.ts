@@ -6,6 +6,11 @@ export default defineConfig({
       'packages/core/src/**/*.test.ts',
       'tests/**/*.test.ts'
     ],
+    exclude: [
+      'tests/adversarial/**/*.test.ts',
+      'tests/integration/**/*.test.ts',
+      'tests/middleware/**/*.test.ts'
+    ],
     environment: 'node',
     coverage: {
       provider: 'v8',

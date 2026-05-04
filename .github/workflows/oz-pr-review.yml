@@ -32,4 +32,5 @@ jobs:
 
             Use `git` to identify changes from base branch.
             Use `gh` to post inline PR comments for each issue found.
+          environment: Det63GoRlfZsPjgQwjHHix
           warp_api_key: ${{ secrets.WARP_API_KEY }}

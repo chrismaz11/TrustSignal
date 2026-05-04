@@ -1,7 +1,7 @@
 # TrustSignal Threat Model (Session 6)
 
 Date: 2026-03-02  
-Scope: TrustSignal API verification and revocation flow, Halo2 + ZKML proof paths, admin authentication, Polygon Mumbai anchoring.
+Scope: TrustSignal API verification and revocation flow, Halo2 + ZKML proof paths, admin authentication, Polygon anchoring.
 
 ## 1) Proof Forgery
 
@@ -50,6 +50,6 @@ Scope: TrustSignal API verification and revocation flow, Halo2 + ZKML proof path
 - Impact: Medium-High
 - Attack: Malicious or misconfigured RPC/network response causes false anchor trust assumptions.
 - Mitigation:
-  - Anchor flow validates Mumbai chain ID before transaction submission.
+  - Anchor flow validates configured chain ID before transaction submission.
   - Revocation route rejects invalid anchor timestamps and surfaces upstream failures without leaking internals.
   - Tx hash and timestamp are persisted for traceability and independent chain verification.

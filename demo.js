@@ -7,6 +7,10 @@ const RUNTIME_DIR = path.join(__dirname, "..", "demo", "runtime");
 
 const SOURCE_FILE = path.join(FIXTURE_DIR, "SOC2_Audit_Report.pdf");
 const WORKING_FILE = path.join(RUNTIME_DIR, "SOC2_Audit_Report.pdf");
+const BRAND_WORDMARK = [
+  "trustsignal",
+  "Evidence Integrity Infrastructure",
+];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -49,11 +53,17 @@ function printSection(title) {
   console.log("-".repeat(title.length));
 }
 
+function printBrandBanner() {
+  console.log(BRAND_WORDMARK[0]);
+  console.log(BRAND_WORDMARK[1]);
+}
+
 async function main() {
   try {
     resetRuntime();
 
     console.clear();
+    printBrandBanner();
     printSection("TrustSignal Evidence Integrity Demo");
 
     await sleep(1500);

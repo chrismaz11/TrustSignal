@@ -31,6 +31,7 @@ module.exports = {
     'demo.js',
     'trustsignal-demo.js',
     'bench/**',
+    'apps/api/src/__tests__/mistral-generated/**',
     'tests/e2e/**',
     'packages/contracts/test/**',
     'scripts/demo-vanta-terminal.ts',
