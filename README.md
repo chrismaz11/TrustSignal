@@ -14,6 +14,8 @@
 >
 > Canonical public website/docs/onboarding source: `v0-signal-new`
 >
+> Canonical demo site: `v0-demo` → demo.trustsignal.dev
+>
 > `apps/web` exists in this repo for non-canonical internal or pilot-facing web work. It is not the live public frontend for `trustsignal.dev`.
 
 ## Source of Truth
@@ -220,6 +222,7 @@ To report a vulnerability: [security@trustsignal.dev](mailto:security@trustsigna
 | Repository | Purpose |
 |---|---|
 | [v0-signal-new](https://github.com/TrustSignal-dev/v0-signal-new) | Public website — trustsignal.dev |
+| [v0-demo](https://github.com/TrustSignal-dev/v0-demo) | Demo site — demo.trustsignal.dev |
 | [TrustSignal-App](https://github.com/TrustSignal-dev/TrustSignal-App) | GitHub App for CI verification |
 | [TrustSignal GitHub Action](https://github.com/TrustSignal-dev/TrustSignal/tree/master/github-actions/trustsignal-verify-artifact) | Canonical GitHub Action source in the monorepo. Confirm the published ref before documenting a stable version alias. |
 | [TrustSignal-Reddit](https://github.com/TrustSignal-dev/TrustSignal-Reddit) | Reddit trust and moderation toolkit |

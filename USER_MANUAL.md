@@ -1,5 +1,7 @@
 # DeedShield User Manual
 
+> **Archive notice:** This manual documents the original DeedShield deed-verification UI flow (Cook County, February 2026). It is retained for historical reference. The current product is TrustSignal. For current integration documentation see [docs/partner-eval/overview.md](docs/partner-eval/overview.md) and the root [README.md](README.md).
+
 **Version:** 2.0 (Risk & Compliance Enhanced)  
 **Date:** February 2026
 

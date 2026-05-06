@@ -31,7 +31,7 @@ The current public verification request includes these core fields:
 - `transactionType`: workflow category
 - `doc.docHash`: artifact hash
 - `policy.profile`: policy or control identifier
-- `property`: workflow-specific subject context for the current DeedShield surface
+- `property`: workflow-specific subject context for the current verification surface
 - `timestamp`: caller-provided event time when available
 
 ## Response Outputs

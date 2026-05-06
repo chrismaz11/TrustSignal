@@ -7,6 +7,7 @@ This file is the source of truth for canonical ownership and repo-role labels ac
 | Surface | Source of truth |
 |---|---|
 | Canonical public frontend | `v0-signal-new` |
+| Canonical demo site | `v0-demo` |
 | Canonical backend/API | `TrustSignal/apps/api` in `TrustSignal` |
 | Public docs ownership | `v0-signal-new` for live public docs; `TrustSignal/docs` for implementation and maintainer documentation |
 | Canonical GitHub Action | `TrustSignal/github-actions/trustsignal-verify-artifact` |
@@ -16,11 +17,12 @@ This file is the source of truth for canonical ownership and repo-role labels ac
 | Repo | Role | Expected status |
 |---|---|---|
 | `TrustSignal` | Canonical product monorepo and backend ownership | `canonical` `active` |
-| `v0-signal-new` | Canonical public website, onboarding surface, and live public docs | `canonical` `active` |
+| `v0-signal-new` | Canonical public website, onboarding surface, and live public docs → trustsignal.dev | `canonical` `active` |
+| `v0-demo` | Demo site → demo.trustsignal.dev | `canonical` `active` |
 | `TrustSignal-App` | GitHub App backend for webhook intake and check publishing | `active` |
 | `TrustSignal-docs` | Secondary sanitized public review package | `secondary` `public-review` |
 | `trustagents` | Experimental R&D repository outside the production verification path | `experimental` `active` |
-| `TrustSignal-Reddit` | Adjacent product repository | `active` `adjacent-product` |
+| `TrustSignal-Reddit` | Adjacent product repository → reddit.trustsignal.dev | `active` `adjacent-product` |
 | `TrustSignal-Verify-Artifact` | Deprecated standalone action repository kept for history and migration | `deprecated` `archived` |
 
 ## Deprecated Repos
