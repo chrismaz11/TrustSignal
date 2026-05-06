@@ -1595,7 +1595,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
       county: new DatabaseCountyVerifier(),
       notary: new DatabaseNotaryVerifier(),
       property: new AttomPropertyVerifier(propertyApiKey),
-      blockchain: new BlockchainVerifier(process.env.RPC_URL || '', process.env.REGISTRY_ADDRESS || '')
+      blockchain: new BlockchainVerifier(process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || '', process.env.REGISTRY_ADDRESS || '')
     };
     const verification = await verifyBundle(input, registry, verifiers);
 

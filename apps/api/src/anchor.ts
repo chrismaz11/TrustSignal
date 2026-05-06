@@ -71,8 +71,8 @@ export async function anchorReceipt(receiptHash: string, attestation?: ZKPAttest
   }
 
   const rpcUrl =
-    process.env.SEPOLIA_RPC_URL && process.env.PRIVATE_KEY
-      ? process.env.SEPOLIA_RPC_URL
+    (process.env.SEPOLIA_RPC_URL || process.env.RPC_URL) && process.env.PRIVATE_KEY
+      ? (process.env.SEPOLIA_RPC_URL || process.env.RPC_URL)!
       : process.env.LOCAL_CHAIN_URL || 'http://127.0.0.1:8545';
 
   const privateKey = process.env.PRIVATE_KEY || process.env.LOCAL_PRIVATE_KEY;
