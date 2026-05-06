@@ -1566,20 +1566,20 @@ export async function buildServer(options: BuildServerOptions = {}) {
     schema: {
       tags: ['Verify'],
       summary: 'Verify a document and generate receipt',
-      description: 'Run verification checks and generate a cryptographic receipt',
-      body: verifyInputSchema
+      description: 'Run verification checks and generate a cryptographic receipt'
     },
     preHandler: [requireScope('verify')]
   }, async (request, reply) => {
     // Enforce plan quota before running any verification work.
     const quota = await checkPlanQuota(prisma, request.authContext?.userId ?? null);
     if (!quota.allowed) {
+      const deniedQuota = quota as { allowed: false; plan: string; used: number; limit: number };
       return reply.code(429).send({
         error: 'plan_quota_exceeded',
-        plan: quota.plan,
-        used: quota.used,
-        limit: quota.limit,
-        message: `Monthly verification limit reached for plan '${quota.plan}'. Upgrade to continue.`
+        plan: deniedQuota.plan,
+        used: deniedQuota.used,
+        limit: deniedQuota.limit,
+        message: `Monthly verification limit reached for plan '${deniedQuota.plan}'. Upgrade to continue.`
       });
     }
 
@@ -1805,8 +1805,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     schema: {
       tags: ['Receipt'],
       summary: 'Get receipt details',
-      description: 'Retrieve a receipt by ID',
-      params: receiptIdParamSchema
+      description: 'Retrieve a receipt by ID'
     },
     preHandler: [requireScope('read')]
   }, async (request, reply) => {
@@ -1874,8 +1873,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     schema: {
       tags: ['Receipt'],
       summary: 'Verify receipt signature',
-      description: 'Verify the cryptographic signature of a receipt',
-      params: receiptIdParamSchema
+      description: 'Verify the cryptographic signature of a receipt'
     },
     preHandler: [requireScope('read')]
   }, async (request, reply) => {
@@ -1933,8 +1931,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     schema: {
       tags: ['Anchor'],
       summary: 'Anchor receipt to blockchain',
-      description: 'Store cryptographic proof on-chain for immutability',
-      params: receiptIdParamSchema
+      description: 'Store cryptographic proof on-chain for immutability'
     },
     preHandler: [requireScope('anchor')]
   }, async (request, reply) => {
@@ -1998,8 +1995,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     schema: {
       tags: ['Receipt'],
       summary: 'Revoke a receipt',
-      description: 'Mark a receipt as revoked',
-      params: receiptIdParamSchema
+      description: 'Mark a receipt as revoked'
     },
     preHandler: [requireScope('revoke')]
   }, async (request, reply) => {

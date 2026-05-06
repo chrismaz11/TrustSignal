@@ -94,3 +94,4 @@ docs/evidence/
 
 # Sandbox result files (generated, not committed)
 sandbox/*/sandbox-results/*.json
+ICE_DEPLOYMENT_CHECKLIST.md

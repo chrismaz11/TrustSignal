@@ -369,7 +369,10 @@ export class CookCountyComplianceValidator {
     private extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
         return new Promise((resolve, reject) => {
             const pdfParser = new PDFParser(null, true);
-            pdfParser.on("pdfParser_dataError", (errData: { parserError?: Error }) => reject(errData.parserError));
+            pdfParser.on("pdfParser_dataError", (errMsg: Error | { parserError: Error }) => {
+                const parserError = errMsg instanceof Error ? errMsg : errMsg.parserError;
+                reject(parserError);
+            });
             pdfParser.on("pdfParser_dataReady", () => {
                 const text = pdfParser.getRawTextContent();
                 resolve(text);

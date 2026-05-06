@@ -21,6 +21,9 @@ if (!IteratorPrototype.toArray) {
 }
 
 const sepoliaUrl = process.env.SEPOLIA_RPC_URL;
+const polygonAmoyUrl = process.env.POLYGON_AMOY_RPC_URL;
+const privateKey = process.env.PRIVATE_KEY || process.env.POLYGON_AMOY_PRIVATE_KEY;
+const polygonAmoyRpcUrl = polygonAmoyUrl || 'https://rpc-amoy.polygon.technology';
 
 export default defineConfig({
   plugins: [hardhatEthers, hardhatMocha],
@@ -45,9 +48,26 @@ export default defineConfig({
           sepolia: {
             type: 'http',
             url: sepoliaUrl,
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+            accounts: privateKey ? [privateKey] : []
           }
         }
-      : {})
+      : {}),
+    ...(polygonAmoyUrl
+      ? {
+          polygonAmoy: {
+            type: 'http',
+            url: polygonAmoyRpcUrl,
+            accounts: privateKey ? [privateKey] : [],
+            chainId: 80002
+          }
+        }
+      : {
+          polygonAmoy: {
+            type: 'http',
+            url: polygonAmoyRpcUrl,
+            accounts: privateKey ? [privateKey] : [],
+            chainId: 80002
+          }
+        })
   }
 });
