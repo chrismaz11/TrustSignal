@@ -11,7 +11,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "axios": "^1.15.0",
+    "axios": "^1.16.0",
     "better-sqlite3": "^12.8.0",
     "busboy": "^1.6.0",
     "chokidar": "^4.0.3",
@@ -60,6 +60,11 @@
   },
   "overrides": {
     "serialize-javascript": ">=7.0.5",
-    "vite": "^6.4.2"
+    "vite": "^6.4.2",
+    "postcss": ">=8.5.14",
+    "next": {
+      "postcss": ">=8.5.14"
+    },
+    "uuid": ">=9.0.0"
   }
 }
